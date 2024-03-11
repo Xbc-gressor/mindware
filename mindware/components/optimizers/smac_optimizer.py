@@ -86,7 +86,8 @@ class SMACOptimizer(BaseOptimizer):
                 if time.time() - _start_time > budget:
                     self.logger.warning('Time limit exceeded!')
                     break
-                _config, _status, _, _perf = self.optimizer.iterate()
+                obs = self.optimizer.iterate()
+                _config, _status, _perf = obs.config, obs.trial_state, obs.objectives
                 self.update_saver([_config], [_perf[0]])
                 if _status == SUCCESS:
                     self.exp_output[time.time()] = (_config, _perf[0])
@@ -115,18 +116,20 @@ class SMACOptimizer(BaseOptimizer):
                 fe_config = self.evaluator.fe_config
             else:
                 fe_config = None
-            self.eval_dict = {(fe_config, hpo_config): [-runhistory.perfs[i], time.time(), runhistory.trial_states[i]]
+
+            self.eval_dict = {(fe_config, hpo_config): [-runhistory.objectives[i][0], time.time(), runhistory.trial_states[i]]
                               for i, hpo_config in enumerate(runhistory.configurations)}
         else:
             if hasattr(self.evaluator, 'hpo_config'):
                 hpo_config = self.evaluator.hpo_config
             else:
                 hpo_config = None
-            self.eval_dict = {(fe_config, hpo_config): [-runhistory.perfs[i], time.time(), runhistory.trial_states[i]]
+            self.eval_dict = {(fe_config, hpo_config): [-runhistory.objectives[i][0], time.time(), runhistory.trial_states[i]]
                               for i, fe_config in enumerate(runhistory.configurations)}
 
         if len(runhistory.get_incumbents()) > 0:
-            self.incumbent_config, self.incumbent_perf = runhistory.get_incumbents()[0]
+            incumbent = runhistory.get_incumbents()[0]
+            self.incumbent_config, self.incumbent_perf = incumbent.config, incumbent.objectives[0]
             self.incumbent_perf = -self.incumbent_perf
         iteration_cost = time.time() - _start_time
         # incumbent_perf: the large the better

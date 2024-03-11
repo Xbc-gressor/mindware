@@ -15,6 +15,8 @@ def cross_validation(estimator, scorer, X, y, n_fold=5, shuffle=True, fit_params
     with warnings.catch_warnings():
         # ignore all caught warnings
         warnings.filterwarnings("ignore")
+        if not shuffle:
+            random_state = None
         if if_stratify:
             kfold = StratifiedKFold(n_splits=n_fold, random_state=random_state, shuffle=shuffle)
         else:
