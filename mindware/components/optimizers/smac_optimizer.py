@@ -102,33 +102,38 @@ class SMACOptimizer(BaseOptimizer):
             elif time.time() - _start_time > budget:
                 self.logger.warning('Time limit exceeded!')
             else:
-                _config_list, _status_list, _, _perf_list = self.optimizer.async_iterate(n=inner_iter_num)
-                self.update_saver(_config_list, _perf_list)
-                for i, _config in enumerate(_config_list):
-                    if _status_list[i] == SUCCESS:
-                        self.exp_output[time.time()] = (_config, _perf_list[i])
+                obs_list = self.optimizer.async_iterate(n=inner_iter_num)
+                _config_list, _perf_list = [], []
+                for obs in obs_list:
+                    _config, _perf = obs.config, obs.objectives
+                    _config_list.append(_config)
+                    _perf_list.append(_perf[0])
+                    if obs.trial_state == SUCCESS:
+                        self.exp_output[time.time()] = (_config, _perf[0])
                         self.configs.append(_config)
-                        self.perfs.append(-_perf_list[i])
+                        self.perfs.append(-_perf[0])
 
-        runhistory = self.optimizer.get_history()
+                self.update_saver(_config_list, _perf_list)
+
+        run_history = self.optimizer.get_history()
         if self.name == 'hpo':
             if hasattr(self.evaluator, 'fe_config'):
                 fe_config = self.evaluator.fe_config
             else:
                 fe_config = None
 
-            self.eval_dict = {(fe_config, hpo_config): [-runhistory.objectives[i][0], time.time(), runhistory.trial_states[i]]
-                              for i, hpo_config in enumerate(runhistory.configurations)}
+            self.eval_dict = {(fe_config, hpo_config): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
+                              for i, hpo_config in enumerate(run_history.configurations)}
         else:
             if hasattr(self.evaluator, 'hpo_config'):
                 hpo_config = self.evaluator.hpo_config
             else:
                 hpo_config = None
-            self.eval_dict = {(fe_config, hpo_config): [-runhistory.objectives[i][0], time.time(), runhistory.trial_states[i]]
-                              for i, fe_config in enumerate(runhistory.configurations)}
+            self.eval_dict = {(fe_config, hpo_config): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
+                              for i, fe_config in enumerate(run_history.configurations)}
 
-        if len(runhistory.get_incumbents()) > 0:
-            incumbent = runhistory.get_incumbents()[0]
+        if len(run_history.get_incumbents()) > 0:
+            incumbent = run_history.get_incumbents()[0]
             self.incumbent_config, self.incumbent_perf = incumbent.config, incumbent.objectives[0]
             self.incumbent_perf = -self.incumbent_perf
         iteration_cost = time.time() - _start_time

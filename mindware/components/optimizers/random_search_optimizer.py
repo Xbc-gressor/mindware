@@ -18,7 +18,7 @@ class RandomSearchOptimizer(BaseOptimizer):
         self.evaluation_num_limit = evaluation_limit
         self.inner_iter_num_per_iter = inner_iter_num_per_iter
         self.per_run_time_limit = per_run_time_limit
-        # self.per_run_mem_limit= per_run_mem_limit
+        # self.per_run_mem_limit = per_run_mem_limit
 
         if n_jobs == 1:
             self.optimizer = RandomSearch(objective_function=self.evaluator,

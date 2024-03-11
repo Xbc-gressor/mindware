@@ -100,6 +100,11 @@ class BohbBase(object):
                 val_losses = executor.parallel_execute(T, resource_ratio=float(n_resource / self.R),
                                                        eta=self.eta,
                                                        first_iter=(i == 0))
+
+                for _id, _val_loss in enumerate(val_losses):
+                    if isinstance(_val_loss, dict):
+                        val_losses[_id] = _val_loss['objectives'][0]
+
                 for _id, _val_loss in enumerate(val_losses):
                     if np.isfinite(_val_loss):
                         self.target_x[int(n_resource)].append(T[_id])

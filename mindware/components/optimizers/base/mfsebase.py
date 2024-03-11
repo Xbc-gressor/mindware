@@ -64,7 +64,7 @@ class MfseBase(object):
 
         # Choose a batch of configurations in different mechanisms.
         start_time = time.time()
-        T = self.mf_advisor.get_suggestions(n_suggestions=n)
+        T = self.mf_advisor.get_suggestions(batch_size=n)
         time_elapsed = time.time() - start_time
         self.logger.info("Choosing next batch of configurations took %.2f sec." % time_elapsed)
 
