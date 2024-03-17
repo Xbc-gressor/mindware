@@ -176,7 +176,7 @@ class HPOClassificationEvaluator(_BaseEvaluator):
             self.logger.info('Evaluation<%s> | Score: %.4f | Time cost: %.2f seconds | Shape: %s' %
                              (self.estimator_id,
                               self.scorer._sign * score,
-                              time.time() - start_time, _x.shape))
+                              time.time() - start_time, _X.shape))
         except:
             pass
 
