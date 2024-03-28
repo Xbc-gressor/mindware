@@ -12,7 +12,7 @@ from mindware.components.models.base_model import BaseClassificationModel
 
 class LightGBM(BaseClassificationModel):
     def __init__(self, n_estimators, learning_rate, num_leaves, max_depth, min_child_samples,
-                 subsample, colsample_bytree, random_state=None):
+                 subsample, colsample_bytree, random_state=None, verbose=0):
         self.n_estimators = int(n_estimators)
         self.learning_rate = learning_rate
         self.num_leaves = num_leaves
@@ -23,6 +23,7 @@ class LightGBM(BaseClassificationModel):
 
         self.n_jobs = 4
         self.random_state = random_state
+        self.verbose = verbose
         self.estimator = None
 
     def fit(self, X, y):
@@ -34,7 +35,8 @@ class LightGBM(BaseClassificationModel):
                                         subsample=self.subsample,
                                         colsample_bytree=self.colsample_bytree,
                                         random_state=self.random_state,
-                                        n_jobs=self.n_jobs)
+                                        n_jobs=self.n_jobs,
+                                        verbose=self.verbose)
         self.estimator.fit(X, y)
         return self
 
@@ -70,6 +72,7 @@ class LightGBM(BaseClassificationModel):
         min_child_samples = UniformIntegerHyperparameter("min_child_samples", 5, 30, default_value=20)
         subsample = UniformFloatHyperparameter("subsample", 0.7, 1, default_value=1, q=0.1)
         colsample_bytree = UniformFloatHyperparameter("colsample_bytree", 0.7, 1, default_value=1, q=0.1)
+        verbose = UnParametrizedHyperparameter("verbose", -1)
         cs.add_hyperparameters([n_estimators, num_leaves, max_depth, learning_rate, min_child_samples, subsample,
-                                colsample_bytree])
+                                colsample_bytree, verbose])
         return cs

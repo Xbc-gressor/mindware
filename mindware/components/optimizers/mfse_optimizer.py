@@ -25,10 +25,10 @@ class MfseOptimizer(BaseOptimizer, MfseBase):
         self.per_run_mem_limit = per_run_mem_limit
 
     def iterate(self, budget=MAX_INT):
-        '''
+        """
             Iterate a SH procedure (inner loop) in Hyperband.
         :return:
-        '''
+        """
         _start_time = time.time()
         for _ in range(self.inner_iter_num_per_iter):
             _time_elapsed = time.time() - _start_time

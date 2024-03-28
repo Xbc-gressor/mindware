@@ -1,3 +1,4 @@
+import sklearn
 from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
     UniformIntegerHyperparameter, CategoricalHyperparameter, \
@@ -129,8 +130,12 @@ class RandomForest(
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
         cs = ConfigurationSpace()
-        criterion = CategoricalHyperparameter(
-            "criterion", ["gini", "entropy"], default_value="gini")
+        if sklearn.__version__ < "1.1.3":
+            criterion = CategoricalHyperparameter(
+                "criterion", ["gini", "entropy"], default_value="gini")
+        else:
+            criterion = CategoricalHyperparameter(
+                "criterion", ["gini", "entropy", "log_loss"], default_value="gini")
 
         # The maximum number of features used in the forest is calculated as m^max_features, where
         # m is the total number of features, and max_features is the hyperparameter specified below.

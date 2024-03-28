@@ -1,6 +1,6 @@
 import numpy as np
 from ConfigSpace.configuration_space import ConfigurationSpace
-from ConfigSpace.hyperparameters import UniformFloatHyperparameter, CategoricalHyperparameter
+from ConfigSpace.hyperparameters import UniformFloatHyperparameter, UniformIntegerHyperparameter, CategoricalHyperparameter
 
 from mindware.components.models.base_model import BaseRegressionModel
 from mindware.components.utils.constants import DENSE, SPARSE, UNSIGNED_DATA, PREDICTIONS
@@ -50,7 +50,7 @@ class RidgeRegressor(BaseRegressionModel):
             tol = UniformFloatHyperparameter("tol", 1e-6, 1e-2, default_value=1e-4,
                                              log=True)
 
-            max_iter = UniformFloatHyperparameter("max_iter", 100, 1000, q=100, default_value=100)
+            max_iter = UniformIntegerHyperparameter("max_iter", 100, 1000, q=100, default_value=100)
             solver = CategoricalHyperparameter("solver", choices=["auto", "saga"], default_value="auto")
 
             cs = ConfigurationSpace()

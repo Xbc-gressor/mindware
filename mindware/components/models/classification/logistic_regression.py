@@ -70,6 +70,7 @@ class Logistic_Regression(BaseClassificationModel):
         penalty = CategoricalHyperparameter(name="penalty",
                                             choices=["l1", "l2"],
                                             default_value="l2")
+
         solver = CategoricalHyperparameter(name="solver", choices=["liblinear", "saga"], default_value="liblinear")
 
         cs = ConfigurationSpace()

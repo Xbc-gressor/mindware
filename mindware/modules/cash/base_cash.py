@@ -1,13 +1,11 @@
 import os
 import time
+from typing import List
 
 from mindware.utils.logging_utils import setup_logger, get_logger
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
 from mindware.utils.functions import is_imbalanced_dataset
-
-from mindware.components.feature_engineering.task_space import get_task_hyperparameter_space
-
 from mindware.components.optimizers.smac_optimizer import SMACOptimizer
 from mindware.components.optimizers.random_search_optimizer import RandomSearchOptimizer
 from mindware.components.optimizers.mfse_optimizer import MfseOptimizer
@@ -17,20 +15,14 @@ from mindware.components.optimizers.tpe_optimizer import TPEOptimizer
 from sklearn.utils.multiclass import type_of_target
 from mindware.components.utils.constants import type_dict
 
-from mindware.components.models.classification import _classifiers, _addons as _cls_addons
-from mindware.components.models.regression import _regressors, _addons as _rgs_addons
-from mindware.components.utils.class_loader import get_combined_candidtates
-from ConfigSpace import ConfigurationSpace, Constant
 
-
-class BaseFEOptimizer(object):
-    def __init__(self, estimator_id: str, task_type=None, scorer: str = 'acc',
+class BaseCASHOptimizer(object):
+    def __init__(self, include_algorithms: List[str] = None, task_type=None, scorer: str = 'acc',
                  data_node: DataNode = None, evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac', per_run_time_limit=600,
                  time_limit=600, amount_of_resource=None,
-                 output_dir=None, seed=None, n_jobs=1,
-                 include_preprocessors=None):
-        self.estimator_id = estimator_id
+                 output_dir=None, seed=None, n_jobs=1):
+        self.include_algorithms = include_algorithms
         self.scorer = scorer
         self.data_node = data_node
         self.task_type = task_type
@@ -57,21 +49,21 @@ class BaseFEOptimizer(object):
             raise ValueError("Invalid Task Type: %s!" % task_type)
         self.task_type = task_type
 
-        _candidates = None
+        self.cs = None
         if self.task_type in CLS_TASKS:
+            from mindware.components.evaluators.cls_evaluator import get_cash_cs as get_cls_cash_cs
             self.if_imbal = is_imbalanced_dataset(self.data_node)
+            self.cs = get_cls_cash_cs(self.include_algorithms, self.task_type)
         else:
+            from mindware.components.evaluators.rgs_evaluator import get_cash_cs as get_rgs_cash_cs
             self.if_imbal = False
-
-        self.cs = get_task_hyperparameter_space(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal, optimizer=optimizer)
-        self.cs.add_hyperparameter(Constant('algorithm', estimator_id))
+            self.cs = get_rgs_cash_cs(self.include_algorithms, self.task_type)
 
         # Define evaluator and optimizer
         self.evaluator = None
         if self.task_type in CLS_TASKS:
-            from mindware.modules.fe.fe_evaluator import FEClassificationEvaluator
-            self.evaluator = FEClassificationEvaluator(
-                estimator_id=estimator_id,
+            from mindware.modules.cash.cash_evaluator import CASHClassificationEvaluator
+            self.evaluator = CASHClassificationEvaluator(
                 fixed_config=None,
                 scorer=self.scorer,
                 data_node=data_node,
@@ -82,9 +74,8 @@ class BaseFEOptimizer(object):
                 resampling_strategy=evaluation,
                 resampling_params=resampling_params)
         else:
-            from mindware.modules.fe.fe_evaluator import FERegressionEvaluator
-            self.evaluator = FERegressionEvaluator(
-                estimator_id=estimator_id,
+            from mindware.modules.cash.cash_evaluator import CASHRegressionEvaluator
+            self.evaluator = CASHRegressionEvaluator(
                 fixed_config=None,
                 scorer=self.scorer,
                 data_node=data_node,
@@ -109,7 +100,7 @@ class BaseFEOptimizer(object):
             else:
                 raise ValueError("Invalid optimizer %s" % optimizer)
 
-        self.optimizer = optimizer_class(self.evaluator, self.cs, 'fe',
+        self.optimizer = optimizer_class(self.evaluator, self.cs, 'cash',
                                          eval_type=evaluation, output_dir=self.output_dir,
                                          time_limit=time_limit, evaluation_limit=self.amount_of_resource,
                                          per_run_time_limit=per_run_time_limit,
@@ -119,7 +110,7 @@ class BaseFEOptimizer(object):
         pass
 
     def _get_logger(self, optimizer_name):
-        logger_name = 'MindWare-FE-%s-%s(%d)' % (self.estimator_id, optimizer_name, self.seed)
+        logger_name = 'MindWare-CASH-task_type%d-%s(%d)' % (self.task_type, optimizer_name, self.seed)
         setup_logger(os.path.join(self.output_dir, '%s.log' % str(logger_name)))
         return get_logger(logger_name)
 

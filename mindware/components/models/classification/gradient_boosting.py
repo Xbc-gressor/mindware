@@ -38,6 +38,11 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
 
     def iterative_fit(self, X, y, sample_weight=None, n_iter=1, refit=False):
 
+        try:
+            from sklearn.ensemble import GradientBoostingClassifier as GBC
+        except:
+            from sklearn.ensemble.gradient_boosting import GradientBoostingClassifier as GBC
+
         # Special fix for gradient boosting!
         if isinstance(X, np.ndarray):
             X = np.ascontiguousarray(X, dtype=X.dtype)
@@ -63,7 +68,7 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
             self.min_impurity_decrease = float(self.min_impurity_decrease)
             self.verbose = int(self.verbose)
 
-            self.estimator = sklearn.ensemble.GradientBoostingClassifier(
+            self.estimator = GBC(
                 loss=self.loss,
                 learning_rate=self.learning_rate,
                 n_estimators=n_iter,
@@ -123,7 +128,11 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None):
         cs = ConfigurationSpace()
-        loss = Constant("loss", "deviance")
+        if sklearn.__version__ < "1.1.3":
+            loss = Constant("loss", "deviance")
+        else:
+            loss = Constant("loss", "log_loss")
+
         learning_rate = UniformFloatHyperparameter(
             name="learning_rate", lower=0.01, upper=1, default_value=0.1, log=True)
         # n_estimators = UniformIntegerHyperparameter(
@@ -131,9 +140,20 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
         n_estimators = Constant("n_estimators", 100)
         max_depth = UniformIntegerHyperparameter(
             name="max_depth", lower=1, upper=8, default_value=3)
-        criterion = CategoricalHyperparameter(
-            'criterion', ['friedman_mse', 'mse'],
-            default_value='mse')
+
+        if sklearn.__version__ < "1.0.2":
+            criterion = CategoricalHyperparameter(
+                'criterion', ['friedman_mse', 'mse', 'mae'], default_value='friedman_mse')
+        elif sklearn.__version__ < "1.1.3":
+            criterion = CategoricalHyperparameter(
+                'criterion', ['friedman_mse', 'squared_error', 'mse', 'mae'], default_value='friedman_mse')
+        elif sklearn.__version__ < "1.2.2":
+            criterion = CategoricalHyperparameter(
+                'criterion', ['friedman_mse', 'squared_error', 'mse'], default_value='friedman_mse')
+        else:
+            criterion = CategoricalHyperparameter(
+                'criterion', ['friedman_mse', 'squared_error'], default_value='friedman_mse')
+
         min_samples_split = UniformIntegerHyperparameter(
             name="min_samples_split", lower=2, upper=20, default_value=2)
         min_samples_leaf = UniformIntegerHyperparameter(

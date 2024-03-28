@@ -3,6 +3,7 @@ from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
     UniformIntegerHyperparameter, CategoricalHyperparameter, \
     UnParametrizedHyperparameter, Constant
 import numpy as np
+import sklearn
 
 from mindware.components.models.base_model import BaseRegressionModel, IterativeComponentWithSampleWeight
 from mindware.components.utils.constants import *
@@ -124,8 +125,15 @@ class RandomForest(
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
         if optimizer == 'smac':
             cs = ConfigurationSpace()
-            criterion = CategoricalHyperparameter(
-                "criterion", ["mse", "mae"], default_value="mse")
+            if sklearn.__version__ < "1.0.2":
+                criterion = CategoricalHyperparameter(
+                    "criterion", ["mse", "mae"], default_value="mse")
+            elif sklearn.__version__ < "1.2.2":
+                criterion = CategoricalHyperparameter(
+                    "criterion", ["squared_error", "absolute_error", "poisson"], default_value="squared_error")
+            else:
+                criterion = CategoricalHyperparameter(
+                    "criterion", ["squared_error", "absolute_error", "friedman_mse", "poisson"], default_value="squared_error")
 
             # The maximum number of features used in the forest is calculated as m^max_features, where
             # m is the total number of features, and max_features is the hyperparameter specified below.
@@ -150,8 +158,15 @@ class RandomForest(
                                     bootstrap, min_impurity_decrease])
             return cs
         elif optimizer == 'tpe':
+            if sklearn.__version__ < "1.0.2":
+                criterions = ["mse", "mae"]
+            elif sklearn.__version__ < "1.2.2":
+                criterions = ["squared_error", "absolute_error", "poisson"]
+            else:
+                criterions = ["squared_error", "absolute_error", "friedman_mse", "poisson"]
+
             from hyperopt import hp
-            space = {'criterion': hp.choice('rf_criterion', ["mse", "mae"]),
+            space = {'criterion': hp.choice('rf_criterion', criterions),
                      'max_features': hp.uniform('rf_max_features', 0, 1),
                      'max_depth': hp.choice('rf_max_depth', [None]),
                      'min_samples_split': hp.randint('rf_min_samples_split', 19) + 2,

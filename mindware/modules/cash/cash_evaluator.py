@@ -10,62 +10,23 @@ from sklearn.preprocessing import OneHotEncoder
 from mindware.utils.logging_utils import get_logger
 from mindware.components.evaluators.base_evaluator import _BaseEvaluator
 from mindware.components.evaluators.evaluate_func import holdout_validation, cross_validation, partial_validation
-from mindware.components.feature_engineering.task_space import get_task_hyperparameter_space
-from mindware.components.feature_engineering.parse import parse_config, construct_node
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
-from mindware.components.utils.class_loader import get_combined_candidtates
-from mindware.components.models.classification import _classifiers, _addons as _cls_addons
-from mindware.components.models.regression import _regressors, _addons as _rgs_addons
 from mindware.components.utils.constants import *
-from ConfigSpace import ConfigurationSpace, Constant
 
-from mindware.components.metrics.metric import get_metric
+from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
 
-from mindware.components.evaluators.cls_evaluator import get_estimator
-
-def get_hpo_cs(estimator_id, task_type):
-
-    if task_type in CLS_TASKS:
-        _candidates = get_combined_candidtates(_classifiers, _cls_addons)
-    else:
-        _candidates = get_combined_candidtates(_regressors, _rgs_addons)
-
-    if estimator_id in _candidates:
-        rgs_class = _candidates[estimator_id]
-    else:
-        raise ValueError("Algorithm %s not supported!" % estimator_id)
-
-    tmp_cs = rgs_class.get_hyperparameter_search_space()
-    cs = ConfigurationSpace()
-    cs.add_hyperparameter(Constant('algorithm', estimator_id))
-
-    for hyper in tmp_cs.get_hyperparameters():
-        hyper.name = '%s:%s' % (estimator_id, hyper.name)
-        cs.add_hyperparameter(hyper)
-
-    return cs
-
-def get_hpo_conf(config, estimator_id):
-    config_ = config.copy()
-    hpo_config = dict()
-    for key in config_:
-        key_name = key.split(':')[0]
-        if estimator_id == key_name:
-            act_key = key.split(':')[1]
-            hpo_config[act_key] = config_[key]
-
-    return hpo_config
+from mindware.components.evaluators.cls_evaluator import get_estimator as get_cls_estimator
 
 
-class HPOClassificationEvaluator(_BaseEvaluator):
 
-    def __init__(self, estimator_id=None, fixed_config=None, scorer=None, data_node=None, task_type=CLASSIFICATION,
+class CASHClassificationEvaluator(_BaseEvaluator):
+
+    def __init__(self, fixed_config=None, scorer=None, data_node=None, task_type=CLASSIFICATION,
                  resampling_strategy='cv', resampling_params=None,
                  timestamp=None, output_dir=None, seed=1, if_imbal=False):
         self.resampling_strategy = resampling_strategy
         self.resampling_params = resampling_params
 
-        self.estimator_id = estimator_id
         self.fixed_config = fixed_config
         self.scorer = scorer if scorer is not None else balanced_accuracy_scorer
         self.if_imbal = if_imbal
@@ -96,11 +57,7 @@ class HPOClassificationEvaluator(_BaseEvaluator):
         # X, y Data
         _X, _y = self.data_node.data
 
-        # Prepare training and initial params for classifier.
-        init_params, fit_params = {}, {}
-        _candidates = get_combined_candidtates(_classifiers, _cls_addons)
-        config = get_hpo_conf(config, self.estimator_id)
-        clf = _candidates[self.estimator_id](**config)
+        _, clf = get_cls_estimator(config, config['algorithm'])
 
         # One-hot encoder
         if self.onehot_encoder is None:
@@ -122,7 +79,7 @@ class HPOClassificationEvaluator(_BaseEvaluator):
 
             score = holdout_validation(clf, self.scorer,
                                        _X, _y, test_size=test_size,
-                                       fit_params=fit_params, if_stratify=True, onehot=onehot, random_state=self.seed)
+                                       if_stratify=True, onehot=onehot, random_state=self.seed)
 
         elif 'cv' in self.resampling_strategy:
             with warnings.catch_warnings():
@@ -136,7 +93,7 @@ class HPOClassificationEvaluator(_BaseEvaluator):
 
                 score = cross_validation(clf, self.scorer,
                                          _X, _y, n_fold=folds,
-                                         shuffle=False, fit_params=fit_params, if_stratify=True, onehot=onehot,
+                                         shuffle=False, if_stratify=True, onehot=onehot,
                                          random_state=self.seed)
 
         elif 'partial' in self.resampling_strategy:
@@ -151,7 +108,7 @@ class HPOClassificationEvaluator(_BaseEvaluator):
 
             score = partial_validation(clf, self.scorer,
                                        _X, _y, data_subsample_ratio=downsample_ratio, test_size=test_size,
-                                       fit_params=fit_params, if_stratify=True, onehot=onehot, random_state=self.seed)
+                                       if_stratify=True, onehot=onehot, random_state=self.seed)
 
         else:
             raise ValueError('Invalid resampling strategy: %s!' % self.resampling_strategy)
@@ -186,15 +143,14 @@ class HPOClassificationEvaluator(_BaseEvaluator):
         return result_dict
 
 
-class HPORegressionEvaluator(_BaseEvaluator):
+class CASHRegressionEvaluator(_BaseEvaluator):
 
-    def __init__(self, estimator_id=None, fixed_config=None, scorer=None, data_node=None, task_type=REGRESSION,
+    def __init__(self, fixed_config=None, scorer=None, data_node=None, task_type=REGRESSION,
                  resampling_strategy='cv', resampling_params=None,
                  timestamp=None, output_dir=None, seed=1):
         self.resampling_strategy = resampling_strategy
         self.resampling_params = resampling_params
 
-        self.estimator_id = estimator_id
         self.fixed_config = fixed_config
         self.scorer = scorer if scorer is not None else balanced_accuracy_scorer
         self.task_type = task_type
@@ -224,9 +180,7 @@ class HPORegressionEvaluator(_BaseEvaluator):
         # X, y Data
         _X, _y = self.data_node.data
 
-        _candidates = get_combined_candidtates(_regressors, _rgs_addons)
-        config = get_hpo_conf(config, self.estimator_id)
-        rgs = _candidates[self.estimator_id](**config)
+        _, rgs = get_rgs_estimator(config, config['algorithm'])
 
         if 'holdout' in self.resampling_strategy:
             # Prepare data node.
@@ -292,7 +246,7 @@ class HPORegressionEvaluator(_BaseEvaluator):
 
         try:
             self.logger.info('Evaluation<%s> | Score: %.4f | Time cost: %.2f seconds | Shape: %s' %
-                             (self.estimator_id,
+                             (config['algorithm'],
                               self.scorer._sign * score,
                               time.time() - start_time, _X.shape))
         except:

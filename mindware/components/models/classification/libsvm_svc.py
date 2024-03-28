@@ -53,7 +53,7 @@ class LibSVM_SVC(BaseClassificationModel):
         else:
             self.coef0 = float(self.coef0)
         self.tol = float(self.tol)
-        self.max_iter = float(self.max_iter)
+        self.max_iter = int(self.max_iter)
 
         self.shrinking = check_for_bool(self.shrinking)
 

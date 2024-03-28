@@ -11,7 +11,7 @@ from mindware.components.models.base_model import BaseRegressionModel
 
 class LightGBM(BaseRegressionModel):
     def __init__(self, n_estimators, learning_rate, num_leaves, min_child_weight,
-                 subsample, colsample_bytree, reg_alpha, reg_lambda, random_state=1):
+                 subsample, colsample_bytree, reg_alpha, reg_lambda, random_state=1, verbose=0):
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.num_leaves = num_leaves
@@ -23,6 +23,7 @@ class LightGBM(BaseRegressionModel):
 
         self.n_jobs = 1
         self.random_state = random_state
+        self.verbose = verbose
         self.estimator = None
 
     def fit(self, X, y):
@@ -36,7 +37,8 @@ class LightGBM(BaseRegressionModel):
                                        reg_alpha=self.reg_alpha,
                                        reg_lambda=self.reg_lambda,
                                        random_state=self.random_state,
-                                       n_jobs=self.n_jobs)
+                                       n_jobs=self.n_jobs,
+                                       verbose=self.verbose)
         self.estimator.fit(X, y)
         return self
 
@@ -69,8 +71,9 @@ class LightGBM(BaseRegressionModel):
             colsample_bytree = UniformFloatHyperparameter("colsample_bytree", 0.5, 1, default_value=1)
             reg_alpha = UniformFloatHyperparameter('reg_alpha', 1e-10, 10, log=True, default_value=1e-10)
             reg_lambda = UniformFloatHyperparameter("reg_lambda", 1e-10, 10, log=True, default_value=1e-10)
+            verbose = UnParametrizedHyperparameter("verbose", -1)
             cs.add_hyperparameters([n_estimators, num_leaves, learning_rate, min_child_weight, subsample,
-                                    colsample_bytree, reg_alpha, reg_lambda])
+                                    colsample_bytree, reg_alpha, reg_lambda, verbose])
             return cs
         elif optimizer == 'tpe':
             from hyperopt import hp

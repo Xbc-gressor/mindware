@@ -1,5 +1,5 @@
 import time
-
+import sklearn
 import numpy as np
 from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
@@ -38,7 +38,10 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
 
     def iterative_fit(self, X, y, sample_weight=None, n_iter=1, refit=False):
 
-        from sklearn.ensemble.gradient_boosting import GradientBoostingRegressor as GBR
+        try:
+            from sklearn.ensemble import GradientBoostingRegressor as GBR
+        except:
+            from sklearn.ensemble.gradient_boosting import GradientBoostingRegressor as GBR
         # Special fix for gradient boosting!
         if isinstance(X, np.ndarray):
             X = np.ascontiguousarray(X, dtype=X.dtype)
@@ -120,16 +123,35 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
         if optimizer == 'smac':
             cs = ConfigurationSpace()
-            loss = CategoricalHyperparameter("loss", ['ls', 'lad'], default_value='ls')
+
+            if sklearn.__version__ < "1.0.2":
+                loss = CategoricalHyperparameter("loss", ['ls', 'lad', 'huber', 'quantile'], default_value='ls')
+            else:
+                loss = CategoricalHyperparameter(
+                    "loss", ['squared_error', 'absolute_error', 'huber', 'quantile'],
+                    default_value='squared_error'
+                )
+
             learning_rate = UniformFloatHyperparameter(
                 name="learning_rate", lower=0.01, upper=1, default_value=0.1, log=True)
             n_estimators = UniformIntegerHyperparameter(
                 "n_estimators", 50, 500, default_value=200)
             max_depth = UniformIntegerHyperparameter(
                 name="max_depth", lower=1, upper=10, default_value=3)
-            criterion = CategoricalHyperparameter(
-                'criterion', ['friedman_mse', 'mse', 'mae'],
-                default_value='friedman_mse')
+
+            if sklearn.__version__ < "1.0.2":
+                criterion = CategoricalHyperparameter(
+                    'criterion', ['friedman_mse', 'mse', 'mae'], default_value='friedman_mse')
+            elif sklearn.__version__ < "1.1.3":
+                criterion = CategoricalHyperparameter(
+                    'criterion', ["friedman_mse", "squared_error", "mse", "mae"], default_value='friedman_mse')
+            elif sklearn.__version__ < "1.2.2":
+                criterion = CategoricalHyperparameter(
+                    'criterion', ["friedman_mse", "squared_error", "mse"], default_value="friedman_mse")
+            else:
+                criterion = CategoricalHyperparameter(
+                    'criterion', ["friedman_mse", "squared_error"], default_value="friedman_mse")
+
             min_samples_split = UniformIntegerHyperparameter(
                 name="min_samples_split", lower=2, upper=20, default_value=2)
             min_samples_leaf = UniformIntegerHyperparameter(
@@ -152,12 +174,26 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
             return cs
         elif optimizer == 'tpe':
             from hyperopt import hp
-            space = {'loss': hp.choice('gb_loss', ["ls", "lad"]),
+            if sklearn.__version__ < "1.0.2":
+                criterions = ['friedman_mse', 'mse', 'mae']
+            elif sklearn.__version__ < "1.1.3":
+                criterions = ["friedman_mse", "squared_error", "mse", "mae"]
+            elif sklearn.__version__ < "1.2.2":
+                criterions = ["friedman_mse", "squared_error", "mse"]
+            else:
+                criterions = ["friedman_mse", "squared_error"]
+
+            if sklearn.__version__ < "1.0.2":
+                losses = ['ls', 'lad', 'huber', 'quantile']
+            else:
+                losses = ['squared_error', 'absolute_error', 'huber', 'quantile']
+
+            space = {'loss': hp.choice('gb_loss', losses),
                      'learning_rate': hp.loguniform('gb_learning_rate', np.log(0.01), np.log(1)),
                      # 'n_estimators': hp.randint('gb_n_estimators', 451) + 50,
                      'n_estimators': hp.choice('gb_n_estimators', [100]),
                      'max_depth': hp.randint('gb_max_depth', 8) + 1,
-                     'criterion': hp.choice('gb_criterion', ['friedman_mse', 'mse', 'mae']),
+                     'criterion': hp.choice('gb_criterion', criterions),
                      'min_samples_split': hp.randint('gb_min_samples_split', 19) + 2,
                      'min_samples_leaf': hp.randint('gb_min_samples_leaf', 20) + 1,
                      'min_weight_fraction_leaf': hp.choice('gb_min_weight_fraction_leaf', [0]),
