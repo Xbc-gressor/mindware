@@ -52,8 +52,11 @@ class Bagging(BaseEnsembleModel):
             sample_pred_list = [model_pred[i] for model_pred in model_pred_list]
             pred_average = reduce(lambda x, y: x + y, sample_pred_list) / len(sample_pred_list)
             final_pred.append(pred_average)
-
-        return np.array(final_pred)
+        
+        if self.task_type in CLS_TASKS:
+            return np.argmax(np.array(final_pred), axis = -1)
+        else:
+            return np.array(final_pred)
 
     def get_ens_model_info(self):
         model_cnt = 0

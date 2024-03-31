@@ -96,5 +96,6 @@ def construct_node(data_node: DataNode, tran_dict, mode='test'):
     for stage in stage_list:
         if stage_list == 'balancer' and mode == 'test':
             continue
-        data_node = tran_dict[stage].operate(data_node)
+        if stage in tran_dict:
+            data_node = tran_dict[stage].operate(data_node)
     return data_node

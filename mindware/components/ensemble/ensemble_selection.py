@@ -230,13 +230,19 @@ class EnsembleSelection(BaseEnsembleModel):
         # if predictions.shape[0] == len(self.weights_),
         # predictions include those of zero-weight models.
         if predictions.shape[0] == len(self.weights_):
-            return np.average(predictions, axis=0, weights=self.weights_)
+            if self.task_type in CLS_TASKS:
+                return np.argmax(np.average(predictions, axis=0, weights=self.weights_), axis = -1)
+            else:
+                return np.average(predictions, axis=0, weights=self.weights_)
 
         # if prediction model.shape[0] == len(non_null_weights),
         # predictions do not include those of zero-weight models.
         elif predictions.shape[0] == np.count_nonzero(self.weights_):
             non_null_weights = [w for w in self.weights_ if w > 0]
-            return np.average(predictions, axis=0, weights=non_null_weights)
+            if self.task_type in CLS_TASKS:
+                return np.argmax(np.average(predictions, axis=0, weights=non_null_weights), axis = -1)
+            else:
+                return np.average(predictions, axis=0, weights=non_null_weights)
 
         # If none of the above applies, then something must have gone wrong.
         else:

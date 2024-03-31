@@ -40,7 +40,7 @@ class DataNode(object):
     def copy_(self):
         new_data = list([self.data[0].copy()])
         new_data.append(None if self.data[1] is None else self.data[1].copy())
-        new_node = DataNode(new_data, self.feature_types.copy(), self.task_type,
+        new_node = DataNode(new_data, self.feature_types.copy() if self.feature_types is not None else None, self.task_type,
                             self.feature_names.copy() if self.feature_names is not None else None)
         new_node.trans_hist = self.trans_hist.copy()
         new_node.depth = self.depth

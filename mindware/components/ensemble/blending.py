@@ -160,7 +160,7 @@ class Blending(BaseEnsembleModel):
         feature_p2 = self.get_feature(data)
         # Get predictions from meta-learner
         if self.task_type in CLS_TASKS:
-            final_pred = self.meta_learner.predict_proba(feature_p2)
+            final_pred = np.argmax(self.meta_learner.predict_proba(feature_p2), axis = -1)
         else:
             final_pred = self.meta_learner.predict(feature_p2)
         return final_pred
