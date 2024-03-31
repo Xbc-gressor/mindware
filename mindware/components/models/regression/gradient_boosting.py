@@ -142,15 +142,9 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
             if sklearn.__version__ < "1.0.2":
                 criterion = CategoricalHyperparameter(
                     'criterion', ['friedman_mse', 'mse', 'mae'], default_value='friedman_mse')
-            elif sklearn.__version__ < "1.1.3":
-                criterion = CategoricalHyperparameter(
-                    'criterion', ["friedman_mse", "squared_error", "mse", "mae"], default_value='friedman_mse')
-            elif sklearn.__version__ < "1.2.2":
-                criterion = CategoricalHyperparameter(
-                    'criterion', ["friedman_mse", "squared_error", "mse"], default_value="friedman_mse")
             else:
                 criterion = CategoricalHyperparameter(
-                    'criterion', ["friedman_mse", "squared_error"], default_value="friedman_mse")
+                    'criterion', ["friedman_mse", "squared_error"], default_value='friedman_mse')
 
             min_samples_split = UniformIntegerHyperparameter(
                 name="min_samples_split", lower=2, upper=20, default_value=2)
@@ -176,10 +170,6 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
             from hyperopt import hp
             if sklearn.__version__ < "1.0.2":
                 criterions = ['friedman_mse', 'mse', 'mae']
-            elif sklearn.__version__ < "1.1.3":
-                criterions = ["friedman_mse", "squared_error", "mse", "mae"]
-            elif sklearn.__version__ < "1.2.2":
-                criterions = ["friedman_mse", "squared_error", "mse"]
             else:
                 criterions = ["friedman_mse", "squared_error"]
 

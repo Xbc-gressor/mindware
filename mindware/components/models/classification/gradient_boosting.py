@@ -144,12 +144,6 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
         if sklearn.__version__ < "1.0.2":
             criterion = CategoricalHyperparameter(
                 'criterion', ['friedman_mse', 'mse', 'mae'], default_value='friedman_mse')
-        elif sklearn.__version__ < "1.1.3":
-            criterion = CategoricalHyperparameter(
-                'criterion', ['friedman_mse', 'squared_error', 'mse', 'mae'], default_value='friedman_mse')
-        elif sklearn.__version__ < "1.2.2":
-            criterion = CategoricalHyperparameter(
-                'criterion', ['friedman_mse', 'squared_error', 'mse'], default_value='friedman_mse')
         else:
             criterion = CategoricalHyperparameter(
                 'criterion', ['friedman_mse', 'squared_error'], default_value='friedman_mse')

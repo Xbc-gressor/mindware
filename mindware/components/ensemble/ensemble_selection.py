@@ -88,7 +88,7 @@ class EnsembleSelection(BaseEnsembleModel):
         ensemble_size = self.ensemble_size
 
         if self.sorted_initialization:
-            n_best = 20
+            n_best = 20 if ensemble_size > 20 else ensemble_size - 1
             indices = self._sorted_initialization(predictions, labels, n_best)
             for idx in indices:
                 ensemble.append(predictions[idx])
@@ -110,18 +110,16 @@ class EnsembleSelection(BaseEnsembleModel):
                     ensemble_prediction += pred
                 ensemble_prediction /= s
 
-                weighted_ensemble_prediction = (s / float(s + 1)) * \
-                                               ensemble_prediction
+                weighted_ensemble_prediction = (s / float(s + 1)) * ensemble_prediction
+
             fant_ensemble_prediction = np.zeros(weighted_ensemble_prediction.shape)
             for j, pred in enumerate(predictions):
                 # TODO: this could potentially be vectorized! - let's profile
                 # the script first!
                 if self.task_type in CLS_TASKS:
-                    fant_ensemble_prediction[:, :] = weighted_ensemble_prediction + \
-                                                     (1. / float(s + 1)) * pred
+                    fant_ensemble_prediction[:, :] = weighted_ensemble_prediction + (1. / float(s + 1)) * pred
                 else:
-                    fant_ensemble_prediction[:] = weighted_ensemble_prediction + \
-                                                  (1. / float(s + 1)) * pred
+                    fant_ensemble_prediction[:] = weighted_ensemble_prediction + (1. / float(s + 1)) * pred
 
                 scores[j] = -self.calculate_score(pred=fant_ensemble_prediction, y_true=labels)
 
@@ -150,7 +148,7 @@ class EnsembleSelection(BaseEnsembleModel):
         ensemble_size = self.ensemble_size
 
         if self.sorted_initialization:
-            n_best = 20
+            n_best = 20 if ensemble_size > 20 else ensemble_size - 1
             indices = self._sorted_initialization(predictions, labels, n_best)
             for idx in indices:
                 ensemble.append(predictions[idx])
@@ -231,8 +229,6 @@ class EnsembleSelection(BaseEnsembleModel):
         # predictions include those of zero-weight models.
         if predictions.shape[0] == len(self.weights_):
             if self.task_type in CLS_TASKS:
-                return np.argmax(np.average(predictions, axis=0, weights=self.weights_), axis = -1)
-            else:
                 return np.average(predictions, axis=0, weights=self.weights_)
 
         # if prediction model.shape[0] == len(non_null_weights),
@@ -240,8 +236,6 @@ class EnsembleSelection(BaseEnsembleModel):
         elif predictions.shape[0] == np.count_nonzero(self.weights_):
             non_null_weights = [w for w in self.weights_ if w > 0]
             if self.task_type in CLS_TASKS:
-                return np.argmax(np.average(predictions, axis=0, weights=non_null_weights), axis = -1)
-            else:
                 return np.average(predictions, axis=0, weights=non_null_weights)
 
         # If none of the above applies, then something must have gone wrong.

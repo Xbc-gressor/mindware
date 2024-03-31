@@ -1,7 +1,7 @@
-from ConfigSpace import ConfigurationSpace, CategoricalHyperparameter
 import warnings
 import os
 import time
+import datetime
 import numpy as np
 import pickle as pkl
 from sklearn.metrics._scorer import balanced_accuracy_scorer, _ThresholdScorer
@@ -10,9 +10,6 @@ from sklearn.preprocessing import OneHotEncoder
 from mindware.utils.logging_utils import get_logger
 from mindware.components.evaluators.base_evaluator import _BaseEvaluator
 from mindware.components.evaluators.evaluate_func import holdout_validation, cross_validation, partial_validation
-from mindware.components.feature_engineering.task_space import get_task_hyperparameter_space
-from mindware.components.feature_engineering.parse import parse_config, construct_node
-from mindware.components.feature_engineering.transformation_graph import DataNode
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.components.utils.class_loader import get_combined_candidtates
 from mindware.components.models.classification import _classifiers, _addons as _cls_addons
@@ -20,22 +17,12 @@ from mindware.components.models.regression import _regressors, _addons as _rgs_a
 from mindware.components.utils.constants import *
 from ConfigSpace import ConfigurationSpace, Constant
 
-from mindware.components.metrics.metric import get_metric
 
-from mindware.components.evaluators.cls_evaluator import get_estimator
+from mindware.components.evaluators.cls_evaluator import get_estimator as get_cls_estimator
+from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
 
-from sklearn.model_selection import StratifiedKFold, KFold, StratifiedShuffleSplit, ShuffleSplit
-
-from mindware.components.utils.balancing import smote
-
-from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
-
-def get_onehot_y(encoder, y):
-    y_ = np.reshape(y, (len(y), 1))
-    return encoder.transform(y_).toarray()
 
 def get_hpo_cs(estimator_id, task_type):
-
     if task_type in CLS_TASKS:
         _candidates = get_combined_candidtates(_classifiers, _cls_addons)
     else:
@@ -56,16 +43,17 @@ def get_hpo_cs(estimator_id, task_type):
 
     return cs
 
-def get_hpo_conf(config, estimator_id):
-    config_ = config.copy()
-    hpo_config = dict()
-    for key in config_:
-        key_name = key.split(':')[0]
-        if estimator_id == key_name:
-            act_key = key.split(':')[1]
-            hpo_config[act_key] = config_[key]
 
-    return hpo_config
+# def get_hpo_conf(config, estimator_id):
+#     config_ = config.copy()
+#     hpo_config = dict()
+#     for key in config_:
+#         key_name = key.split(':')[0]
+#         if estimator_id == key_name:
+#             act_key = key.split(':')[1]
+#             hpo_config[act_key] = config_[key]
+#
+#     return hpo_config
 
 
 class HPOClassificationEvaluator(_BaseEvaluator):
@@ -88,8 +76,8 @@ class HPOClassificationEvaluator(_BaseEvaluator):
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
         self.continue_training = False
 
-        self.seed = 1
-        self.timestamp = timestamp
+        self.seed = seed
+        self.timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
     def __call__(self, config, **kwargs):
         start_time = time.time()
@@ -107,12 +95,9 @@ class HPOClassificationEvaluator(_BaseEvaluator):
         # X, y Data
         _X, _y = self.data_node.data
 
-        # Prepare training and initial params for classifier.
-        init_params, fit_params = {}, {}
-        _candidates = get_combined_candidtates(_classifiers, _cls_addons)
-        original_config = config.copy()
-        config = get_hpo_conf(config, self.estimator_id)
-        clf = _candidates[self.estimator_id](**config)
+        assert self.estimator_id == config['algorithm']
+        config_dict = config.copy()
+        _, clf = get_cls_estimator(config_dict, self.estimator_id)
 
         # One-hot encoder
         if self.onehot_encoder is None:
@@ -134,7 +119,7 @@ class HPOClassificationEvaluator(_BaseEvaluator):
 
             score = holdout_validation(clf, self.scorer,
                                        _X, _y, test_size=test_size,
-                                       fit_params=fit_params, if_stratify=True, onehot=onehot, random_state=self.seed)
+                                       if_stratify=True, onehot=onehot, random_state=self.seed)
 
         elif 'cv' in self.resampling_strategy:
             with warnings.catch_warnings():
@@ -148,8 +133,8 @@ class HPOClassificationEvaluator(_BaseEvaluator):
 
                 score = cross_validation(clf, self.scorer,
                                          _X, _y, n_fold=folds,
-                                         shuffle=False, fit_params=fit_params, if_stratify=True, onehot=onehot,
-                                         random_state=self.seed)
+                                         shuffle=False,
+                                         if_stratify=True, onehot=onehot, random_state=self.seed)
 
         elif 'partial' in self.resampling_strategy:
             # Prepare data node.
@@ -163,14 +148,14 @@ class HPOClassificationEvaluator(_BaseEvaluator):
 
             score = partial_validation(clf, self.scorer,
                                        _X, _y, data_subsample_ratio=downsample_ratio, test_size=test_size,
-                                       fit_params=fit_params, if_stratify=True, onehot=onehot, random_state=self.seed)
+                                       if_stratify=True, onehot=onehot, random_state=self.seed)
 
         else:
             raise ValueError('Invalid resampling strategy: %s!' % self.resampling_strategy)
 
         if 'holdout' in self.resampling_strategy or 'partial' in self.resampling_strategy:
             if np.isfinite(score) and downsample_ratio == 1:
-                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, original_config, self.timestamp)
+                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.timestamp)
 
                 if not os.path.exists(model_path):
                     with open(model_path, 'wb') as f:
@@ -196,90 +181,7 @@ class HPOClassificationEvaluator(_BaseEvaluator):
         result_dict['objectives'] = [-score]
 
         return result_dict
-    
-    def evaluate_ensemble(self, ensemble_method, ensemble_size, **kwargs):
-        start_time = time.time()
-        result_dict = dict()
-        downsample_ratio = kwargs.get('resource_ratio', 1.0)
 
-        # X, y Data
-        _X, _y = self.data_node.data
-
-        # Prepare training and initial params for classifier.
-        init_params, fit_params = {}, {}
-
-        # One-hot encoder
-        if self.onehot_encoder is None:
-            self.onehot_encoder = OneHotEncoder(categories='auto')
-            y = np.reshape(_y, (len(_y), 1))
-            self.onehot_encoder.fit(y)
-
-        onehot = self.onehot_encoder if isinstance(self.scorer, _ThresholdScorer) else None
-
-        # Prepare data node.
-        if self.resampling_params is None or 'test_size' not in self.resampling_params:
-            test_size = 0.33
-        else:
-            test_size = self.resampling_params['test_size']
-
-        ss = StratifiedShuffleSplit(n_splits=1, test_size=test_size, random_state=self.seed)
-        for train_index, test_index in ss.split(_X, _y):
-            X_train, X_test = _X[train_index], _X[test_index]
-            y_train, y_test = _y[train_index], _y[test_index]
-            _fit_params = dict()
-            if fit_params:
-                if 'sample_weight' in fit_params:
-                    _fit_params['sample_weight'] = fit_params['sample_weight'][train_index]
-                elif 'data_balance' in fit_params:
-                    X_train, y_train = smote(X_train, y_train)
-                    
-            config_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.timestamp)
-            with open(config_path, 'rb') as f:
-                stats = pkl.load(f)
-
-            # Ensembling all intermediate/ultimate models found in above optimization process.
-            model = EnsembleBuilder(stats=stats,
-                                    data_node=DataNode(data = [X_train, y_train]),
-                                    ensemble_method=ensemble_method,
-                                    ensemble_size=ensemble_size,
-                                    task_type=self.task_type,
-                                    metric=self.scorer,
-                                    output_dir=self.output_dir)
-            
-            model.fit(DataNode(data = [X_train, y_train], **_fit_params))
-            if onehot is not None:
-                y_test = get_onehot_y(onehot, y_test)
-            score = self.scorer(model, DataNode(data = [X_test, None]), y_test)
-            break
-
-        if 'holdout' in self.resampling_strategy or 'partial' in self.resampling_strategy:
-            if np.isfinite(score) and downsample_ratio == 1:
-                model_path = os.path.join(self.output_dir, '%s_ensemble.pkl' % (self.timestamp))
-
-                if not os.path.exists(model_path):
-                    with open(model_path, 'wb') as f:
-                        pkl.dump([{}, model, score], f)
-                else:
-                    with open(model_path, 'rb') as f:
-                        _, _, perf = pkl.load(f)
-                    if score > perf:
-                        with open(model_path, 'wb') as f:
-                            pkl.dump([{}, model, score], f)
-
-                self.logger.info("Model saved to %s" % model_path)
-
-        try:
-            self.logger.info('Evaluation<%s> | Score: %.4f | Time cost: %.2f seconds | Shape: %s' %
-                             (self.estimator_id,
-                              self.scorer._sign * score,
-                              time.time() - start_time, _X.shape))
-        except:
-            pass
-
-        # Turn it into a minimization problem.
-        result_dict['objectives'] = [-score]
-
-        return result_dict
 
 class HPORegressionEvaluator(_BaseEvaluator):
 
@@ -300,8 +202,8 @@ class HPORegressionEvaluator(_BaseEvaluator):
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
         self.continue_training = False
 
-        self.seed = 1
-        self.timestamp = timestamp
+        self.seed = seed
+        self.timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
     def __call__(self, config, **kwargs):
         start_time = time.time()
@@ -319,10 +221,9 @@ class HPORegressionEvaluator(_BaseEvaluator):
         # X, y Data
         _X, _y = self.data_node.data
 
-        _candidates = get_combined_candidtates(_regressors, _rgs_addons)
-        original_config = config.copy()
-        config = get_hpo_conf(config, self.estimator_id)
-        rgs = _candidates[self.estimator_id](**config)
+        assert self.estimator_id == config['algorithm']
+        config_dict = config.copy()
+        _, rgs = get_rgs_estimator(config_dict, self.estimator_id)
 
         if 'holdout' in self.resampling_strategy:
             # Prepare data node.
@@ -350,8 +251,8 @@ class HPORegressionEvaluator(_BaseEvaluator):
 
                 score = cross_validation(rgs, self.scorer,
                                          _X, _y, n_fold=folds,
-                                         shuffle=False, if_stratify=False,
-                                         random_state=self.seed)
+                                         shuffle=False,
+                                         if_stratify=False, random_state=self.seed)
 
         elif 'partial' in self.resampling_strategy:
             # Prepare data node.
@@ -372,7 +273,7 @@ class HPORegressionEvaluator(_BaseEvaluator):
 
         if 'holdout' in self.resampling_strategy or 'partial' in self.resampling_strategy:
             if np.isfinite(score) and downsample_ratio == 1:
-                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, original_config, self.timestamp)
+                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.timestamp)
 
                 if not os.path.exists(model_path):
                     with open(model_path, 'wb') as f:
@@ -383,90 +284,6 @@ class HPORegressionEvaluator(_BaseEvaluator):
                     if score > perf:
                         with open(model_path, 'wb') as f:
                             pkl.dump([{}, rgs, score], f)
-
-                self.logger.info("Model saved to %s" % model_path)
-
-        try:
-            self.logger.info('Evaluation<%s> | Score: %.4f | Time cost: %.2f seconds | Shape: %s' %
-                             (self.estimator_id,
-                              self.scorer._sign * score,
-                              time.time() - start_time, _X.shape))
-        except:
-            pass
-
-        # Turn it into a minimization problem.
-        result_dict['objectives'] = [-score]
-
-        return result_dict
-
-    def evaluate_ensemble(self, ensemble_method, ensemble_size, **kwargs):
-        start_time = time.time()
-        result_dict = dict()
-        downsample_ratio = kwargs.get('resource_ratio', 1.0)
-
-        # X, y Data
-        _X, _y = self.data_node.data
-
-        # Prepare training and initial params for classifier.
-        init_params, fit_params = {}, {}
-
-        # One-hot encoder
-        if self.onehot_encoder is None:
-            self.onehot_encoder = OneHotEncoder(categories='auto')
-            y = np.reshape(_y, (len(_y), 1))
-            self.onehot_encoder.fit(y)
-
-        onehot = self.onehot_encoder if isinstance(self.scorer, _ThresholdScorer) else None
-
-        # Prepare data node.
-        if self.resampling_params is None or 'test_size' not in self.resampling_params:
-            test_size = 0.33
-        else:
-            test_size = self.resampling_params['test_size']
-        
-        ss = ShuffleSplit(n_splits=1, test_size=test_size, random_state=self.seed)
-        for train_index, test_index in ss.split(_X, _y):
-            X_train, X_test = _X[train_index], _X[test_index]
-            y_train, y_test = _y[train_index], _y[test_index]
-            _fit_params = dict()
-            if fit_params:
-                if 'sample_weight' in fit_params:
-                    _fit_params['sample_weight'] = fit_params['sample_weight'][train_index]
-                elif 'data_balance' in fit_params:
-                    X_train, y_train = smote(X_train, y_train)
-                    
-            config_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.timestamp)
-            with open(config_path, 'rb') as f:
-                stats = pkl.load(f)
-
-            # Ensembling all intermediate/ultimate models found in above optimization process.
-            model = EnsembleBuilder(stats=stats,
-                                    data_node=DataNode(data = [X_train, y_train]),
-                                    ensemble_method=ensemble_method,
-                                    ensemble_size=ensemble_size,
-                                    task_type=self.task_type,
-                                    metric=self.scorer,
-                                    output_dir=self.output_dir)
-            
-            model.fit(DataNode(data = [X_train, y_train], **_fit_params))
-            if onehot is not None:
-                y_test = get_onehot_y(onehot, y_test)
-            score = self.scorer(model, DataNode(data = [X_test, None]), y_test)
-            break
-
-        if 'holdout' in self.resampling_strategy or 'partial' in self.resampling_strategy:
-            if np.isfinite(score) and downsample_ratio == 1:
-                model_path = os.path.join(self.output_dir, '%s_ensemble.pkl' % (self.timestamp))
-
-                if not os.path.exists(model_path):
-                    with open(model_path, 'wb') as f:
-                        pkl.dump([{}, model, score], f)
-                else:
-                    with open(model_path, 'rb') as f:
-                        _, _, perf = pkl.load(f)
-                    if score > perf:
-                        with open(model_path, 'wb') as f:
-                            pkl.dump([{}, model, score], f)
 
                 self.logger.info("Model saved to %s" % model_path)
 

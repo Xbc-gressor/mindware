@@ -13,20 +13,21 @@ from mindware.modules.hpo.base_hpo import BaseHPOOptimizer
 
 from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
 
+
 class EnsembleHPOOptimizer(BaseHPOOptimizer):
     def __init__(self, estimator_id: str, task_type=None, scorer: str = 'acc',
                  data_node: DataNode = None, evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac', per_run_time_limit=600,
                  time_limit=600, amount_of_resource=None,
-                 output_dir=None, seed=None, n_jobs=1, 
-                 ensemble_method = 'ensemble_selection', ensemble_size = 5):
-        
-        super().__init__(estimator_id = estimator_id, task_type = task_type, scorer = scorer,
-                 data_node = data_node, evaluation = evaluation, resampling_params = resampling_params,
-                 optimizer = optimizer, per_run_time_limit = per_run_time_limit,
-                 time_limit = time_limit, amount_of_resource = amount_of_resource,
-                 output_dir = output_dir, seed = seed, n_jobs = n_jobs)
-        
+                 output_dir=None, seed=None, n_jobs=1,
+                 ensemble_method='ensemble_selection', ensemble_size=5):
+
+        super().__init__(estimator_id=estimator_id, task_type=task_type, scorer=scorer,
+                         data_node=data_node, evaluation=evaluation, resampling_params=resampling_params,
+                         optimizer=optimizer, per_run_time_limit=per_run_time_limit,
+                         time_limit=time_limit, amount_of_resource=amount_of_resource,
+                         output_dir=output_dir, seed=seed, n_jobs=n_jobs)
+
         self.ensemble_method = ensemble_method
         self.ensemble_size = ensemble_size
 
@@ -36,9 +37,9 @@ class EnsembleHPOOptimizer(BaseHPOOptimizer):
         return get_logger(logger_name)
 
     def run(self):
-        
+
         final_ensemble = False
-        
+
         for i in range(self.amount_of_resource):
             if not (self.early_stop_flag or self.timeout_flag):
                 self.iterate()

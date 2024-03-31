@@ -25,7 +25,7 @@ class RandomSearchOptimizer(BaseOptimizer):
                                           config_space=config_space,
                                           advisor_type='random',
                                           task_id='Default',
-                                          time_limit_per_trial=self.per_run_time_limit,
+                                          max_runtime_per_trial=self.per_run_time_limit,
                                           random_state=self.seed)
         else:
             self.optimizer = pRandomSearch(objective_function=self.evaluator,
@@ -33,7 +33,7 @@ class RandomSearchOptimizer(BaseOptimizer):
                                            sample_strategy='random',
                                            batch_size=n_jobs,
                                            task_id='Default',
-                                           time_limit_per_trial=self.per_run_time_limit,
+                                           max_runtime_per_trial=self.per_run_time_limit,
                                            random_state=self.seed)
 
         self.trial_cnt = 0
@@ -107,7 +107,7 @@ class RandomSearchOptimizer(BaseOptimizer):
                         self.perfs.append(-_perf_list[i])
 
         run_history = self.optimizer.get_history()
-        if self.name == 'hpo':
+        if self.name in ['hpo', 'cash']:
             if hasattr(self.evaluator, 'fe_config'):
                 fe_config = self.evaluator.fe_config
             else:
@@ -120,7 +120,7 @@ class RandomSearchOptimizer(BaseOptimizer):
             else:
                 hpo_config = None
             self.eval_dict = {(fe_config, hpo_config): [-run_history.perfs[i], time.time(), run_history.trial_states[i]]
-                              for i, fe_config in enumerate(run_history.configurationsa)}
+                              for i, fe_config in enumerate(run_history.configurations)}
         if len(run_history.get_incumbents()) > 0:
             self.incumbent_config, self.incumbent_perf = run_history.get_incumbents()[0]
             self.incumbent_perf = -self.incumbent_perf

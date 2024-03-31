@@ -39,10 +39,16 @@ class Stacking(BaseEnsembleModel):
         # We use Xgboost as default meta-learner
         if self.task_type in CLS_TASKS:
             if meta_learner == 'linear':
-                from sklearn.linear_model.logistic import LogisticRegression
+                try:
+                    from sklearn.linear_model import LogisticRegression
+                except:
+                    from sklearn.linear_model.logistic import LogisticRegression
                 self.meta_learner = LogisticRegression(max_iter=1000)
             elif meta_learner == 'gb':
-                from sklearn.ensemble.gradient_boosting import GradientBoostingClassifier
+                try:
+                    from sklearn.ensemble import GradientBoostingClassifier
+                except:
+                    from sklearn.ensemble.gradient_boosting import GradientBoostingClassifier
                 self.meta_learner = GradientBoostingClassifier(learning_rate=0.05, subsample=0.7, max_depth=4,
                                                                n_estimators=250)
             elif meta_learner == 'lightgbm':
@@ -67,25 +73,25 @@ class Stacking(BaseEnsembleModel):
         model_cnt = 0
         suc_cnt = 0
         feature_p2 = None
+        y = None
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
             for idx, (config, _, path) in enumerate(model_to_eval):
-                with open(path, 'rb')as f:
-                    op_list, model, _ = pkl.load(f)
-                _node = data.copy_()
-
-                _node = construct_node(_node, op_list, mode='train')
-
-                X, y = _node.data
                 if self.base_model_mask[model_cnt] == 1:
+                    with open(path, 'rb')as f:
+                        op_list, model, _ = pkl.load(f)
+                    _node = data.copy_()
+
+                    _node = construct_node(_node, op_list, mode='train')
+
+                    X, y = _node.data
                     for j, (train, test) in enumerate(kf.split(X, y)):
                         x_p1, x_p2, y_p1, _ = X[train], X[test], y[train], y[test]
                         estimator = fetch_predict_estimator(self.task_type, algo_id, config, x_p1, y_p1,
                                                             weight_balance=data.enable_balance,
                                                             data_balance=data.data_balance)
-                        with open(
-                                os.path.join(self.output_dir, '%s-model%d_part%d' % (self.timestamp, model_cnt, j)),
-                                'wb') as f:
+                        with open(os.path.join(self.output_dir, '%s-model%d_part%d' % (self.timestamp, model_cnt, j)),
+                                  'wb') as f:
                             pkl.dump(estimator, f)
                         if self.task_type in CLS_TASKS:
                             pred = estimator.predict_proba(x_p2)
@@ -123,13 +129,13 @@ class Stacking(BaseEnsembleModel):
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
             for idx, (config, _, path) in enumerate(model_to_eval):
-                with open(path, 'rb')as f:
-                    op_list, model, _ = pkl.load(f)
-                _node = data.copy_()
-
-                _node = construct_node(_node, op_list)
-
                 if self.base_model_mask[model_cnt] == 1:
+                    with open(path, 'rb')as f:
+                        op_list, model, _ = pkl.load(f)
+                    _node = data.copy_()
+
+                    _node = construct_node(_node, op_list)
+
                     for j in range(self.kfold):
                         with open(
                                 os.path.join(self.output_dir, '%s-model%d_part%d' % (self.timestamp, model_cnt, j)),
@@ -146,8 +152,7 @@ class Stacking(BaseEnsembleModel):
                             # Get average predictions
                             if n_dim == 1:
                                 feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = \
-                                    feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] + pred[:,
-                                                                                           1:2] / self.kfold
+                                    feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] + pred[:, 1:2] / self.kfold
                             else:
                                 feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = \
                                     feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] + pred / self.kfold
@@ -162,6 +167,7 @@ class Stacking(BaseEnsembleModel):
                             feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = \
                                 feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] + pred / self.kfold
                     suc_cnt += 1
+
                 model_cnt += 1
         return feature_p2
 
@@ -169,7 +175,7 @@ class Stacking(BaseEnsembleModel):
         feature_p2 = self.get_feature(data)
         # Get predictions from meta-learner
         if self.task_type in CLS_TASKS:
-            final_pred = np.argmax(self.meta_learner.predict_proba(feature_p2), axis = -1)
+            final_pred = self.meta_learner.predict_proba(feature_p2)
         else:
             final_pred = self.meta_learner.predict(feature_p2)
         return final_pred

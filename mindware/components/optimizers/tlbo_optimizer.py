@@ -39,7 +39,7 @@ class TlboOptimizer(BaseOptimizer):
                               history_bo_data=source_data,
                               surrogate_type=surrogate_type,
                               max_runs=int(1e10),
-                              time_limit_per_trial=self.per_run_time_limit,
+                              max_runtime_per_trial=self.per_run_time_limit,
                               logging_dir=output_dir)
 
         self.trial_cnt = 0
@@ -88,7 +88,7 @@ class TlboOptimizer(BaseOptimizer):
                 self.perfs.append(-_perf)
 
         runhistory = self.optimizer.get_history()
-        if self.name == 'hpo':
+        if self.name in ['hpo', 'cash']:
             if hasattr(self.evaluator, 'fe_config'):
                 fe_config = self.evaluator.fe_config
             else:

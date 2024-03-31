@@ -25,7 +25,7 @@ class SMACOptimizer(BaseOptimizer):
                                 acq_type='ei',
                                 max_runs=int(1e10),
                                 task_id='Default',
-                                time_limit_per_trial=self.per_run_time_limit,
+                                max_runtime_per_trial=self.per_run_time_limit,
                                 random_state=self.seed)
         else:
             # TODO: Potential read-write conflict on history file.
@@ -36,7 +36,7 @@ class SMACOptimizer(BaseOptimizer):
                                  acq_type='ei',
                                  max_runs=int(1e10),
                                  task_id='Default',
-                                 time_limit_per_trial=self.per_run_time_limit,
+                                 max_runtime_per_trial=self.per_run_time_limit,
                                  random_state=self.seed)
 
         self.trial_cnt = 0
@@ -116,7 +116,7 @@ class SMACOptimizer(BaseOptimizer):
                 self.update_saver(_config_list, _perf_list)
 
         run_history = self.optimizer.get_history()
-        if self.name == 'hpo':
+        if self.name in ['hpo', 'cash']:
             if hasattr(self.evaluator, 'fe_config'):
                 fe_config = self.evaluator.fe_config
             else:

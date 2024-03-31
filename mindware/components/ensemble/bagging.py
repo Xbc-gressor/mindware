@@ -34,7 +34,7 @@ class Bagging(BaseEnsembleModel):
         for algo_id in self.stats:
             model_to_eval = self.stats[algo_id]
             for idx, (_, _, path) in enumerate(model_to_eval):
-                with open(path, 'rb')as f:
+                with open(path, 'rb') as f:
                     op_list, model, _ = pkl.load(f)
                 _node = data.copy_()
 
@@ -52,11 +52,9 @@ class Bagging(BaseEnsembleModel):
             sample_pred_list = [model_pred[i] for model_pred in model_pred_list]
             pred_average = reduce(lambda x, y: x + y, sample_pred_list) / len(sample_pred_list)
             final_pred.append(pred_average)
-        
-        if self.task_type in CLS_TASKS:
-            return np.argmax(np.array(final_pred), axis = -1)
-        else:
-            return np.array(final_pred)
+
+
+        return np.array(final_pred)
 
     def get_ens_model_info(self):
         model_cnt = 0

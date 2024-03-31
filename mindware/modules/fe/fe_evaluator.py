@@ -4,6 +4,7 @@ import os
 import time
 import numpy as np
 import pickle as pkl
+import datetime
 from sklearn.metrics._scorer import balanced_accuracy_scorer, _ThresholdScorer
 from sklearn.preprocessing import OneHotEncoder
 
@@ -18,6 +19,9 @@ from mindware.components.models.classification import _classifiers, _addons as _
 from mindware.components.models.regression import _regressors, _addons as _rgs_addons
 from mindware.components.utils.constants import *
 from mindware.components.evaluators.evaluate_func import validation
+
+from mindware.components.evaluators.cls_evaluator import get_estimator as get_cls_estimator
+from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
 
 
 class FEClassificationEvaluator(_BaseEvaluator):
@@ -41,7 +45,7 @@ class FEClassificationEvaluator(_BaseEvaluator):
         self.continue_training = False
 
         self.seed = 1
-        self.timestamp = timestamp
+        self.timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
         self.train_node = data_node.copy_()
         self.val_node = data_node.copy_()
@@ -50,14 +54,6 @@ class FEClassificationEvaluator(_BaseEvaluator):
         start_time = time.time()
         result_dict = dict()
         downsample_ratio = kwargs.get('resource_ratio', 1.0)
-
-        _candidates = get_combined_candidtates(_classifiers, _cls_addons)
-
-        if self.estimator_id in _candidates:
-            rgs_class = _candidates[self.estimator_id]
-        else:
-            raise ValueError("Algorithm %s not supported!" % self.estimator_id)
-        clf_config = rgs_class.get_hyperparameter_search_space().get_default_configuration()
 
         # Convert Configuration into dictionary
         if not isinstance(config, dict):
@@ -70,9 +66,9 @@ class FEClassificationEvaluator(_BaseEvaluator):
         # X, y Data
         _X, _y = self.data_node.data
 
-        # Prepare training and initial params for classifier.
-        init_params, fit_params = {}, {}
-        clf = _candidates[self.estimator_id](**clf_config)
+        assert self.estimator_id == config['algorithm']
+        config_dict = config.copy()
+        _, clf = get_cls_estimator(config_dict, self.estimator_id)
 
         # One-hot encoder
         if self.onehot_encoder is None:
@@ -109,8 +105,7 @@ class FEClassificationEvaluator(_BaseEvaluator):
             score = validation(clf, self.scorer, _x_train, _y_train, _x_val, _y_val,
                                random_state=self.seed,
                                onehot=self.onehot_encoder if isinstance(self.scorer,
-                                                                        _ThresholdScorer) else None,
-                               fit_params=fit_params)
+                                                                        _ThresholdScorer) else None)
 
         elif 'cv' in self.resampling_strategy:
             with warnings.catch_warnings():
@@ -145,8 +140,7 @@ class FEClassificationEvaluator(_BaseEvaluator):
                     _score = validation(clf, self.scorer, _x_train, _y_train, _x_val, _y_val,
                                         random_state=self.seed,
                                         onehot=self.onehot_encoder if isinstance(self.scorer,
-                                                                                 _ThresholdScorer) else None,
-                                        fit_params=fit_params)
+                                                                                 _ThresholdScorer) else None)
                     scores.append(_score)
                 score = np.mean(scores)
 
@@ -191,8 +185,7 @@ class FEClassificationEvaluator(_BaseEvaluator):
             score = validation(clf, self.scorer, _act_x_train, _act_y_train, _x_val, _y_val,
                                random_state=self.seed,
                                onehot=self.onehot_encoder if isinstance(self.scorer,
-                                                                        _ThresholdScorer) else None,
-                               fit_params=fit_params)
+                                                                        _ThresholdScorer) else None)
 
 
         else:
@@ -204,13 +197,13 @@ class FEClassificationEvaluator(_BaseEvaluator):
 
                 if not os.path.exists(model_path):
                     with open(model_path, 'wb') as f:
-                        pkl.dump([None, clf, score], f)
+                        pkl.dump([op_list, clf, score], f)
                 else:
                     with open(model_path, 'rb') as f:
                         _, _, perf = pkl.load(f)
                     if score > perf:
                         with open(model_path, 'wb') as f:
-                            pkl.dump([None, clf, score], f)
+                            pkl.dump([op_list, clf, score], f)
 
                 self.logger.info("Model saved to %s" % model_path)
 
@@ -247,8 +240,7 @@ class FERegressionEvaluator(_BaseEvaluator):
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
         self.continue_training = False
 
-        self.seed = 1
-        self.timestamp = timestamp
+        self.timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
         self.train_node = data_node.copy_()
         self.val_node = data_node.copy_()
@@ -257,14 +249,6 @@ class FERegressionEvaluator(_BaseEvaluator):
         start_time = time.time()
         result_dict = dict()
         downsample_ratio = kwargs.get('resource_ratio', 1.0)
-
-        _candidates = get_combined_candidtates(_regressors, _rgs_addons)
-
-        if self.estimator_id in _candidates:
-            rgs_class = _candidates[self.estimator_id]
-        else:
-            raise ValueError("Algorithm %s not supported!" % self.estimator_id)
-        clf_config = rgs_class.get_hyperparameter_search_space().get_default_configuration()
 
         # Convert Configuration into dictionary
         if not isinstance(config, dict):
@@ -277,9 +261,9 @@ class FERegressionEvaluator(_BaseEvaluator):
         # X, y Data
         _X, _y = self.data_node.data
 
-        # Prepare training and initial params for classifier.
-        init_params, fit_params = {}, {}
-        clf = _candidates[self.estimator_id](**clf_config)
+        assert self.estimator_id == config['algorithm']
+        config_dict = config.copy()
+        _, rgs = get_rgs_estimator(config_dict, self.estimator_id)
 
         if 'holdout' in self.resampling_strategy:
             # Prepare data node.
@@ -306,9 +290,8 @@ class FERegressionEvaluator(_BaseEvaluator):
             _x_train, _y_train = data_node.data
             _x_val, _y_val = _val_node.data
 
-            score = validation(clf, self.scorer, _x_train, _y_train, _x_val, _y_val,
-                               random_state=self.seed,
-                               fit_params=fit_params)
+            score = validation(rgs, self.scorer, _x_train, _y_train, _x_val, _y_val,
+                               random_state=self.seed)
 
         elif 'cv' in self.resampling_strategy:
             with warnings.catch_warnings():
@@ -337,9 +320,8 @@ class FERegressionEvaluator(_BaseEvaluator):
                     _x_train, _y_train = data_node.data
                     _x_val, _y_val = _val_node.data
 
-                    _score = validation(clf, self.scorer, _x_train, _y_train, _x_val, _y_val,
-                                        random_state=self.seed,
-                                        fit_params=fit_params)
+                    _score = validation(rgs, self.scorer, _x_train, _y_train, _x_val, _y_val,
+                                        random_state=self.seed)
                     scores.append(_score)
                 score = np.mean(scores)
 
@@ -378,9 +360,8 @@ class FERegressionEvaluator(_BaseEvaluator):
 
             _x_val, _y_val = _val_node.data
 
-            score = validation(clf, self.scorer, _act_x_train, _act_y_train, _x_val, _y_val,
-                               random_state=self.seed,
-                               fit_params=fit_params)
+            score = validation(rgs, self.scorer, _act_x_train, _act_y_train, _x_val, _y_val,
+                               random_state=self.seed)
 
 
         else:
@@ -392,13 +373,13 @@ class FERegressionEvaluator(_BaseEvaluator):
 
                 if not os.path.exists(model_path):
                     with open(model_path, 'wb') as f:
-                        pkl.dump([op_list, clf, score], f)
+                        pkl.dump([op_list, rgs, score], f)
                 else:
                     with open(model_path, 'rb') as f:
                         _, _, perf = pkl.load(f)
                     if score > perf:
                         with open(model_path, 'wb') as f:
-                            pkl.dump([op_list, clf, score], f)
+                            pkl.dump([op_list, rgs, score], f)
 
                 self.logger.info("Model saved to %s" % model_path)
 

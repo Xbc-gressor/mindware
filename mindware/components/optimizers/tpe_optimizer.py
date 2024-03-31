@@ -22,7 +22,7 @@ class TPEOptimizer(BaseOptimizer):
                                  config_space=config_space,
                                  advisor_type='tpe',
                                  task_id='Default',
-                                 time_limit_per_trial=self.per_run_time_limit,
+                                 max_runtime_per_trial=self.per_run_time_limit,
                                  random_state=self.seed)
         else:
             raise ValueError('Openbox dose not support parallel TPE')
@@ -86,7 +86,7 @@ class TPEOptimizer(BaseOptimizer):
             raise ValueError('Openbox dose not support parallel TPE')
 
         run_history = self.optimizer.get_history()
-        if self.name == 'hpo':
+        if self.name in ['hpo', 'cash']:
             if hasattr(self.evaluator, 'fe_config'):
                 fe_config = self.evaluator.fe_config
             else:

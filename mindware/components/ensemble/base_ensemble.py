@@ -3,6 +3,7 @@ from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
 import numpy as np
 import pickle as pkl
 import time
+import datetime
 
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.ensemble.unnamed_ensemble import choose_base_models_classification, \
@@ -30,7 +31,7 @@ class BaseEnsembleModel(object):
 
         self.predictions = []
         self.train_labels = None
-        self.timestamp = str(time.time())
+        self.timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
         logger_name = 'EnsembleBuilder'
         self.logger = get_logger(logger_name)
 
@@ -51,12 +52,13 @@ class BaseEnsembleModel(object):
                 else:
                     ss = ShuffleSplit(n_splits=1, test_size=test_size, random_state=1)
 
+                X_valid, y_valid = None, None
                 for train_index, val_index in ss.split(X, y):
                     X_valid = X[val_index]
                     y_valid = y[val_index]
 
                 if self.train_labels is not None:
-                    assert (self.train_labels == y_valid).all()
+                    assert np.all(self.train_labels == y_valid)
                 else:
                     self.train_labels = y_valid
 
@@ -73,11 +75,13 @@ class BaseEnsembleModel(object):
             return
 
         if task_type in CLS_TASKS:
-            self.base_model_mask = choose_base_models_classification(np.array(self.predictions),
-                                                                     self.ensemble_size)
+            self.base_model_mask = choose_base_models_classification(
+                np.array(self.predictions), self.ensemble_size
+            )
         else:
-            self.base_model_mask = choose_base_models_regression(np.array(self.predictions), np.array(y_valid),
-                                                                 self.ensemble_size)
+            self.base_model_mask = choose_base_models_regression(
+                np.array(self.predictions), np.array(y_valid), self.ensemble_size
+            )
         self.ensemble_size = sum(self.base_model_mask)
 
     def fit(self, data):

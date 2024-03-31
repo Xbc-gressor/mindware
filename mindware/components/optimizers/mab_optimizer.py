@@ -93,7 +93,7 @@ class MabOptimizer(BaseOptimizer):
                 eval_type=self.eval_type, output_dir=self.output_dir,
                 time_limit=time_limit, evaluation_limit=None,
                 per_run_time_limit=per_run_time_limit,
-                inner_iter_num_per_iter=1,
+                inner_iter_num_per_iter=self.inner_iter_num_per_iter,
                 timestamp=self.timestamp, seed=self.seed, n_jobs=n_jobs
             )
 

@@ -2,6 +2,7 @@ from ConfigSpace import ConfigurationSpace, CategoricalHyperparameter
 import warnings
 import os
 import time
+import datetime
 import numpy as np
 import pickle as pkl
 from sklearn.metrics._scorer import balanced_accuracy_scorer, _ThresholdScorer
@@ -14,7 +15,6 @@ from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.components.utils.constants import *
 
 from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
-
 from mindware.components.evaluators.cls_evaluator import get_estimator as get_cls_estimator
 
 
@@ -39,7 +39,7 @@ class CASHClassificationEvaluator(_BaseEvaluator):
         self.continue_training = False
 
         self.seed = 1
-        self.timestamp = timestamp
+        self.timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
     def __call__(self, config, **kwargs):
         start_time = time.time()
@@ -57,7 +57,9 @@ class CASHClassificationEvaluator(_BaseEvaluator):
         # X, y Data
         _X, _y = self.data_node.data
 
-        _, clf = get_cls_estimator(config, config['algorithm'])
+        estimator_id = config['algorithm']
+        config_dict = config.copy()
+        _, clf = get_cls_estimator(config_dict, estimator_id)
 
         # One-hot encoder
         if self.onehot_encoder is None:
@@ -93,8 +95,8 @@ class CASHClassificationEvaluator(_BaseEvaluator):
 
                 score = cross_validation(clf, self.scorer,
                                          _X, _y, n_fold=folds,
-                                         shuffle=False, if_stratify=True, onehot=onehot,
-                                         random_state=self.seed)
+                                         shuffle=False,
+                                         if_stratify=True, onehot=onehot, random_state=self.seed)
 
         elif 'partial' in self.resampling_strategy:
             # Prepare data node.
@@ -119,19 +121,19 @@ class CASHClassificationEvaluator(_BaseEvaluator):
 
                 if not os.path.exists(model_path):
                     with open(model_path, 'wb') as f:
-                        pkl.dump([None, clf, score], f)
+                        pkl.dump([{}, clf, score], f)
                 else:
                     with open(model_path, 'rb') as f:
                         _, _, perf = pkl.load(f)
                     if score > perf:
                         with open(model_path, 'wb') as f:
-                            pkl.dump([None, clf, score], f)
+                            pkl.dump([{}, clf, score], f)
 
                 self.logger.info("Model saved to %s" % model_path)
 
         try:
             self.logger.info('Evaluation<%s> | Score: %.4f | Time cost: %.2f seconds | Shape: %s' %
-                             (self.estimator_id,
+                             (estimator_id,
                               self.scorer._sign * score,
                               time.time() - start_time, _X.shape))
         except:
@@ -161,8 +163,8 @@ class CASHRegressionEvaluator(_BaseEvaluator):
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
         self.continue_training = False
 
-        self.seed = 1
-        self.timestamp = timestamp
+        self.seed = seed
+        self.timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
     def __call__(self, config, **kwargs):
         start_time = time.time()
@@ -180,7 +182,9 @@ class CASHRegressionEvaluator(_BaseEvaluator):
         # X, y Data
         _X, _y = self.data_node.data
 
-        _, rgs = get_rgs_estimator(config, config['algorithm'])
+        estimator_id = config['algorithm']
+        config_dict = config.copy()
+        _, rgs = get_rgs_estimator(config_dict, estimator_id)
 
         if 'holdout' in self.resampling_strategy:
             # Prepare data node.
@@ -208,8 +212,8 @@ class CASHRegressionEvaluator(_BaseEvaluator):
 
                 score = cross_validation(rgs, self.scorer,
                                          _X, _y, n_fold=folds,
-                                         shuffle=False, if_stratify=False,
-                                         random_state=self.seed)
+                                         shuffle=False,
+                                         if_stratify=False, random_state=self.seed)
 
         elif 'partial' in self.resampling_strategy:
             # Prepare data node.
@@ -234,19 +238,19 @@ class CASHRegressionEvaluator(_BaseEvaluator):
 
                 if not os.path.exists(model_path):
                     with open(model_path, 'wb') as f:
-                        pkl.dump([None, rgs, score], f)
+                        pkl.dump([{}, rgs, score], f)
                 else:
                     with open(model_path, 'rb') as f:
                         _, _, perf = pkl.load(f)
                     if score > perf:
                         with open(model_path, 'wb') as f:
-                            pkl.dump([None, rgs, score], f)
+                            pkl.dump([{}, rgs, score], f)
 
                 self.logger.info("Model saved to %s" % model_path)
 
         try:
             self.logger.info('Evaluation<%s> | Score: %.4f | Time cost: %.2f seconds | Shape: %s' %
-                             (config['algorithm'],
+                             (estimator_id,
                               self.scorer._sign * score,
                               time.time() - start_time, _X.shape))
         except:

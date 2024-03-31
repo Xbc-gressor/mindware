@@ -1,8 +1,8 @@
 import abc
 import os
 import time
+import datetime
 import numpy as np
-import pickle as pkl
 from mindware.utils.constant import MAX_INT
 from mindware.utils.logging_utils import get_logger
 from mindware.components.evaluators.base_evaluator import _BaseEvaluator
@@ -26,7 +26,10 @@ class BaseOptimizer(object):
         self.early_stopped_flag = False
         self.timestamp = timestamp
         self.output_dir = output_dir
-        self.topk_saver = CombinedTopKModelSaver(k=50, model_dir=self.output_dir, identifier=self.timestamp)
+        self.topk_saver = CombinedTopKModelSaver(
+            k=50, model_dir=self.output_dir,
+            identifier=datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
+        )
 
     @abc.abstractmethod
     def run(self):
