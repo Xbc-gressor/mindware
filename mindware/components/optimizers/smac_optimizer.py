@@ -122,15 +122,19 @@ class SMACOptimizer(BaseOptimizer):
             else:
                 fe_config = None
 
-            self.eval_dict = {(fe_config, hpo_config): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
-                              for i, hpo_config in enumerate(run_history.configurations)}
+            self.eval_dict = {
+                (fe_config, hpo_config): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
+                for i, hpo_config in enumerate(run_history.configurations)
+            }
         else:
             if hasattr(self.evaluator, 'hpo_config'):
                 hpo_config = self.evaluator.hpo_config
             else:
                 hpo_config = None
-            self.eval_dict = {(fe_config, hpo_config): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
-                              for i, fe_config in enumerate(run_history.configurations)}
+            self.eval_dict = {
+                (fe_config, hpo_config): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
+                for i, fe_config in enumerate(run_history.configurations)
+            }
 
         if len(run_history.get_incumbents()) > 0:
             incumbent = run_history.get_incumbents()[0]

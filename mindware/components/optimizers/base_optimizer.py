@@ -14,7 +14,7 @@ class BaseOptimizer(object):
         self.evaluator = evaluator
         self.config_space = config_space
 
-        assert name in ['hpo', 'fe']
+        assert name in ['hpo', 'fe', 'cash']
         self.name = name
         self.seed = np.random.random_integers(MAX_INT) if seed is None else seed
         self.start_time = time.time()

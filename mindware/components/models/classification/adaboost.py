@@ -1,7 +1,10 @@
 import numpy as np
+import sklearn
 from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
     UniformIntegerHyperparameter, CategoricalHyperparameter
+
+from sklearn.tree import DecisionTreeClassifier
 
 from mindware.components.models.base_model import BaseClassificationModel
 from mindware.components.utils.constants import DENSE, SPARSE, UNSIGNED_DATA, PREDICTIONS
@@ -24,7 +27,7 @@ class AdaboostClassifier(BaseClassificationModel):
         self.n_estimators = int(self.n_estimators)
         self.learning_rate = float(self.learning_rate)
         self.max_depth = int(self.max_depth)
-        base_estimator = sklearn.tree.DecisionTreeClassifier(max_depth=self.max_depth)
+        base_estimator = DecisionTreeClassifier(max_depth=self.max_depth)
 
         estimator = sklearn.ensemble.AdaBoostClassifier(
             base_estimator=base_estimator,
