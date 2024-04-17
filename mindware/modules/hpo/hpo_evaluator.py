@@ -44,17 +44,6 @@ def get_hpo_cs(estimator_id, task_type):
     return cs
 
 
-# def get_hpo_conf(config, estimator_id):
-#     config_ = config.copy()
-#     hpo_config = dict()
-#     for key in config_:
-#         key_name = key.split(':')[0]
-#         if estimator_id == key_name:
-#             act_key = key.split(':')[1]
-#             hpo_config[act_key] = config_[key]
-#
-#     return hpo_config
-
 
 class HPOClassificationEvaluator(_BaseEvaluator):
 

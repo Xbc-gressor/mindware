@@ -13,6 +13,7 @@ from mindware.components.optimizers.random_search_optimizer import RandomSearchO
 from mindware.components.optimizers.mfse_optimizer import MfseOptimizer
 from mindware.components.optimizers.bohb_optimizer import BohbOptimizer
 from mindware.components.optimizers.tpe_optimizer import TPEOptimizer
+from mindware.components.optimizers.mab_optimizer import MabOptimizer
 
 from sklearn.utils.multiclass import type_of_target
 from mindware.components.utils.constants import type_dict
@@ -88,6 +89,8 @@ class BaseAutoML(object):
                 optimizer_class = TPEOptimizer
             elif self.optimizer_name == 'smac':
                 optimizer_class = SMACOptimizer
+            elif self.optimizer_name == 'mab':
+                optimizer_class = MabOptimizer
             else:
                 raise ValueError("Invalid optimizer %s" % self.optimizer_name)
 

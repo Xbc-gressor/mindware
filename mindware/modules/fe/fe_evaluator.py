@@ -10,13 +10,8 @@ from sklearn.preprocessing import OneHotEncoder
 
 from mindware.utils.logging_utils import get_logger
 from mindware.components.evaluators.base_evaluator import _BaseEvaluator
-from mindware.components.evaluators.evaluate_func import holdout_validation, cross_validation, partial_validation
-from mindware.components.feature_engineering.task_space import get_task_hyperparameter_space
 from mindware.components.feature_engineering.parse import parse_config, construct_node
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
-from mindware.components.utils.class_loader import get_combined_candidtates
-from mindware.components.models.classification import _classifiers, _addons as _cls_addons
-from mindware.components.models.regression import _regressors, _addons as _rgs_addons
 from mindware.components.utils.constants import *
 from mindware.components.evaluators.evaluate_func import validation
 

@@ -137,14 +137,14 @@ class MabOptimizer(BaseOptimizer):
             arm_to_pull = self.arm_candidate[self.pick_id]
             self.logger.info('Optimize %s in the %d-th iteration' % (arm_to_pull, self.pull_cnt))
             _start_time = time.time()
-            reward = self.sub_bandits[arm_to_pull].iterate(budget=self.time_limit + self.timestamp - time.time())
+            reward, _, incumbent = self.sub_bandits[arm_to_pull].iterate(budget=self.time_limit + self.timestamp - time.time())
 
             # Update results after each iteration
             self.arm_cost_stats[arm_to_pull].append(time.time() - _start_time)
             if reward > self.incumbent_perf:
                 self.optimal_algo_id = arm_to_pull
                 self.incumbent_perf = reward
-                self.incumbent = self.sub_bandits[arm_to_pull].incumbent
+                self.incumbent = incumbent
             self.eval_dict.update(self.sub_bandits[arm_to_pull].eval_dict)
             self.rewards[arm_to_pull].append(reward)
             self.action_sequence.append(arm_to_pull)
