@@ -140,6 +140,7 @@ class BaseAutoML(object):
 
         return self.incumbent_perf
 
+    # train with whole data
     def refit(self):
         from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
         from mindware.components.utils.topk_saver import CombinedTopKModelSaver
@@ -159,7 +160,7 @@ class BaseAutoML(object):
                 model_to_eval = stats[algo_id]
                 for idx, (config, perf, path) in enumerate(model_to_eval):
 
-                    if self.name in ['fe']:
+                    if self.name in ['fe', 'cashfe']:
                         data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
                                                           if_imbal=self.if_imbal)
                     else:
@@ -186,7 +187,7 @@ class BaseAutoML(object):
                 self.timestamp, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
             config = self.incumbent.copy()
 
-            if self.name in ['fe']:
+            if self.name in ['fe', 'cashfe']:
                 data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
                                                   if_imbal=self.if_imbal)
             else:
