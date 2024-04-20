@@ -17,6 +17,36 @@ from mindware.components.utils.constants import *
 from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
 from mindware.components.evaluators.cls_evaluator import get_estimator as get_cls_estimator
 
+from mindware.modules.base_evaluator import BaseCLSEvaluator
+from mindware.modules.base_evaluator import BaseRGSEvaluator
+
+
+class CASHCLSEvaluator(BaseCLSEvaluator):
+    def __init__(
+            self, fixed_config=None, scorer=None, data_node=None, task_type=CLASSIFICATION,
+            resampling_strategy='cv', resampling_params=None,
+            timestamp=None, output_dir=None, seed=1,
+            if_imbal=False
+    ):
+        super().__init__(
+            fixed_config, scorer, data_node, task_type,
+            resampling_strategy, resampling_params,
+            timestamp, output_dir, seed,
+            if_imbal
+        )
+
+
+class CASHRGSEvaluator(BaseRGSEvaluator):
+    def __init__(
+            self, fixed_config=None, scorer=None, data_node=None, task_type=REGRESSION,
+            resampling_strategy='cv', resampling_params=None,
+            timestamp=None, output_dir=None, seed=1
+    ):
+        super().__init__(
+            fixed_config, scorer, data_node, task_type,
+            resampling_strategy, resampling_params,
+            timestamp, output_dir, seed
+        )
 
 
 class CASHClassificationEvaluator(_BaseEvaluator):

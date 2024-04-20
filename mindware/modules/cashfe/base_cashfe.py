@@ -7,18 +7,20 @@ from mindware.utils.logging_utils import setup_logger, get_logger
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
 
+from mindware.components.feature_engineering.task_space import get_task_hyperparameter_space
 
-class BaseCASH(BaseAutoML):
+class BaseCASHFE(BaseAutoML):
     def __init__(self, include_algorithms: List[str] = None, sub_optimizer: str = 'smac',
                  metric: str = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac',
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=None, n_jobs=1,
-                 ensemble_method=None, ensemble_size=5):
+                 ensemble_method=None, ensemble_size=5,
+                 include_preprocessors=None):
 
-        super(BaseCASH, self).__init__(
-            name='cash',
+        super(BaseCASHFE, self).__init__(
+            name='cashfe',
             metric=metric, data_node=data_node,
             evaluation=evaluation, resampling_params=resampling_params,
             optimizer=optimizer, per_run_time_limit=per_run_time_limit,
@@ -35,7 +37,7 @@ class BaseCASH(BaseAutoML):
             raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
 
         self.include_algorithms = include_algorithms
-        path = 'CASH-%s(%d)_%s' % (
+        path = 'CASHFE-%s(%d)_%s' % (
             optimizer, self.seed, self.datetime
         )
         self.output_dir = os.path.join(output_dir, path)
@@ -51,6 +53,15 @@ class BaseCASH(BaseAutoML):
             from mindware.components.evaluators.rgs_evaluator import get_cash_cs as get_rgs_cash_cs
             self.cs = get_rgs_cash_cs(self.include_algorithms, self.task_type)
 
+        fe_config_space = get_task_hyperparameter_space(
+            self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal
+        )
+
+        if self.optimizer_name != 'mab':
+            self.cs.add_hyperparameters(fe_config_space.get_hyperparameters())
+            self.cs.add_conditions(fe_config_space.get_conditions())
+            self.cs.add_forbidden_clauses(fe_config_space.get_forbiddens())
+
         # Define evaluator and optimizer
         self.evaluator = None
         if self.task_type in CLS_TASKS:
@@ -65,8 +76,8 @@ class BaseCASH(BaseAutoML):
             #     seed=self.seed,
             #     resampling_strategy=evaluation,
             #     resampling_params=resampling_params)
-            from mindware.modules.cash.cash_evaluator import CASHCLSEvaluator
-            self.evaluator = CASHCLSEvaluator(
+            from mindware.modules.cashfe.cashfe_evaluator import CASHFECLSEvaluator
+            self.evaluator = CASHFECLSEvaluator(
                 fixed_config=None,
                 scorer=self.metric,
                 data_node=data_node,
@@ -87,8 +98,8 @@ class BaseCASH(BaseAutoML):
             #     seed=self.seed,
             #     resampling_strategy=evaluation,
             #     resampling_params=resampling_params)
-            from mindware.modules.cash.cash_evaluator import CASHRGSEvaluator
-            self.evaluator = CASHRGSEvaluator(
+            from mindware.modules.cashfe.cashfe_evaluator import CASHFERGSEvaluator
+            self.evaluator = CASHFERGSEvaluator(
                 fixed_config=None,
                 scorer=self.metric,
                 data_node=data_node,
@@ -98,11 +109,11 @@ class BaseCASH(BaseAutoML):
                 output_dir=self.output_dir,
                 seed=self.seed)
 
-        self.optimizer = self.build_optimizer('cash', sub_optimizer=sub_optimizer)
+        self.optimizer = self.build_optimizer('cashfe', sub_optimizer=sub_optimizer, fe_config_space=fe_config_space)
 
         pass
 
     def _get_logger(self, optimizer_name):
-        logger_name = 'MindWare-CASH-task_type%d-%s(%d)' % (self.task_type, optimizer_name, self.seed)
+        logger_name = 'MindWare-CASHFE-task_type%d-%s(%d)' % (self.task_type, optimizer_name, self.seed)
         setup_logger(os.path.join(self.output_dir, '%s.log' % str(logger_name)))
         return get_logger(logger_name)

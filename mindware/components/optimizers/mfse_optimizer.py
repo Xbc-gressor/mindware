@@ -54,7 +54,7 @@ class MfseOptimizer(BaseOptimizer, MfseBase):
             inc_idx = np.argmin(np.array(self.incumbent_perfs))
 
             for idx in range(len(self.incumbent_perfs)):
-                if self.name in ['hpo', 'cash']:
+                if self.name in ['hpo', 'cash', 'cashfe']:
                     if hasattr(self.evaluator, 'fe_config'):
                         fe_config = self.evaluator.fe_config
                     else:

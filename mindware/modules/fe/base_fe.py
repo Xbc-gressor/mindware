@@ -4,7 +4,6 @@ from mindware.modules.base import BaseAutoML
 from mindware.utils.logging_utils import setup_logger, get_logger
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
-from mindware.utils.functions import is_imbalanced_dataset
 
 from mindware.components.feature_engineering.task_space import get_task_hyperparameter_space
 from mindware.components.utils.class_loader import get_combined_candidtates
@@ -15,22 +14,29 @@ from ConfigSpace import Configuration, Constant
 
 
 class BaseFE(BaseAutoML):
-    def __init__(self, estimator_id: str, task_type=None, metric: str = 'acc',
-                 data_node: DataNode = None, evaluation: str = 'holdout', resampling_params=None,
-                 optimizer='smac', per_run_time_limit=600,
-                 time_limit=600, amount_of_resource=None,
+    def __init__(self, estimator_id: str,
+                 metric: str = 'acc', data_node: DataNode = None,
+                 evaluation: str = 'holdout', resampling_params=None,
+                 optimizer='smac',
+                 time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=None, n_jobs=1,
                  ensemble_method=None, ensemble_size=None,
                  include_preprocessors=None, model_config=None):
 
         super(BaseFE, self).__init__(
-            task_type=task_type, metric=metric,
-            data_node=data_node, evaluation=evaluation, resampling_params=resampling_params,
+            name='fe',
+            metric=metric, data_node=data_node,
+            evaluation=evaluation, resampling_params=resampling_params,
             optimizer=optimizer, per_run_time_limit=per_run_time_limit,
             time_limit=time_limit, amount_of_resource=amount_of_resource,
             output_dir=output_dir, seed=seed, n_jobs=n_jobs,
             ensemble_method=ensemble_method, ensemble_size=ensemble_size
         )
+
+        if optimizer not in ['smac', 'tpe', 'random_search']:
+            raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
+        if evaluation not in ['holdout', 'cv', 'partial', 'partial_bohb']:
+            raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
 
         self.estimator_id = estimator_id
 
@@ -44,14 +50,12 @@ class BaseFE(BaseAutoML):
 
         _candidates = None
         if self.task_type in CLS_TASKS:
-            self.if_imbal = is_imbalanced_dataset(self.data_node)
             _candidates = get_combined_candidtates(_classifiers, _cls_addons)
         else:
-            self.if_imbal = False
             _candidates = get_combined_candidtates(_regressors, _rgs_addons)
 
         self.cs = get_task_hyperparameter_space(
-            self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal, optimizer=optimizer
+            self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal
         )
 
         if model_config is None:
@@ -74,30 +78,51 @@ class BaseFE(BaseAutoML):
         # Define evaluator and optimizer
         self.evaluator = None
         if self.task_type in CLS_TASKS:
-            from mindware.modules.fe.fe_evaluator import FEClassificationEvaluator
-            self.evaluator = FEClassificationEvaluator(
-                estimator_id=estimator_id,
+            # from mindware.modules.fe.fe_evaluator import FEClassificationEvaluator
+            # self.evaluator = FEClassificationEvaluator(
+            #     estimator_id=estimator_id,
+            #     fixed_config=None,
+            #     scorer=self.metric,
+            #     data_node=data_node,
+            #     if_imbal=self.if_imbal,
+            #     timestamp=self.timestamp,
+            #     output_dir=self.output_dir,
+            #     seed=self.seed,
+            #     resampling_strategy=evaluation,
+            #     resampling_params=resampling_params)
+            from mindware.modules.fe.fe_evaluator import FECLSEvaluator
+            self.evaluator = FECLSEvaluator(
                 fixed_config=None,
                 scorer=self.metric,
                 data_node=data_node,
-                if_imbal=self.if_imbal,
+                resampling_strategy=self.evaluation,
+                resampling_params=self.resampling_params,
                 timestamp=self.timestamp,
                 output_dir=self.output_dir,
                 seed=self.seed,
-                resampling_strategy=evaluation,
-                resampling_params=resampling_params)
+                if_imbal=self.if_imbal)
         else:
-            from mindware.modules.fe.fe_evaluator import FERegressionEvaluator
-            self.evaluator = FERegressionEvaluator(
-                estimator_id=estimator_id,
+            # from mindware.modules.fe.fe_evaluator import FERegressionEvaluator
+            # self.evaluator = FERegressionEvaluator(
+            #     estimator_id=estimator_id,
+            #     fixed_config=None,
+            #     scorer=self.metric,
+            #     data_node=data_node,
+            #     timestamp=self.timestamp,
+            #     output_dir=self.output_dir,
+            #     seed=self.seed,
+            #     resampling_strategy=evaluation,
+            #     resampling_params=resampling_params)
+            from mindware.modules.fe.fe_evaluator import FERGSEvaluator
+            self.evaluator = FERGSEvaluator(
                 fixed_config=None,
                 scorer=self.metric,
                 data_node=data_node,
+                resampling_strategy=self.evaluation,
+                resampling_params=self.resampling_params,
                 timestamp=self.timestamp,
                 output_dir=self.output_dir,
-                seed=self.seed,
-                resampling_strategy=evaluation,
-                resampling_params=resampling_params)
+                seed=self.seed)
 
         self.optimizer = self.build_optimizer('fe')
 

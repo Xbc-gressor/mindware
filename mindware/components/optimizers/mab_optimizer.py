@@ -16,7 +16,7 @@ class MabOptimizer(BaseOptimizer):
             per_run_time_limit=300, per_run_mem_limit=1024,
             output_dir='./', timestamp=None,
             inner_iter_num_per_iter=10, seed=1, n_jobs=1,
-            optimizer='smac',
+            sub_optimizer='smac', fe_config_space=None,
     ):
 
         super(MabOptimizer, self).__init__(
@@ -52,26 +52,26 @@ class MabOptimizer(BaseOptimizer):
             self.arm_cost_stats[_arm] = list()
 
         # TODO: Support asynchronous BO
-        if optimizer == 'random_search':
+        if sub_optimizer == 'random_search':
             optimizer_class = RandomSearchOptimizer
-        elif optimizer == 'tpe':
+        elif sub_optimizer == 'tpe':
             optimizer_class = TPEOptimizer
-        elif optimizer == 'smac':
+        elif sub_optimizer == 'smac':
             optimizer_class = SMACOptimizer
         else:
-            raise ValueError("Invalid optimizer %s" % optimizer)
+            raise ValueError("Invalid optimizer %s" % sub_optimizer)
 
         for arm in self.arms:
             self.rewards[arm] = list()
             self.evaluation_cost[arm] = list()
 
-            hps = config_space.get_hyperparameters()
             cs = ConfigurationSpace()
             cs.add_hyperparameter(Constant('algorithm', arm))
+            # Add active hyperparameters
+            hps = config_space.get_hyperparameters()
             for hp in hps:
                 if hp.name.split(':')[0] == arm:
                     cs.add_hyperparameter(hp)
-
             # Add active conditions
             conds = config_space.get_conditions()
             for cond in conds:
@@ -79,7 +79,6 @@ class MabOptimizer(BaseOptimizer):
                     cs.add_condition(cond)
                 except:
                     pass
-
             # Add active forbidden clauses
             forbids = config_space.get_forbiddens()
             for forbid in forbids:
@@ -87,6 +86,11 @@ class MabOptimizer(BaseOptimizer):
                     cs.add_forbidden_clause(forbid)
                 except:
                     pass
+
+            if fe_config_space is not None:
+                cs.add_hyperparameters(fe_config_space.get_hyperparameters())
+                cs.add_conditions(fe_config_space.get_conditions())
+                cs.add_forbidden_clauses(fe_config_space.get_forbiddens())
 
             self.sub_bandits[arm] = optimizer_class(
                 self.evaluator, cs, 'hpo',
@@ -144,7 +148,7 @@ class MabOptimizer(BaseOptimizer):
             if reward > self.incumbent_perf:
                 self.optimal_algo_id = arm_to_pull
                 self.incumbent_perf = reward
-                self.incumbent = incumbent
+                self.incumbent_config = incumbent
             self.eval_dict.update(self.sub_bandits[arm_to_pull].eval_dict)
             self.rewards[arm_to_pull].append(reward)
             self.action_sequence.append(arm_to_pull)

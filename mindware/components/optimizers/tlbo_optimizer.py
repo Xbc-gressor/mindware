@@ -88,7 +88,7 @@ class TlboOptimizer(BaseOptimizer):
                 self.perfs.append(-_perf)
 
         runhistory = self.optimizer.get_history()
-        if self.name in ['hpo', 'cash']:
+        if self.name in ['hpo', 'cash', 'cashfe']:
             if hasattr(self.evaluator, 'fe_config'):
                 fe_config = self.evaluator.fe_config
             else:

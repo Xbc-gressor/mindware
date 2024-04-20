@@ -116,7 +116,7 @@ class SMACOptimizer(BaseOptimizer):
                 self.update_saver(_config_list, _perf_list)
 
         run_history = self.optimizer.get_history()
-        if self.name in ['hpo', 'cash']:
+        if self.name in ['hpo', 'cash', 'cashfe']:
             if hasattr(self.evaluator, 'fe_config'):
                 fe_config = self.evaluator.fe_config
             else:

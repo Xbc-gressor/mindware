@@ -27,37 +27,42 @@ from mindware.components.utils.constants import *
 #     metric = 'acc'
 #     scorer = get_metric(metric)
 #     resampling_strategy = 'holdout'
-
-# timestamp = time.time()
-# clf_class = _classifiers[estimator_id]
-# cs = clf_class.get_hyperparameter_search_space()
-# config = cs.sample_configuration().get_dictionary()
-# hpo_eva = HPOClassificationEvaluator(estimator_id=estimator_id,
-#                                      fixed_config=None,
-#                                      scorer=scorer,
-#                                      data_node=train_data,
-#                                      resampling_strategy=resampling_strategy,
-#                                      timestamp=timestamp,
-#                                      output_dir='./data',
-#                                      seed=1,
-#                                      if_imbal=False)
-# print(hpo_eva(config))
-
-# hpo = BaseHPO(estimator_id=estimator_id,
-#               task_type=CLASSIFICATION,
-#               metric=metric,
-#               data_node=train_data, evaluation='holdout', resampling_params=None,
-#               optimizer='smac', per_run_time_limit=600,
-#               time_limit=1024, amount_of_resource=10,
-#               output_dir='D:\\xbc\\Fighting\\AutoML\\codes\\mindware\\data', seed=1, n_jobs=1,
-#               ensemble_method="blending", ensemble_size=5)
-# smac, random_search, tpe, partial_bohb
-# /Users/xubeideng/Documents/Scientific Research/AutoML/code/mindware/data
-# D:\\xbc\\Fighting\\AutoML\\codes\\mindware\\data
-
-# hpo.run()
-# breakpoint()
-# hpo.predict(test_data)
+#
+# # timestamp = time.time()
+# # clf_class = _classifiers[estimator_id]
+# # cs = clf_class.get_hyperparameter_search_space()
+# # config = cs.sample_configuration().get_dictionary()
+# # hpo_eva = HPOClassificationEvaluator(estimator_id=estimator_id,
+# #                                      fixed_config=None,
+# #                                      scorer=scorer,
+# #                                      data_node=train_data,
+# #                                      resampling_strategy=resampling_strategy,
+# #                                      timestamp=timestamp,
+# #                                      output_dir='./data',
+# #                                      seed=1,
+# #                                      if_imbal=False)
+# # print(hpo_eva(config))
+#
+#     hpo = BaseHPO(estimator_id=estimator_id,
+#                   metric=metric,
+#                   data_node=train_data, evaluation='holdout', resampling_params=None,
+#                   optimizer='smac', per_run_time_limit=600,
+#                   time_limit=1024, amount_of_resource=10,
+#                   output_dir='./data', seed=1, n_jobs=1,
+#                   ensemble_method="blending", ensemble_size=5)
+#     # smac, random_search, tpe, partial_bohb
+#     # /Users/xubeideng/Documents/Scientific Research/AutoML/code/mindware/data
+#     # D:\\xbc\\Fighting\\AutoML\\codes\\mindware\\data
+#
+#     print(hpo.run())
+#     y_true = test_data.data[1]
+#     pred_ens = hpo.predict(test_data, ens=True)
+#     pred = hpo.predict(test_data, ens=False)
+#
+#     ens_perf = scorer._score_func(y_true, pred_ens) * scorer._sign
+#     pred_perf = scorer._score_func(y_true, pred) * scorer._sign
+#
+#     breakpoint()
 
 if __name__ == '__main__':
     housing = fetch_california_housing()
@@ -73,12 +78,19 @@ if __name__ == '__main__':
     resampling_strategy = 'holdout'
 
     hpo = BaseHPO(estimator_id=estimator_id,
-                  task_type=REGRESSION,
                   metric=metric,
-                  data_node=train_data, evaluation='holdout', resampling_params=None,
+                  data_node=train_data, evaluation='partial_bohb', resampling_params=None,
                   optimizer='smac', per_run_time_limit=600,
-                  time_limit=1024, amount_of_resource=3,
-                  output_dir='../data', seed=1, n_jobs=1,
+                  time_limit=1024, amount_of_resource=10,
+                  output_dir='./data', seed=1, n_jobs=1,
                   ensemble_method="blending", ensemble_size=5)
 
     print(hpo.run())
+    y_true = test_data.data[1]
+    pred_ens = hpo.predict(test_data, ens=True)
+    pred = hpo.predict(test_data, ens=False)
+
+    ens_perf = scorer._score_func(y_true, pred_ens) * scorer._sign
+    pred_perf = scorer._score_func(y_true, pred) * scorer._sign
+    breakpoint()
+

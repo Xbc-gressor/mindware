@@ -3,6 +3,7 @@ import time
 import datetime
 import numpy as np
 import pickle as pkl
+import warnings
 
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
@@ -16,6 +17,7 @@ from mindware.components.optimizers.tpe_optimizer import TPEOptimizer
 from mindware.components.optimizers.mab_optimizer import MabOptimizer
 
 from sklearn.utils.multiclass import type_of_target
+from mindware.utils.functions import is_imbalanced_dataset
 from mindware.components.utils.constants import type_dict
 
 from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
@@ -25,18 +27,20 @@ from mindware.components.feature_engineering.parse import construct_node
 
 
 class BaseAutoML(object):
-    def __init__(self, task_type=None, metric: str = 'acc',
-                 data_node: DataNode = None, evaluation: str = 'holdout', resampling_params=None,
+    def __init__(self, name: str, metric: str = 'acc', data_node: DataNode = None,
+                 evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac', per_run_time_limit=600,
                  time_limit=600, amount_of_resource=None,
                  inner_iter_num_per_iter=1,
                  output_dir=None, seed=None, n_jobs=1,
                  ensemble_method=None, ensemble_size=5):
 
+        self.name = name
+
         self.metric = get_metric(metric)
-        self.data_node = data_node
+        self.data_node = data_node.copy_()
         self.evaluation = evaluation
-        self.task_type = task_type
+        self.resampling_params = resampling_params
         self.seed = seed
 
         self.optimizer_name = optimizer
@@ -72,11 +76,18 @@ class BaseAutoML(object):
             raise ValueError("Invalid Task Type: %s!" % task_type)
         self.task_type = task_type
 
+        self.if_imbal = False
+        if self.task_type in CLS_TASKS:
+            self.if_imbal = is_imbalanced_dataset(self.data_node)
+
+        self.logger = None
+
     def _get_logger(self, name):
         raise NotImplementedError()
 
-    def build_optimizer(self, name='hpo'):
+    def build_optimizer(self, name='hpo', **kwargs):
 
+        opt_paras = {}
         if self.evaluation == 'partial':
             optimizer_class = MfseOptimizer
         elif self.evaluation == 'partial_bohb':
@@ -91,15 +102,19 @@ class BaseAutoML(object):
                 optimizer_class = SMACOptimizer
             elif self.optimizer_name == 'mab':
                 optimizer_class = MabOptimizer
+                opt_paras['sub_optimizer'] = kwargs.get('sub_optimizer', 'smac')
+                opt_paras['fe_config_space'] = kwargs.get('fe_config_space', None)
             else:
                 raise ValueError("Invalid optimizer %s" % self.optimizer_name)
 
-        optimizer = optimizer_class(self.evaluator, self.cs, name,
-                                    eval_type=self.evaluation, output_dir=self.output_dir,
+        optimizer = optimizer_class(evaluator=self.evaluator, config_space=self.cs, name=name,
+                                    eval_type=self.evaluation,
                                     time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
                                     per_run_time_limit=self.per_run_time_limit,
+                                    output_dir=self.output_dir, timestamp=self.timestamp,
                                     inner_iter_num_per_iter=self.inner_iter_num_per_iter,
-                                    timestamp=self.timestamp, seed=self.seed, n_jobs=self.n_jobs)
+                                    seed=self.seed, n_jobs=self.n_jobs,
+                                    **opt_paras)
 
         return optimizer
 
@@ -120,10 +135,71 @@ class BaseAutoML(object):
             if not (self.early_stop_flag or self.timeout_flag):
                 self.iterate()
 
-        if self.ensemble_method is not None and self.evaluation in ['holdout', 'partial']:
+        if self.ensemble_method is not None and self.evaluation in ['holdout', 'partial', 'partial_bohb']:
             self.fit_ensemble()
 
         return self.incumbent_perf
+
+    def refit(self):
+        from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
+        from mindware.components.utils.topk_saver import CombinedTopKModelSaver
+        from mindware.components.feature_engineering.parse import parse_config
+
+        if self.ensemble_method is not None:
+            self.logger.info('Start to refit all the well-performed models!')
+            config_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.datetime)
+
+            if not os.path.exists(config_path):
+                warnings.warn("Config path %s not found! Please check if all the evaluations are failed!" % config_path)
+                return
+
+            with open(config_path, 'rb') as f:
+                stats = pkl.load(f)
+            for algo_id in stats.keys():
+                model_to_eval = stats[algo_id]
+                for idx, (config, perf, path) in enumerate(model_to_eval):
+
+                    if self.name in ['fe']:
+                        data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
+                                                          if_imbal=self.if_imbal)
+                    else:
+                        op_list = {}
+                        data_node = self.data_node.copy_()
+
+                    algo_id = config['algorithm']
+                    estimator = fetch_predict_estimator(self.task_type, algo_id, config,
+                                                        data_node.data[0], data_node.data[1],
+                                                        weight_balance=data_node.enable_balance,
+                                                        data_balance=data_node.data_balance)
+                    with open(path, 'wb')as f:
+                        pkl.dump([op_list, estimator, None], f)
+
+            self.fit_ensemble()
+        else:
+            self.logger.info('Start to refit the best model!')
+
+            if self.incumbent is None:
+                warnings.warn("The best config is None! Please check if all the evaluations are failed!")
+                return
+
+            model_path = os.path.join(self.output_dir, '%s_%s.pkl' % (
+                self.timestamp, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
+            config = self.incumbent.copy()
+
+            if self.name in ['fe']:
+                data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
+                                                  if_imbal=self.if_imbal)
+            else:
+                op_list = {}
+                data_node = self.data_node.copy_()
+
+            algo_id = config['algorithm']
+            estimator = fetch_predict_estimator(self.task_type, algo_id, config,
+                                                data_node.data[0], data_node.data[1],
+                                                weight_balance=data_node.enable_balance,
+                                                data_balance=data_node.data_balance)
+            with open(model_path, 'wb')as f:
+                pkl.dump([op_list, estimator, None], f)
 
     def fit_ensemble(self):
         if self.ensemble_method is not None:

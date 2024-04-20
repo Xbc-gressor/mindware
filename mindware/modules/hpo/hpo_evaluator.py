@@ -17,9 +17,11 @@ from mindware.components.models.regression import _regressors, _addons as _rgs_a
 from mindware.components.utils.constants import *
 from ConfigSpace import ConfigurationSpace, Constant
 
-
 from mindware.components.evaluators.cls_evaluator import get_estimator as get_cls_estimator
 from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
+
+from mindware.modules.base_evaluator import BaseCLSEvaluator
+from mindware.modules.base_evaluator import BaseRGSEvaluator
 
 
 def get_hpo_cs(estimator_id, task_type):
@@ -43,6 +45,33 @@ def get_hpo_cs(estimator_id, task_type):
 
     return cs
 
+
+class HPOCLSEvaluator(BaseCLSEvaluator):
+    def __init__(
+            self, fixed_config=None, scorer=None, data_node=None, task_type=0,
+            resampling_strategy='cv', resampling_params=None,
+            timestamp=None, output_dir=None, seed=1,
+            if_imbal=False
+    ):
+        super().__init__(
+            fixed_config, scorer, data_node, task_type,
+            resampling_strategy, resampling_params,
+            timestamp, output_dir, seed,
+            if_imbal
+        )
+
+
+class HPORGSEvaluator(BaseRGSEvaluator):
+    def __init__(
+            self, fixed_config=None, scorer=None, data_node=None, task_type=0,
+            resampling_strategy='cv', resampling_params=None,
+            timestamp=None, output_dir=None, seed=1
+    ):
+        super().__init__(
+            fixed_config, scorer, data_node, task_type,
+            resampling_strategy, resampling_params,
+            timestamp, output_dir, seed
+        )
 
 
 class HPOClassificationEvaluator(_BaseEvaluator):

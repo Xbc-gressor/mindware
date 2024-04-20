@@ -2,6 +2,7 @@ from ConfigSpace import ConfigurationSpace, CategoricalHyperparameter
 import warnings
 import os
 import time
+import datetime
 import numpy as np
 import pickle as pkl
 from sklearn.metrics._scorer import balanced_accuracy_scorer, _ThresholdScorer
@@ -20,10 +21,10 @@ from mindware.components.evaluators.cls_evaluator import get_estimator as get_cl
 
 class BaseEvaluator(_BaseEvaluator):
     def __init__(
-        self, fixed_config=None, scorer=None, data_node=None, task_type=0,
-        resampling_strategy='cv', resampling_params=None,
-        timestamp=None, output_dir=None, seed=1,
-        if_imbal=False
+            self, fixed_config=None, scorer=None, data_node=None, task_type=0,
+            resampling_strategy='cv', resampling_params=None,
+            timestamp=None, output_dir=None, seed=1,
+            if_imbal=False
     ):
         self.resampling_strategy = resampling_strategy
         self.resampling_params = resampling_params
@@ -42,13 +43,29 @@ class BaseEvaluator(_BaseEvaluator):
         self.train_node = data_node.copy_()
         self.val_node = data_node.copy_()
 
-        self.timestamp = timestamp
+        self.timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
     def get_fit_params(self, y, estimator):
         from mindware.components.utils.balancing import get_weights
         _init_params, _fit_params = get_weights(
             y, estimator, None, {}, {})
         return _init_params, _fit_params
+
+    def _get_estimator_getter(self):
+
+        raise NotImplementedError
+
+    def _get_spliter(self, resampling_strategy, **kwargs):
+
+        raise NotImplementedError
+
+    def _get_parse_data_node(self, config, record=True):
+
+        raise NotImplementedError
+
+    def _get_onehot_encoder(self, y):
+
+        raise NotImplementedError
 
     def __call__(self, config, **kwargs):
         start_time = time.time()
@@ -63,8 +80,11 @@ class BaseEvaluator(_BaseEvaluator):
             config = config.copy()
         if self.fixed_config is not None:
             config.update(self.fixed_config)
-        self.estimator_id = config['algorithm']
+        estimator_id = config['algorithm']
 
+        score = -np.inf
+        estimator = None
+        _x_train, _y_train = None, None
         if 'holdout' in self.resampling_strategy:
             # Prepare data node.
             with warnings.catch_warnings():
@@ -75,17 +95,15 @@ class BaseEvaluator(_BaseEvaluator):
                 else:
                     test_size = self.resampling_params['test_size']
 
-                from sklearn.model_selection import StratifiedShuffleSplit
-                ss = StratifiedShuffleSplit(n_splits=1, test_size=test_size, random_state=self.seed)
+                ss = self._get_spliter(self.resampling_strategy, test_size=test_size, random_state=self.seed)
+
                 for train_index, test_index in ss.split(self.data_node.data[0], self.data_node.data[1]):
                     _x_train, _x_val = self.data_node.data[0][train_index], self.data_node.data[0][test_index]
                     _y_train, _y_val = self.data_node.data[1][train_index], self.data_node.data[1][test_index]
                 self.train_node.data = [_x_train, _y_train]
                 self.val_node.data = [_x_val, _y_val]
 
-                data_node, op_list = parse_config(self.train_node, config, record=True, if_imbal=self.if_imbal)
-                _val_node = self.val_node.copy_()
-                _val_node = construct_node(_val_node, op_list)
+                op_list, data_node, _val_node = self._get_parse_data_node(config, record=True)
 
             _x_train, _y_train = data_node.data
             _x_val, _y_val = _val_node.data
@@ -94,40 +112,23 @@ class BaseEvaluator(_BaseEvaluator):
             # Prepare training and initial params for classifier.
             init_params, fit_params = {}, {}
             if data_node.enable_balance == 1:
-                init_params, fit_params = self.get_fit_params(_y_train, self.estimator_id)
+                init_params, fit_params = self.get_fit_params(_y_train, estimator_id)
+            if init_params is not None:
                 for key, val in init_params.items():
                     config_dict[key] = val
+                if data_node.data_balance == 1:
+                    fit_params['data_balance'] = True
 
-            if data_node.data_balance == 1:
-                fit_params['data_balance'] = True
-
-            classifier_id, clf = get_cls_estimator(config_dict, self.estimator_id)
+            _, estimator = self._get_estimator_getter()(config_dict, estimator_id)
 
             if self.onehot_encoder is None:
-                self.onehot_encoder = OneHotEncoder(categories='auto')
-                y = np.reshape(_y_train, (len(_y_train), 1))
-                self.onehot_encoder.fit(y)
+                self.onehot_encoder = self._get_onehot_encoder(_y_train)
 
-            score = validation(clf, self.scorer, _x_train, _y_train, _x_val, _y_val,
+            score = validation(estimator, self.scorer, _x_train, _y_train, _x_val, _y_val,
                                random_state=self.seed,
                                onehot=self.onehot_encoder if isinstance(self.scorer,
                                                                         _ThresholdScorer) else None,
                                fit_params=fit_params)
-
-            if np.isfinite(score):
-                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.timestamp)
-
-                if not os.path.exists(model_path):
-                    with open(model_path, 'wb') as f:
-                        pkl.dump([op_list, clf, score], f)
-                else:
-                    with open(model_path, 'rb') as f:
-                        _, _, perf = pkl.load(f)
-                    if score > perf:
-                        with open(model_path, 'wb') as f:
-                            pkl.dump([op_list, clf, score], f)
-
-                self.logger.info("Model saved to %s" % model_path)
 
         elif 'cv' in self.resampling_strategy:
             with warnings.catch_warnings():
@@ -139,19 +140,16 @@ class BaseEvaluator(_BaseEvaluator):
                     else:
                         folds = self.resampling_params['folds']
 
-                from sklearn.model_selection import StratifiedKFold
-                skfold = StratifiedKFold(n_splits=folds, random_state=self.seed, shuffle=False)
+                skfold = self._get_spliter(self.resampling_strategy,
+                                           n_splits=folds, random_state=self.seed, shuffle=False)
                 scores = list()
-
                 for train_index, test_index in skfold.split(self.data_node.data[0], self.data_node.data[1]):
                     _x_train, _x_val = self.data_node.data[0][train_index], self.data_node.data[0][test_index]
                     _y_train, _y_val = self.data_node.data[1][train_index], self.data_node.data[1][test_index]
                     self.train_node.data = [_x_train, _y_train]
                     self.val_node.data = [_x_val, _y_val]
 
-                    data_node, op_list = parse_config(self.train_node, config, record=True, if_imbal=self.if_imbal)
-                    _val_node = self.val_node.copy_()
-                    _val_node = construct_node(_val_node, op_list)
+                    _, data_node, _val_node = self._get_parse_data_node(config, record=True)
 
                     _x_train, _y_train = data_node.data
                     _x_val, _y_val = _val_node.data
@@ -160,21 +158,19 @@ class BaseEvaluator(_BaseEvaluator):
                     # Prepare training and initial params for classifier.
                     init_params, fit_params = {}, {}
                     if data_node.enable_balance == 1:
-                        init_params, fit_params = self.get_fit_params(_y_train, self.estimator_id)
+                        init_params, fit_params = self.get_fit_params(_y_train, estimator_id)
+                    if init_params is not None:
                         for key, val in init_params.items():
                             config_dict[key] = val
+                        if data_node.data_balance == 1:
+                            fit_params['data_balance'] = True
 
-                    if data_node.data_balance == 1:
-                        fit_params['data_balance'] = True
-
-                    classifier_id, clf = get_cls_estimator(config_dict, self.estimator_id)
+                    _, estimator = self._get_estimator_getter()(config_dict, estimator_id)
 
                     if self.onehot_encoder is None:
-                        self.onehot_encoder = OneHotEncoder(categories='auto')
-                        y = np.reshape(_y_train, (len(_y_train), 1))
-                        self.onehot_encoder.fit(y)
+                        self.onehot_encoder = self._get_onehot_encoder(_y_train)
 
-                    _score = validation(clf, self.scorer, _x_train, _y_train, _x_val, _y_val,
+                    _score = validation(estimator, self.scorer, _x_train, _y_train, _x_val, _y_val,
                                         random_state=self.seed,
                                         onehot=self.onehot_encoder if isinstance(self.scorer,
                                                                                  _ThresholdScorer) else None,
@@ -192,23 +188,22 @@ class BaseEvaluator(_BaseEvaluator):
                 else:
                     test_size = self.resampling_params['test_size']
 
-                from sklearn.model_selection import StratifiedShuffleSplit
-                ss = StratifiedShuffleSplit(n_splits=1, test_size=test_size, random_state=self.seed)
+                ss = self._get_spliter(self.resampling_strategy, test_size=test_size, random_state=self.seed)
                 for train_index, test_index in ss.split(self.data_node.data[0], self.data_node.data[1]):
                     _x_train, _x_val = self.data_node.data[0][train_index], self.data_node.data[0][test_index]
                     _y_train, _y_val = self.data_node.data[1][train_index], self.data_node.data[1][test_index]
                 self.train_node.data = [_x_train, _y_train]
                 self.val_node.data = [_x_val, _y_val]
 
-                data_node, op_list = parse_config(self.train_node, config, record=True, if_imbal=self.if_imbal)
-                _val_node = self.val_node.copy_()
-                _val_node = construct_node(_val_node, op_list)
+                op_list, data_node, _val_node = self._get_parse_data_node(config, record=True)
 
             _x_train, _y_train = data_node.data
 
+            _val_index = None
+            _act_x_train, _act_y_train = None, None
             if downsample_ratio != 1:
-                down_ss = StratifiedShuffleSplit(n_splits=1, test_size=downsample_ratio,
-                                                 random_state=self.seed)
+                down_ss = self._get_spliter(self.resampling_strategy, downsample_ratio=downsample_ratio,
+                                            random_state=self.seed)
                 for _, _val_index in down_ss.split(_x_train, _y_train):
                     _act_x_train, _act_y_train = _x_train[_val_index], _y_train[_val_index]
             else:
@@ -221,52 +216,148 @@ class BaseEvaluator(_BaseEvaluator):
             # Prepare training and initial params for classifier.
             init_params, fit_params = {}, {}
             if data_node.enable_balance == 1:
-                init_params, fit_params = self.get_fit_params(_y_train, self.estimator_id)
+                init_params, fit_params = self.get_fit_params(_y_train, estimator_id)
+            if init_params is not None:
                 for key, val in init_params.items():
                     config_dict[key] = val
-            if 'sample_weight' in fit_params:
-                fit_params['sample_weight'] = fit_params['sample_weight'][_val_index]
-            if data_node.data_balance == 1:
-                fit_params['data_balance'] = True
+                if 'sample_weight' in fit_params:
+                    fit_params['sample_weight'] = fit_params['sample_weight'][_val_index]
+                if data_node.data_balance == 1:
+                    fit_params['data_balance'] = True
 
-            classifier_id, clf = get_cls_estimator(config_dict, self.estimator_id)
+            _, estimator = self._get_estimator_getter()(config_dict, estimator_id)
 
             if self.onehot_encoder is None:
-                self.onehot_encoder = OneHotEncoder(categories='auto')
-                y = np.reshape(_y_train, (len(_y_train), 1))
-                self.onehot_encoder.fit(y)
-            score = validation(clf, self.scorer, _act_x_train, _act_y_train, _x_val, _y_val,
+                self.onehot_encoder = self._get_onehot_encoder(_y_train)
+
+            score = validation(estimator, self.scorer, _act_x_train, _act_y_train, _x_val, _y_val,
                                random_state=self.seed,
                                onehot=self.onehot_encoder if isinstance(self.scorer,
                                                                         _ThresholdScorer) else None,
                                fit_params=fit_params)
+
+        else:
+            raise ValueError('Invalid resampling strategy: %s!' % self.resampling_strategy)
+
+        if 'holdout' in self.resampling_strategy or 'partial' in self.resampling_strategy:
 
             if np.isfinite(score) and downsample_ratio == 1:
                 model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.timestamp)
 
                 if not os.path.exists(model_path):
                     with open(model_path, 'wb') as f:
-                        pkl.dump([op_list, clf, score], f)
+                        pkl.dump([op_list, estimator, score], f)
                 else:
                     with open(model_path, 'rb') as f:
                         _, _, perf = pkl.load(f)
                     if score > perf:
                         with open(model_path, 'wb') as f:
-                            pkl.dump([op_list, clf, score], f)
+                            pkl.dump([op_list, estimator, score], f)
 
                 self.logger.info("Model saved to %s" % model_path)
 
-        else:
-            raise ValueError('Invalid resampling strategy: %s!' % self.resampling_strategy)
-
         try:
             self.logger.info('Evaluation<%s> | Score: %.4f | Time cost: %.2f seconds | Shape: %s' %
-                             (classifier_id,
+                             (estimator_id,
                               self.scorer._sign * score,
                               time.time() - start_time, _x_train.shape))
         except:
             pass
 
         # Turn it into a minimization problem.
-        return_dict['objective'] = -score
-        return -score
+        return_dict['objectives'] = [-score]
+
+        return return_dict
+
+
+class BaseCLSEvaluator(BaseEvaluator):
+
+    def __init__(
+            self, fixed_config=None, scorer=None, data_node=None, task_type=0,
+            resampling_strategy='cv', resampling_params=None,
+            timestamp=None, output_dir=None, seed=1,
+            if_imbal=False
+    ):
+        super().__init__(
+            fixed_config, scorer, data_node, task_type,
+            resampling_strategy, resampling_params,
+            timestamp, output_dir, seed,
+            if_imbal
+        )
+
+    def get_fit_params(self, y, estimator):
+        from mindware.components.utils.balancing import get_weights
+        _init_params, _fit_params = get_weights(
+            y, estimator, None, {}, {})
+        return _init_params, _fit_params
+
+    def _get_estimator_getter(self):
+        return get_cls_estimator
+
+    def _get_spliter(self, resampling_strategy, **kwargs):
+
+        if 'cv' in resampling_strategy:
+            folds = kwargs.pop('n_splits')
+            shuffle = kwargs.pop('shuffle')
+            from sklearn.model_selection import StratifiedKFold
+            return StratifiedKFold(n_splits=folds, shuffle=shuffle)
+        elif 'holdout' in resampling_strategy or 'partial' in resampling_strategy:
+            test_size = kwargs.pop('test_size')
+            random_state = kwargs.pop('random_state')
+            from sklearn.model_selection import StratifiedShuffleSplit
+            return StratifiedShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
+        else:
+            raise ValueError('Invalid resampling strategy: %s!' % resampling_strategy)
+
+    def _get_parse_data_node(self, config, record=True):
+        return {}, self.train_node, self.val_node
+
+    def _get_onehot_encoder(self, y):
+        onehot_encoder = OneHotEncoder(categories='auto')
+        y = np.reshape(y, (len(y), 1))
+        onehot_encoder.fit(y)
+        return onehot_encoder
+
+
+class BaseRGSEvaluator(BaseEvaluator):
+
+    def __init__(
+            self, fixed_config=None, scorer=None, data_node=None, task_type=0,
+            resampling_strategy='cv', resampling_params=None,
+            timestamp=None, output_dir=None, seed=1,
+    ):
+        super().__init__(
+            fixed_config, scorer, data_node, task_type,
+            resampling_strategy, resampling_params,
+            timestamp, output_dir, seed,
+            if_imbal=False
+        )
+
+    def get_fit_params(self, y, estimator):
+
+        return None, None
+
+    def _get_estimator_getter(self):
+        return get_rgs_estimator
+
+    def _get_spliter(self, resampling_strategy, **kwargs):
+
+        if 'cv' in resampling_strategy:
+            folds = kwargs.pop('n_splits')
+            shuffle = kwargs.pop('shuffle')
+            from sklearn.model_selection import KFold
+            return KFold(n_splits=folds, shuffle=shuffle)
+        elif 'holdout' in resampling_strategy or 'partial' in resampling_strategy:
+            test_size = kwargs.pop('test_size')
+            random_state = kwargs.pop('random_state')
+            from sklearn.model_selection import ShuffleSplit
+            return ShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
+        else:
+            raise ValueError('Invalid resampling strategy: %s!' % resampling_strategy)
+
+    def _get_parse_data_node(self, config, record=True):
+        return {}, self.train_node, self.val_node
+
+    def _get_onehot_encoder(self, y):
+
+        return None
