@@ -1,5 +1,6 @@
 import time
 import numpy as np
+from copy import deepcopy
 
 from mindware.components.optimizers.base_optimizer import BaseOptimizer
 from ConfigSpace import ConfigurationSpace, Constant
@@ -36,6 +37,8 @@ class MabOptimizer(BaseOptimizer):
         self.per_run_time_limit = per_run_time_limit
         self.per_run_mem_limit = per_run_mem_limit
 
+        self.configs = list()
+        self.perfs = list()
         self.incumbent_perf = float("-INF")
         self.incumbent_config = self.config_space.get_default_configuration()
         self.eval_dict = dict()
@@ -88,9 +91,12 @@ class MabOptimizer(BaseOptimizer):
                     pass
 
             if fe_config_space is not None:
-                cs.add_hyperparameters(fe_config_space.get_hyperparameters())
-                cs.add_conditions(fe_config_space.get_conditions())
-                cs.add_forbidden_clauses(fe_config_space.get_forbiddens())
+                cs.add_hyperparameters(deepcopy(fe_config_space.get_hyperparameters()))
+                cs.add_conditions(deepcopy(fe_config_space.get_conditions()))
+                cs.add_forbidden_clauses(deepcopy(fe_config_space.get_forbiddens()))
+                # cs.add_hyperparameters(fe_config_space.get_hyperparameters())
+                # cs.add_conditions(fe_config_space.get_conditions())
+                # cs.add_forbidden_clauses(fe_config_space.get_forbiddens())
 
             self.sub_bandits[arm] = optimizer_class(
                 self.evaluator, cs, 'hpo',
@@ -142,6 +148,9 @@ class MabOptimizer(BaseOptimizer):
             self.logger.info('Optimize %s in the %d-th iteration' % (arm_to_pull, self.pull_cnt))
             _start_time = time.time()
             reward, _, incumbent = self.sub_bandits[arm_to_pull].iterate(budget=self.time_limit + self.timestamp - time.time())
+
+            self.perfs.extend(self.sub_bandits[arm_to_pull].perfs[-self.inner_iter_num_per_iter:])
+            self.configs.extend(self.sub_bandits[arm_to_pull].configs[-self.inner_iter_num_per_iter:])
 
             # Update results after each iteration
             self.arm_cost_stats[arm_to_pull].append(time.time() - _start_time)

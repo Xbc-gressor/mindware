@@ -60,8 +60,9 @@ class DataManager(object):
             else:
                 flag, cand_values, ab_idx, is_str = detect_abnormal_type(col_vals)
                 if flag:
-                    # Set the invalid element to NaN.
-                    df.at[ab_idx, col_name] = np.nan
+                    for idx in ab_idx:
+                        # Set the invalid element to NaN.
+                        df.at[idx, col_name] = np.nan
                     # Refresh the cleaned column.
                     cleaned_vals = np.array([val for val in df[col_name].values if not pd.isnull(val)])
                     if is_str:
@@ -77,14 +78,14 @@ class DataManager(object):
             raise ValueError("Feature type missing")
         return DataNode([X, y], self.feature_types, feature_names=self.feature_names)
 
-    def clean_data_with_nan(self, df, label_col, phase='train', drop_index=None, has_label=True):
+    def clean_data_with_nan(self, df, label_name, phase='train', drop_index=None, has_label=True):
         columns_missed = df.columns[df.isnull().any()].tolist()
 
         if has_label:
             if self.label_name is None:
                 if phase != 'train':
-                    print('Warning: Label is not specified! set label_col=%d by default.' % label_col)
-                label_colname = df.columns[label_col]
+                    print('Warning: Label is not specified! set label_name=%s by default.' % label_name)
+                label_colname = label_name
             else:
                 label_colname = self.label_name
 
@@ -107,9 +108,9 @@ class DataManager(object):
             drop_col = [df.columns[index] for index in drop_index]
             df.drop(drop_col, axis=1, inplace=True)
 
-    def load_train_csv(self, file_location, label_col=-1, drop_index=None,
+    def load_train_csv(self, file_location, label_name='ground truth', drop_index=None,
                        keep_default_na=True, na_values=None, header='infer',
-                       sep=','):
+                       sep=',', ignore_columns=None):
         # Set the NA values.
         if na_values is not None:
             na_set = set(self.na_values)
@@ -129,8 +130,14 @@ class DataManager(object):
         # Drop the row with all NaNs.
         df.dropna(how='all')
 
+        if ignore_columns:
+            retain_columns = [col for col in df.columns if col not in ignore_columns]
+            df = df[retain_columns]
+
+        df[label_name] = self.encode_label_func(df[label_name])
+
         # Clean the data where the label columns have nans.
-        self.clean_data_with_nan(df, label_col, drop_index=drop_index)
+        self.clean_data_with_nan(df, label_name, drop_index=drop_index)
 
         # The columns with missing values.
         columns_missed = df.columns[df.isnull().any()].tolist()
@@ -142,14 +149,21 @@ class DataManager(object):
         data = [self.train_X, self.train_y]
         return DataNode(data, self.feature_types, feature_names=self.train_X.columns.values)
 
-    def load_test_csv(self, file_location, has_label=False, label_col=-1,
+    def load_test_csv(self, file_location, has_label=False, label_name='ground truth',
                       drop_index=None, keep_default_na=True, header='infer',
-                      sep=','):
+                      sep=',', ignore_columns=None):
         df = pd.read_csv(file_location, keep_default_na=keep_default_na,
                          na_values=self.na_values, header=header, sep=sep)
         # Drop the row with all NaNs.
         df.dropna(how='all')
-        self.clean_data_with_nan(df, label_col, phase='test', drop_index=drop_index, has_label=has_label)
+        if ignore_columns:
+            retain_columns = [col for col in df.columns if col not in ignore_columns]
+            df = df[retain_columns]
+
+        if has_label:
+            df[label_name] = self.encode_label_func(df[label_name])
+
+        self.clean_data_with_nan(df, label_name, phase='test', drop_index=drop_index, has_label=has_label)
         self.test_X = df
 
         data = [self.test_X, self.test_y]
@@ -235,6 +249,16 @@ class DataManager(object):
             self.variance_selector = VarianceSelector()
         input_node = self.variance_selector.operate(input_node)
         return input_node
+
+    def encode_label_func(self, y):
+        import pandas as pd
+        from sklearn.preprocessing import LabelEncoder
+        if isinstance(y, pd.Series):
+            y = y.values
+            label_encoder = LabelEncoder()
+            label_encoder.fit(y)
+        y = label_encoder.transform(y)
+        return y
 
     def encode_label(self, input_node: DataNode):
         import pandas as pd
