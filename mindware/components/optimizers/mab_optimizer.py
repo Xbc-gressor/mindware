@@ -137,6 +137,7 @@ class MabOptimizer(BaseOptimizer):
 
     def iterate(self, budget=MAX_INT):
 
+        _start_time = time.time()
         # Search for an arm that is not early-stopped.
         while self.sub_bandits[self.arm_candidate[self.pick_id]].early_stopped_flag and \
                 self.pick_id < len(self.arm_candidate):
@@ -147,6 +148,7 @@ class MabOptimizer(BaseOptimizer):
             arm_to_pull = self.arm_candidate[self.pick_id]
             self.logger.info('Optimize %s in the %d-th iteration' % (arm_to_pull, self.pull_cnt))
             _start_time = time.time()
+            self.sub_bandits[arm_to_pull].inner_iter_num_per_iter = self.inner_iter_num_per_iter
             reward, _, incumbent = self.sub_bandits[arm_to_pull].iterate(budget=self.time_limit + self.timestamp - time.time())
 
             self.perfs.extend(self.sub_bandits[arm_to_pull].perfs[-self.inner_iter_num_per_iter:])
@@ -237,4 +239,6 @@ class MabOptimizer(BaseOptimizer):
             self.timeout_flag = True
             self.logger.info('Time elapsed!')
 
-        return self.incumbent_perf
+        iteration_cost = time.time() - _start_time
+
+        return self.incumbent_perf, iteration_cost, self.incumbent_config

@@ -118,7 +118,12 @@ class BaseAutoML(object):
 
         return optimizer
 
-    def iterate(self):
+    def iterate(self, trial_num=None):
+        if trial_num is None:
+            trial_num = self.inner_iter_num_per_iter
+
+        self.optimizer.inner_iter_num_per_iter = trial_num
+
         self.optimizer.iterate(budget=self.time_limit + self.timestamp - time.time())
         if time.time() - self.timestamp > self.time_limit:
             self.timeout_flag = True

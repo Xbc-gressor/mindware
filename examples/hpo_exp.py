@@ -79,9 +79,9 @@ if __name__ == '__main__':
 
     hpo = BaseHPO(estimator_id=estimator_id,
                   metric=metric,
-                  data_node=train_data, evaluation='partial_bohb', resampling_params=None,
+                  data_node=train_data, evaluation='holdout', resampling_params=None,
                   optimizer='smac', per_run_time_limit=600,
-                  time_limit=1024, amount_of_resource=10,
+                  time_limit=1024, amount_of_resource=1,
                   output_dir='./data', seed=1, n_jobs=1,
                   ensemble_method="blending", ensemble_size=5)
 

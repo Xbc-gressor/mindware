@@ -14,6 +14,7 @@ class BaseCASH(BaseAutoML):
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac',
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
+                 inner_iter_num_per_iter=1,
                  output_dir=None, seed=None, n_jobs=1,
                  ensemble_method=None, ensemble_size=5):
 
@@ -23,6 +24,7 @@ class BaseCASH(BaseAutoML):
             evaluation=evaluation, resampling_params=resampling_params,
             optimizer=optimizer, per_run_time_limit=per_run_time_limit,
             time_limit=time_limit, amount_of_resource=amount_of_resource,
+            inner_iter_num_per_iter=inner_iter_num_per_iter,
             output_dir=output_dir, seed=seed, n_jobs=n_jobs,
             ensemble_method=ensemble_method, ensemble_size=ensemble_size
         )
