@@ -10,23 +10,21 @@ from mindware.components.feature_engineering.transformation_graph import DataNod
 from mindware.components.feature_engineering.task_space import get_task_hyperparameter_space
 
 class BaseCASHFE(BaseAutoML):
-    def __init__(self, include_algorithms: List[str] = None, sub_optimizer: str = 'smac',
+    def __init__(self, include_algorithms: List[str] = None, sub_optimizer: str = 'smac', task_type: str = None,
                  metric: str = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
-                 optimizer='smac',
+                 optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
-                 inner_iter_num_per_iter=1,
                  output_dir=None, seed=None, n_jobs=1,
                  ensemble_method=None, ensemble_size=5,
                  include_preprocessors=None):
 
         super(BaseCASHFE, self).__init__(
-            name='cashfe',
+            name='cashfe', task_type=task_type,
             metric=metric, data_node=data_node,
             evaluation=evaluation, resampling_params=resampling_params,
-            optimizer=optimizer, per_run_time_limit=per_run_time_limit,
-            time_limit=time_limit, amount_of_resource=amount_of_resource,
-            inner_iter_num_per_iter=inner_iter_num_per_iter,
+            optimizer=optimizer, inner_iter_num_per_iter=inner_iter_num_per_iter,
+            time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=per_run_time_limit,
             output_dir=output_dir, seed=seed, n_jobs=n_jobs,
             ensemble_method=ensemble_method, ensemble_size=ensemble_size
         )

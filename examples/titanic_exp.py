@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     include_algorithms = [
         'adaboost', 'extra_trees', 'gradient_boosting',
-        'k_nearest_neighbors', 'liblinear_svc', 'libsvm_svc',
+        'liblinear_svc', 'libsvm_svc',
         'logistic_regression', 'qda', 'random_forest',
         'lightgbm'
     ]
@@ -36,11 +36,11 @@ if __name__ == '__main__':
     hpo = BaseCASHFE(
         include_algorithms=include_algorithms, sub_optimizer='smac',
         metric=metric,
-        data_node=train_data_node, evaluation='cv', resampling_params=None,
-        optimizer='smac', per_run_time_limit=600,
-        time_limit=1024, amount_of_resource=100,
+        data_node=train_data_node, evaluation='holdout', resampling_params=None,
+        optimizer='smac', inner_iter_num_per_iter=1,
+        time_limit=1024, amount_of_resource=100, per_run_time_limit=600,
         output_dir='./data', seed=1, n_jobs=1,
-        ensemble_method="blending", ensemble_size=5
+        ensemble_method="ensemble_selection", ensemble_size=5
     )
 
     # hpo = BaseCASH(

@@ -91,12 +91,12 @@ class MabOptimizer(BaseOptimizer):
                     pass
 
             if fe_config_space is not None:
-                cs.add_hyperparameters(deepcopy(fe_config_space.get_hyperparameters()))
-                cs.add_conditions(deepcopy(fe_config_space.get_conditions()))
-                cs.add_forbidden_clauses(deepcopy(fe_config_space.get_forbiddens()))
-                # cs.add_hyperparameters(fe_config_space.get_hyperparameters())
-                # cs.add_conditions(fe_config_space.get_conditions())
-                # cs.add_forbidden_clauses(fe_config_space.get_forbiddens())
+                cs.add_hyperparameters(
+                    deepcopy(fe_config_space.get_hyperparameters()))
+                cs.add_conditions(
+                    deepcopy(fe_config_space.get_conditions()))
+                cs.add_forbidden_clauses(
+                    deepcopy(fe_config_space.get_forbiddens()))
 
             self.sub_bandits[arm] = optimizer_class(
                 self.evaluator, cs, 'hpo',
@@ -136,6 +136,9 @@ class MabOptimizer(BaseOptimizer):
         return self.incumbent_perf
 
     def iterate(self, budget=MAX_INT):
+
+        for _arm in self.arms:
+            self.sub_bandits[_arm].inner_iter_num_per_iter = self.inner_iter_num_per_iter
 
         _start_time = time.time()
         # Search for an arm that is not early-stopped.

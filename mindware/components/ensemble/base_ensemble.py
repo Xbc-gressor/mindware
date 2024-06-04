@@ -35,6 +35,7 @@ class BaseEnsembleModel(object):
         logger_name = 'EnsembleBuilder'
         self.logger = get_logger(logger_name)
 
+        model_cnt = 0
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
             for idx, (_, _, path) in enumerate(model_to_eval):
@@ -67,6 +68,8 @@ class BaseEnsembleModel(object):
                 else:
                     y_valid_pred = model.predict(X_valid)
                 self.predictions.append(y_valid_pred)
+
+                model_cnt += 1
 
         if len(self.predictions) < self.ensemble_size:
             self.ensemble_size = len(self.predictions)

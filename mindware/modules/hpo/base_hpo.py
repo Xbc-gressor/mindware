@@ -9,7 +9,7 @@ from mindware.modules.hpo.hpo_evaluator import get_hpo_cs
 
 
 class BaseHPO(BaseAutoML):
-    def __init__(self, estimator_id: str,
+    def __init__(self, estimator_id: str, task_type: str = None,
                  metric: str = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac',
@@ -18,10 +18,10 @@ class BaseHPO(BaseAutoML):
                  ensemble_method=None, ensemble_size=5):
 
         super(BaseHPO, self).__init__(
-            name='hpo',
+            name='hpo', task_type=task_type,
             metric=metric, data_node=data_node,
             evaluation=evaluation, resampling_params=resampling_params,
-            optimizer=optimizer,
+            optimizer=optimizer, inner_iter_num_per_iter=1,
             time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=per_run_time_limit,
             output_dir=output_dir, seed=seed, n_jobs=n_jobs,
             ensemble_method=ensemble_method, ensemble_size=ensemble_size

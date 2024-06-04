@@ -27,11 +27,11 @@ from mindware.components.feature_engineering.parse import construct_node
 
 
 class BaseAutoML(object):
-    def __init__(self, name: str, metric: str = 'acc', data_node: DataNode = None,
+    def __init__(self, name: str, task_type: str = None,
+                 metric: str = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
-                 optimizer='smac', per_run_time_limit=600,
-                 time_limit=600, amount_of_resource=None,
-                 inner_iter_num_per_iter=1,
+                 optimizer='smac', inner_iter_num_per_iter=1,
+                 time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=None, n_jobs=1,
                  ensemble_method=None, ensemble_size=5):
 
@@ -47,6 +47,8 @@ class BaseAutoML(object):
         self.per_run_time_limit = per_run_time_limit
         self.time_limit = time_limit
         self.amount_of_resource = int(1e8) if amount_of_resource is None else amount_of_resource
+        if self.optimizer_name != 'mab':
+            inner_iter_num_per_iter = 1
         self.inner_iter_num_per_iter = inner_iter_num_per_iter
 
         self.timeout_flag = False
@@ -69,11 +71,12 @@ class BaseAutoML(object):
         self.incumbent = None
         self.eval_dict = dict()
 
-        task_type = type_of_target(data_node.data[1])
-        if task_type in type_dict:
-            task_type = type_dict[task_type]
-        else:
-            raise ValueError("Invalid Task Type: %s!" % task_type)
+        if task_type is None:
+            task_type = type_of_target(data_node.data[1])
+            if task_type in type_dict:
+                task_type = type_dict[task_type]
+            else:
+                raise ValueError("Invalid Task Type: %s!" % task_type)
         self.task_type = task_type
 
         self.if_imbal = False
@@ -107,14 +110,15 @@ class BaseAutoML(object):
             else:
                 raise ValueError("Invalid optimizer %s" % self.optimizer_name)
 
-        optimizer = optimizer_class(evaluator=self.evaluator, config_space=self.cs, name=name,
-                                    eval_type=self.evaluation,
-                                    time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
-                                    per_run_time_limit=self.per_run_time_limit,
-                                    output_dir=self.output_dir, timestamp=self.timestamp,
-                                    inner_iter_num_per_iter=self.inner_iter_num_per_iter,
-                                    seed=self.seed, n_jobs=self.n_jobs,
-                                    **opt_paras)
+        optimizer = optimizer_class(
+            evaluator=self.evaluator, config_space=self.cs, name=name,
+            eval_type=self.evaluation,
+            time_limit=self.time_limit, evaluation_limit=self.amount_of_resource, per_run_time_limit=self.per_run_time_limit,
+            output_dir=self.output_dir, timestamp=self.timestamp,
+            inner_iter_num_per_iter=self.inner_iter_num_per_iter,
+            seed=self.seed, n_jobs=self.n_jobs,
+            **opt_paras
+        )
 
         return optimizer
 
@@ -180,7 +184,6 @@ class BaseAutoML(object):
                     with open(path, 'wb')as f:
                         pkl.dump([op_list, estimator, None], f)
 
-            self.fit_ensemble()
         else:
             self.logger.info('Start to refit the best model!')
 
@@ -223,10 +226,13 @@ class BaseAutoML(object):
                                       output_dir=self.output_dir)
             self.es.fit(data=self.data_node)
 
-    def predict(self, test_data: DataNode, ens=True):
+    def predict(self, test_data: DataNode, ens=True, prob=False):
         if self.task_type in CLS_TASKS:
             pred = self._predict(test_data, ens)
-            return np.argmax(pred, axis=-1)
+            if prob:
+                return pred
+            else:
+                return np.argmax(pred, axis=-1)
         else:
             return self._predict(test_data, ens)
 

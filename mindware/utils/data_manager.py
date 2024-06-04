@@ -9,6 +9,8 @@ from mindware.components.feature_engineering.transformations.preprocessor.onehot
     OneHotTransformation
 from mindware.components.feature_engineering.transformations.selector.variance_selector import VarianceSelector
 
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder
+
 default_missing_values = ["n/a", "na", "--", "-", "?"]
 
 
@@ -30,13 +32,18 @@ class DataManager(object):
         self.test_X, self.test_y = None, None
         self.label_name = None
 
+        self.task_type = None
+        self.variance_selector = None
+        self.onehot_encoder = None
+        self.label_encoder = None
+
         if X is not None:
             self.train_X = np.array(X)
             self.train_y = np.array(y)
             if feature_types is None:
                 self.set_feat_types(pd.DataFrame(self.train_X), [])
 
-    def set_feat_types(self, df, columns_missed):
+    def set_feat_types(self, df, columns_missed, cate_cols=None):
         self.missing_flags = list()
         for idx, col_name in enumerate(df.columns):
             self.missing_flags.append(True if col_name in columns_missed else False)
@@ -53,24 +60,27 @@ class DataManager(object):
 
             int_type = int if np.__version__ >= '1.20' else np.int
             float_type = float if np.__version__ >= '1.20' else np.float
-            if dtype in [int_type, np.int16, np.int32, np.int64]:
-                feat_type = DISCRETE
-            elif dtype in [float_type, np.float16, np.float32, np.float64, np.double]:
-                feat_type = DISCRETE if is_discrete(cleaned_vals) else NUMERICAL
+            if cate_cols and col_name in cate_cols:
+                feat_type = CATEGORICAL
             else:
-                flag, cand_values, ab_idx, is_str = detect_abnormal_type(col_vals)
-                if flag:
-                    for idx in ab_idx:
-                        # Set the invalid element to NaN.
-                        df.at[idx, col_name] = np.nan
-                    # Refresh the cleaned column.
-                    cleaned_vals = np.array([val for val in df[col_name].values if not pd.isnull(val)])
-                    if is_str:
-                        feat_type = CATEGORICAL
-                    else:
-                        feat_type = DISCRETE if is_discrete(cleaned_vals) else NUMERICAL
+                if dtype in [int_type, np.int16, np.int32, np.int64]:
+                    feat_type = DISCRETE
+                elif dtype in [float_type, np.float16, np.float32, np.float64, np.double]:
+                    feat_type = DISCRETE if is_discrete(cleaned_vals) else NUMERICAL
                 else:
-                    feat_type = CATEGORICAL
+                    flag, cand_values, ab_idx, is_str = detect_abnormal_type(col_vals)
+                    if flag:
+                        for idx in ab_idx:
+                            # Set the invalid element to NaN.
+                            df.at[idx, col_name] = np.nan
+                        # Refresh the cleaned column.
+                        cleaned_vals = np.array([val for val in df[col_name].values if not pd.isnull(val)])
+                        if is_str:
+                            feat_type = CATEGORICAL
+                        else:
+                            feat_type = DISCRETE if is_discrete(cleaned_vals) else NUMERICAL
+                    else:
+                        feat_type = CATEGORICAL
             self.feature_types.append(feat_type)
 
     def get_data_node(self, X, y):
@@ -110,7 +120,7 @@ class DataManager(object):
 
     def load_train_csv(self, file_location, label_name='ground truth', drop_index=None,
                        keep_default_na=True, na_values=None, header='infer',
-                       sep=',', ignore_columns=None):
+                       sep=',', ignore_columns=None, cate_cols=None):
         # Set the NA values.
         if na_values is not None:
             na_set = set(self.na_values)
@@ -134,7 +144,8 @@ class DataManager(object):
             retain_columns = [col for col in df.columns if col not in ignore_columns]
             df = df[retain_columns]
 
-        df[label_name] = self.encode_label_func(df[label_name])
+        # if self.task_type in CLS_TASKS:
+        #     df[label_name] = self.encode_label_func(df[label_name])
 
         # Clean the data where the label columns have nans.
         self.clean_data_with_nan(df, label_name, drop_index=drop_index)
@@ -143,7 +154,7 @@ class DataManager(object):
         columns_missed = df.columns[df.isnull().any()].tolist()
 
         # Identify the feature types
-        self.set_feat_types(df, columns_missed)
+        self.set_feat_types(df, columns_missed, cate_cols=cate_cols)
 
         self.train_X = df
         data = [self.train_X, self.train_y]
@@ -160,8 +171,8 @@ class DataManager(object):
             retain_columns = [col for col in df.columns if col not in ignore_columns]
             df = df[retain_columns]
 
-        if has_label:
-            df[label_name] = self.encode_label_func(df[label_name])
+        # if has_label and self.task_type in CLS_TASKS:
+        #     df[label_name] = self.encode_label_func(df[label_name])
 
         self.clean_data_with_nan(df, label_name, phase='test', drop_index=drop_index, has_label=has_label)
         self.test_X = df
@@ -169,7 +180,7 @@ class DataManager(object):
         data = [self.test_X, self.test_y]
         return DataNode(data, self.feature_types, feature_names=self.test_X.columns.values)
 
-    def preprocess(self, input_node, task_type=CLASSIFICATION, train_phase=True):
+    def preprocess(self, input_node, task_type=CLASSIFICATION, train_phase=True, label_encoder=None):
         try:
             input_node = self.remove_uninf_cols(input_node, train_phase=True)
             input_node = self.impute_cols(input_node)
@@ -178,17 +189,18 @@ class DataManager(object):
             print('data[0] in input_node should be a DataFrame!')
         input_node = self.remove_cols_with_same_values(input_node)
         # print('=' * 20)
-        if self.task_type is None or self.task_type in CLS_TASKS:
-            # Label encoding.
-            input_node = self.encode_label(input_node)
+        # if self.task_type is None or self.task_type in CLS_TASKS:
+        #     # Label encoding.
+        #     input_node = self.encode_label(input_node)
+        input_node = self.encode_label(input_node, label_encoder=label_encoder)
         return input_node
 
-    def preprocess_fit(self, input_node, task_type=CLASSIFICATION):
+    def preprocess_fit(self, input_node, task_type=CLASSIFICATION, label_encoder=None):
         self.task_type = task_type
         self.variance_selector = None
         self.onehot_encoder = None
         self.label_encoder = None
-        preprocessed_node = self.preprocess(input_node, train_phase=True)
+        preprocessed_node = self.preprocess(input_node, train_phase=True, label_encoder=label_encoder)
         return preprocessed_node
 
     def preprocess_transform(self, input_node):
@@ -256,20 +268,45 @@ class DataManager(object):
         if isinstance(y, pd.Series):
             y = y.values
             label_encoder = LabelEncoder()
+            if self.label_encoder:
+                label_encoder = self.label_encoder
             label_encoder.fit(y)
         y = label_encoder.transform(y)
         return y
 
-    def encode_label(self, input_node: DataNode):
+    def encode_label(self, input_node: DataNode, label_encoder=None):
         import pandas as pd
-        from sklearn.preprocessing import LabelEncoder
         X, y = input_node.data
         if isinstance(X, pd.DataFrame):
             X = X.values
         if y is not None:
             if self.label_encoder is None:
-                self.label_encoder = LabelEncoder()
-                self.label_encoder.fit(y)
-            y = self.label_encoder.transform(y)
+                if self.task_type is None or self.task_type in CLS_TASKS:
+                    self.label_encoder = LabelEncoder()
+                    self.label_encoder.fit(y)
+                else:
+                    if label_encoder == 'minmax':
+                        self.label_encoder = label_encoder
+                        self.label_encoder.fit(y.reshape(-1, 1))
+                    elif label_encoder == 'standard':
+                        self.label_encoder = StandardScaler()
+                        self.label_encoder.fit(y.reshape(-1, 1))
+                    else:
+                        self.label_encoder = None
+
+            if self.label_encoder is not None:
+                if self.task_type is None or self.task_type in CLS_TASKS:
+                    y = self.label_encoder.transform(y)
+                else:
+                    y = self.label_encoder.transform(y.reshape(-1, 1)).reshape(-1)
         input_node.data = (X, y)
         return input_node
+
+    def decode_label(self, y):
+        if self.label_encoder is not None:
+            if self.task_type is None or self.task_type in CLS_TASKS:
+                y = self.label_encoder.inverse_transform(y)
+            else:
+                y = self.label_encoder.inverse_transform(y.reshape(-1, 1)).reshape(-1)
+
+        return y
