@@ -113,7 +113,8 @@ class BaseAutoML(object):
         optimizer = optimizer_class(
             evaluator=self.evaluator, config_space=self.cs, name=name,
             eval_type=self.evaluation,
-            time_limit=self.time_limit, evaluation_limit=self.amount_of_resource, per_run_time_limit=self.per_run_time_limit,
+            time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
+            per_run_time_limit=self.per_run_time_limit,
             output_dir=self.output_dir, timestamp=self.timestamp,
             inner_iter_num_per_iter=self.inner_iter_num_per_iter,
             seed=self.seed, n_jobs=self.n_jobs,
@@ -181,7 +182,7 @@ class BaseAutoML(object):
                                                         data_node.data[0], data_node.data[1],
                                                         weight_balance=data_node.enable_balance,
                                                         data_balance=data_node.data_balance)
-                    with open(path, 'wb')as f:
+                    with open(path, 'wb') as f:
                         pkl.dump([op_list, estimator, None], f)
 
         else:
@@ -207,7 +208,7 @@ class BaseAutoML(object):
                                                 data_node.data[0], data_node.data[1],
                                                 weight_balance=data_node.enable_balance,
                                                 data_balance=data_node.data_balance)
-            with open(model_path, 'wb')as f:
+            with open(model_path, 'wb') as f:
                 pkl.dump([op_list, estimator, None], f)
 
     def fit_ensemble(self):
@@ -227,14 +228,63 @@ class BaseAutoML(object):
             self.es.fit(data=self.data_node)
 
     def predict(self, test_data: DataNode, ens=True, prob=False):
+        pred = self._predict(test_data, ens)
+
         if self.task_type in CLS_TASKS:
-            pred = self._predict(test_data, ens)
             if prob:
                 return pred
             else:
                 return np.argmax(pred, axis=-1)
         else:
-            return self._predict(test_data, ens)
+            return pred
+
+    def _predict_stats(self, test_data: DataNode, stats, ens=False, prob=False):
+        print("Predicting with stats")
+        if ens and self.ensemble_method is not None:
+            es = EnsembleBuilder(stats=stats,
+                                 data_node=self.data_node,
+                                 ensemble_method=self.ensemble_method,
+                                 ensemble_size=self.ensemble_size,
+                                 task_type=self.task_type,
+                                 metric=self.metric,
+                                 output_dir=self.output_dir)
+            es.fit(data=self.data_node)
+            pred = es.predict(test_data)
+            if self.task_type in CLS_TASKS:
+                if prob:
+                    return pred
+                else:
+                    return np.argmax(pred, axis=-1)
+            else:
+                return pred
+
+        else:
+            best_path = None
+            best_perf = -float("INF")
+            for algo_id in stats.keys():
+                model_to_eval = stats[algo_id]
+                for idx, (config, perf, path) in enumerate(model_to_eval):
+                    if perf > best_perf:
+                        best_perf = perf
+                        best_path = path
+
+            if best_path is None:
+                raise AttributeError("No stats found!")
+
+            with open(best_path, 'rb') as f:
+                best_op_list, estimator, _ = pkl.load(f)
+            test_data_node = test_data.copy_()
+            test_data_node = construct_node(test_data_node, best_op_list)
+
+            if self.task_type in CLS_TASKS:
+                if prob:
+                    return estimator.predict_proba(test_data_node.data[0])
+                else:
+                    return np.argmax(estimator.predict_proba(test_data_node.data[0]), axis=-1)
+            else:
+                return estimator.predict(test_data_node.data[0])
+
+
 
     def _predict(self, test_data: DataNode, ens=True):
         if ens and self.ensemble_method is not None:

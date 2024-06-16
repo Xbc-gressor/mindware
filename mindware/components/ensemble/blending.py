@@ -17,7 +17,7 @@ class Blending(BaseEnsembleModel):
                  task_type: int,
                  metric: _BaseScorer,
                  output_dir=None,
-                 meta_learner='linear'):
+                 meta_learner='lightgbm'):
         super().__init__(stats=stats,
                          data_node=data_node,
                          ensemble_method='blending',
