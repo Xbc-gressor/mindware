@@ -16,13 +16,14 @@ import pickle as pkl
 if __name__ == '__main__':
     task_type = REGRESSION
     # Load data
-    data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\houseprices\\'
+    # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\houseprices\\'
+    data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/houseprice'
 
     dm = DataManager()
 
     train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), ignore_columns=['Id'],
                                         label_name='SalePrice')
-    train_data_node = dm.preprocess_fit(train_data_node, REGRESSION)
+    train_data_node = dm.preprocess_fit(train_data_node, task_type)
 
     test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['Id'])
     test_data_node = dm.preprocess_transform(test_data_node)
@@ -32,7 +33,6 @@ if __name__ == '__main__':
     ensemble_method = "ensemble_selection"
     ensemble_size = 5
     metric = 'rmse'
-    resampling_strategy = 'holdout'
     evaluation = 'holdout'
 
     include_algorithms = [
@@ -42,25 +42,25 @@ if __name__ == '__main__':
     ]
 
     # 'lda',
-    hpo = CASH(
+    # hpo = CASH(
+    #     include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
+    #     metric=metric,
+    #     data_node=train_data_node, evaluation=evaluation, resampling_params=None,
+    #     optimizer='smac', inner_iter_num_per_iter=1,
+    #     time_limit=1024, amount_of_resource=100, per_run_time_limit=600,
+    #     output_dir='./data', seed=1, n_jobs=1,
+    #     ensemble_method=ensemble_method, ensemble_size=ensemble_size
+    # )
+
+    hpo = CASHFE(
         include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params=None,
-        optimizer='smac', inner_iter_num_per_iter=1,
-        time_limit=1024, amount_of_resource=100, per_run_time_limit=600,
+        optimizer='mab', inner_iter_num_per_iter=5,
+        time_limit=3024, amount_of_resource=100, per_run_time_limit=600,
         output_dir='./data', seed=1, n_jobs=1,
-        ensemble_method=ensemble_method, ensemble_size=ensemble_size
+        ensemble_method=ensemble_method, ensemble_size=5
     )
-
-    # hpo = CASHFE(
-    #     include_algorithms=include_algorithms, sub_optimizer='smac',
-    #     metric=metric,
-    #     data_node=train_data_node, evaluation='holdout', resampling_params=None,
-    #     optimizer='mab', per_run_time_limit=600,
-    #     time_limit=1024, amount_of_resource=100,
-    #     output_dir='./data', seed=1, n_jobs=1,
-    #     ensemble_method="blending", ensemble_size=5
-    # )
 
     print(hpo.run())
     hpo.refit()
@@ -72,10 +72,10 @@ if __name__ == '__main__':
 
     passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['Id']
     result = pd.DataFrame({'Id': passenger_id, 'SalePrice': pred})
-    result.to_csv(os.path.join(data_dir, 'result.csv'), index=False)
+    result.to_csv(os.path.join(data_dir, 'cashfe_mab3024_sel5_result.csv'), index=False)
     print('Result has been saved to result.csv.')
     result_ens = pd.DataFrame({'Id': passenger_id, 'SalePrice': pred_ens})
-    result_ens.to_csv(os.path.join(data_dir, 'result_ens.csv'), index=False)
+    result_ens.to_csv(os.path.join(data_dir, 'cashfe_mab3024_sel5_result_ens.csv'), index=False)
     print('Ensemble result has been saved to result_ens.csv.')
 
     # config_path = 'D:\\xbc\\Fighting\\AutoML\\mindware\\examples\\data\\CASH-smac(1)_2024-06-04-21-21-08-961071\\2024-06-04-21-21-08-961071_topk_config.pkl'
