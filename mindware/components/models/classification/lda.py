@@ -1,6 +1,6 @@
 from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
-    UniformIntegerHyperparameter, CategoricalHyperparameter
+    UniformIntegerHyperparameter, CategoricalHyperparameter, Constant
 from ConfigSpace.conditions import EqualsCondition
 import numpy as np
 
@@ -98,7 +98,10 @@ class LDA(BaseClassificationModel):
                 "shrinkage", ["None", "auto", "manual"], default_value="None")
             shrinkage_factor = UniformFloatHyperparameter(
                 "shrinkage_factor", 0., 1., 0.5)
-            n_components = UniformIntegerHyperparameter('n_components', 1, n_components_upper, default_value=1)
+            if n_components_upper < 2:
+                n_components = Constant("n_components", 1)
+            else:
+                n_components = UniformIntegerHyperparameter('n_components', 1, n_components_upper, default_value=1)
             tol = UniformFloatHyperparameter("tol", 1e-5, 1e-1, default_value=1e-4, log=True)
             cs.add_hyperparameters([shrinkage, shrinkage_factor, n_components, tol])
 
