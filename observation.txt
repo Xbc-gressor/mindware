@@ -1,0 +1,9 @@
+# knn 如果refit，会100%预测正确训练集，影响ensemble_selection的选择，所以这种情况下，knn不参加ensemble_selection
+
+# 测试refit效果
+
+# 搜索空间问题：
+knn: ValueError: Expected n_neighbors <= n_samples,  but n_samples = 67, n_neighbors = 72
+lda: ValueError: n_components cannot be larger than min(n_features, n_classes - 1).
+
+hpo 搜索空间，condition和forbidden也要加进去

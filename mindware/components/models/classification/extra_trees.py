@@ -117,7 +117,7 @@ class ExtraTreesClassifier(IterativeComponentWithSampleWeight, BaseClassificatio
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         cs = ConfigurationSpace()
 
         if sklearn.__version__ < "1.1.3":

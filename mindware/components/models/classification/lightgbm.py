@@ -63,7 +63,7 @@ class LightGBM(BaseClassificationModel):
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         cs = ConfigurationSpace()
         n_estimators = UniformFloatHyperparameter("n_estimators", 100, 1000, default_value=500, q=50)
         num_leaves = UniformIntegerHyperparameter("num_leaves", 31, 2047, default_value=128)

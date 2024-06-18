@@ -35,54 +35,6 @@ def get_estimator(config, estimator_id):
     return regressor_type, estimator
 
 
-def get_hpo_cs(estimator_id, task_type=REGRESSION):
-    _candidates = get_combined_candidtates(_regressors, _addons)
-    if estimator_id in _candidates:
-        rgs_class = _candidates[estimator_id]
-    else:
-        raise ValueError("Algorithm %s not supported!" % estimator_id)
-    cs = rgs_class.get_hyperparameter_search_space()
-    return cs
-
-
-def get_cash_cs(include_algorithms=None, task_type=REGRESSION):
-    _candidates = get_combined_candidtates(_regressors, _addons)
-    if include_algorithms is not None:
-        _candidates = set(include_algorithms).intersection(set(_candidates.keys()))
-        if len(_candidates) == 0:
-            raise ValueError("No algorithms included! Please check the spelling of the included algorithms!")
-    cs = ConfigurationSpace()
-    algo = CategoricalHyperparameter('algorithm', list(_candidates))
-    cs.add_hyperparameter(algo)
-    for estimator_id in _candidates:
-        estimator_cs = get_hpo_cs(estimator_id)
-        parent_hyperparameter = {'parent': algo,
-                                 'value': estimator_id}
-        cs.add_configuration_space(estimator_id, estimator_cs, parent_hyperparameter=parent_hyperparameter)
-    return cs
-
-
-def get_fe_cs(task_type=REGRESSION, include_image=False, include_text=False, include_preprocessors=None):
-    cs = get_task_hyperparameter_space(task_type=task_type, include_image=include_image, include_text=include_text,
-                                       include_preprocessors=include_preprocessors)
-    return cs
-
-
-def get_combined_cs(task_type=REGRESSION, include_image=False, include_text=False,
-                    include_preprocessors=None):
-    cash_cs = get_cash_cs(task_type)
-    fe_cs = get_fe_cs(task_type,
-                      include_image=include_image, include_text=include_text,
-                      include_preprocessors=include_preprocessors)
-    for hp in fe_cs.get_hyperparameters():
-        cash_cs.add_hyperparameter(hp)
-    for cond in fe_cs.get_conditions():
-        cash_cs.add_condition(cond)
-    for bid in fe_cs.get_forbiddens():
-        cash_cs.add_forbidden_clause(bid)
-    return cash_cs
-
-
 class RegressionEvaluator(_BaseEvaluator):
     def __init__(self, fixed_config=None, scorer=None, data_node=None, task_type=REGRESSION, resampling_strategy='cv',
                  resampling_params=None, timestamp=None, output_dir=None, seed=1):

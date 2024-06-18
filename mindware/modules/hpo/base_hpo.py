@@ -44,22 +44,11 @@ class BaseHPO(BaseAutoML):
 
         # _candidates = None
         self.cs = get_hpo_cs(self.estimator_id, self.task_type)
+        breakpoint()
 
         # Define evaluator and optimizer
         self.evaluator = None
         if self.task_type in CLS_TASKS:
-            # from mindware.modules.hpo.hpo_evaluator import HPOClassificationEvaluator
-            # self.evaluator = HPOClassificationEvaluator(
-            #     estimator_id=estimator_id,
-            #     fixed_config=None,
-            #     scorer=self.metric,
-            #     data_node=data_node,
-            #     if_imbal=self.if_imbal,
-            #     timestamp=self.timestamp,
-            #     output_dir=self.output_dir,
-            #     seed=self.seed,
-            #     resampling_strategy=evaluation,
-            #     resampling_params=resampling_params)
             from mindware.modules.hpo.hpo_evaluator import HPOCLSEvaluator
             self.evaluator = HPOCLSEvaluator(
                 fixed_config=None,
@@ -72,17 +61,6 @@ class BaseHPO(BaseAutoML):
                 seed=self.seed,
                 if_imbal=self.if_imbal)
         else:
-            # from mindware.modules.hpo.hpo_evaluator import HPORegressionEvaluator
-            # self.evaluator = HPORegressionEvaluator(
-            #     estimator_id=estimator_id,
-            #     fixed_config=None,
-            #     scorer=self.metric,
-            #     data_node=data_node,
-            #     timestamp=self.timestamp,
-            #     output_dir=self.output_dir,
-            #     seed=self.seed,
-            #     resampling_strategy=evaluation,
-            #     resampling_params=resampling_params)
             from mindware.modules.hpo.hpo_evaluator import HPORGSEvaluator
             self.evaluator = HPORGSEvaluator(
                 fixed_config=None,

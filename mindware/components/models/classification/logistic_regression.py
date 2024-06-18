@@ -59,7 +59,7 @@ class Logistic_Regression(BaseClassificationModel):
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None):
+    def get_hyperparameter_search_space(dataset_properties=None, **kwargs):
         C = UniformFloatHyperparameter("C", 0.03125, 10, log=True,
                                        default_value=1.0)
         tol = UniformFloatHyperparameter("tol", 1e-6, 1e-2, default_value=1e-4,

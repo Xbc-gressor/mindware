@@ -60,7 +60,7 @@ class LightGBM(BaseRegressionModel):
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         if optimizer == 'smac':
             cs = ConfigurationSpace()
             n_estimators = UniformIntegerHyperparameter("n_estimators", 100, 1000, default_value=500)

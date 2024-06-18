@@ -122,7 +122,7 @@ class RandomForest(
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         if optimizer == 'smac':
             cs = ConfigurationSpace()
             if sklearn.__version__ < "1.0.2":

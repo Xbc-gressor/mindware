@@ -65,6 +65,7 @@ class MabOptimizer(BaseOptimizer):
             raise ValueError("Invalid optimizer %s" % sub_optimizer)
 
         for arm in self.arms:
+
             self.rewards[arm] = list()
             self.evaluation_cost[arm] = list()
 

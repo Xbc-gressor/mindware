@@ -8,8 +8,12 @@ from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
 
 from mindware.components.utils.constants import CLASSIFICATION, REGRESSION
 
-from mindware.components.models.classification import _classifiers as candidates_classifiers
-from mindware.components.models.regression import _regressors as candidates_regressors
+from mindware.components.utils.class_loader import get_combined_candidtates
+from mindware.components.models.classification import _classifiers, _addons as classifiers_addons
+from mindware.components.models.regression import _regressors, _addons as regressors_addons
+
+candidates_classifiers = list(get_combined_candidtates(_classifiers, classifiers_addons).keys())
+candidates_regressors = list(get_combined_candidtates(_regressors, regressors_addons).keys())
 
 __all__ = [
     "HPO",

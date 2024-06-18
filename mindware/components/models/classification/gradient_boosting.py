@@ -126,7 +126,7 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None):
+    def get_hyperparameter_search_space(dataset_properties=None, **kwargs):
         cs = ConfigurationSpace()
         if sklearn.__version__ < "1.1.3":
             loss = Constant("loss", "deviance")

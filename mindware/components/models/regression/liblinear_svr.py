@@ -73,7 +73,7 @@ class LibLinear_SVR(BaseRegressionModel):
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         if optimizer == 'smac':
             cs = ConfigurationSpace()
             epsilon = CategoricalHyperparameter("epsilon", [1e-4, 1e-3, 1e-2, 1e-1, 1], default_value=1e-4)

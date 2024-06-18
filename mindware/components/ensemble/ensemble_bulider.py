@@ -1,11 +1,11 @@
 from sklearn.metrics._scorer import _BaseScorer
 
-ensemble_list = ['bagging', 'blending', 'stacking', 'ensemble_selection']
-
 from mindware.components.ensemble.bagging import Bagging
 from mindware.components.ensemble.blending import Blending
 from mindware.components.ensemble.stacking import Stacking
 from mindware.components.ensemble.ensemble_selection import EnsembleSelection
+
+ensemble_list = ['bagging', 'blending', 'stacking', 'ensemble_selection']
 
 
 class EnsembleBuilder:

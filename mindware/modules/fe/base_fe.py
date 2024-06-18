@@ -10,6 +10,8 @@ from mindware.components.utils.class_loader import get_combined_candidtates
 from mindware.components.models.classification import _classifiers, _addons as _cls_addons
 from mindware.components.models.regression import _regressors, _addons as _rgs_addons
 
+from mindware.components.config_space.cs_builder import get_fe_cs
+
 from ConfigSpace import Configuration, Constant
 
 
@@ -54,7 +56,7 @@ class BaseFE(BaseAutoML):
         else:
             _candidates = get_combined_candidtates(_regressors, _rgs_addons)
 
-        self.cs = get_task_hyperparameter_space(
+        self.cs = get_fe_cs(
             self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal
         )
 
@@ -78,18 +80,6 @@ class BaseFE(BaseAutoML):
         # Define evaluator and optimizer
         self.evaluator = None
         if self.task_type in CLS_TASKS:
-            # from mindware.modules.fe.fe_evaluator import FEClassificationEvaluator
-            # self.evaluator = FEClassificationEvaluator(
-            #     estimator_id=estimator_id,
-            #     fixed_config=None,
-            #     scorer=self.metric,
-            #     data_node=data_node,
-            #     if_imbal=self.if_imbal,
-            #     timestamp=self.timestamp,
-            #     output_dir=self.output_dir,
-            #     seed=self.seed,
-            #     resampling_strategy=evaluation,
-            #     resampling_params=resampling_params)
             from mindware.modules.fe.fe_evaluator import FECLSEvaluator
             self.evaluator = FECLSEvaluator(
                 fixed_config=None,
@@ -102,17 +92,6 @@ class BaseFE(BaseAutoML):
                 seed=self.seed,
                 if_imbal=self.if_imbal)
         else:
-            # from mindware.modules.fe.fe_evaluator import FERegressionEvaluator
-            # self.evaluator = FERegressionEvaluator(
-            #     estimator_id=estimator_id,
-            #     fixed_config=None,
-            #     scorer=self.metric,
-            #     data_node=data_node,
-            #     timestamp=self.timestamp,
-            #     output_dir=self.output_dir,
-            #     seed=self.seed,
-            #     resampling_strategy=evaluation,
-            #     resampling_params=resampling_params)
             from mindware.modules.fe.fe_evaluator import FERGSEvaluator
             self.evaluator = FERGSEvaluator(
                 fixed_config=None,

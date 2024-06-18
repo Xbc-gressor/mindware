@@ -24,6 +24,7 @@ from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
 from mindware.components.utils.topk_saver import load_combined_transformer_estimator
 
 from mindware.components.feature_engineering.parse import construct_node
+from mindware.components.ensemble import ensemble_list
 
 
 class BaseAutoML(object):
@@ -63,6 +64,8 @@ class BaseAutoML(object):
         self.evaluator = None
         self.cs = None
 
+        if ensemble_method is not None and ensemble_method not in ensemble_list:
+            raise ValueError("%s is not supported for ensemble!" % ensemble_method)
         self.ensemble_method = ensemble_method
         self.ensemble_size = ensemble_size
         self.es = None
@@ -82,6 +85,8 @@ class BaseAutoML(object):
         self.if_imbal = False
         if self.task_type in CLS_TASKS:
             self.if_imbal = is_imbalanced_dataset(self.data_node)
+
+        self.already_refit = False
 
         self.logger = None
 
@@ -185,6 +190,8 @@ class BaseAutoML(object):
                     with open(path, 'wb') as f:
                         pkl.dump([op_list, estimator, None], f)
 
+            self.fit_ensemble()
+
         else:
             self.logger.info('Start to refit the best model!')
 
@@ -211,11 +218,17 @@ class BaseAutoML(object):
             with open(model_path, 'wb') as f:
                 pkl.dump([op_list, estimator, None], f)
 
+        self.already_refit = True
+
     def fit_ensemble(self):
         if self.ensemble_method is not None:
             config_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.datetime)
             with open(config_path, 'rb') as f:
                 stats = pkl.load(f)
+
+            # 如果用全数据refit了，就不能包含k_nearest_neighbors, 因为它会将训练数据都预测为label，selection算法只会选knn
+            if self.already_refit and self.ensemble_method == 'ensemble_selection':
+                stats.remove('k_nearest_neighbors')
 
             # Ensembling all intermediate/ultimate models found in above optimization process.
             self.es = EnsembleBuilder(stats=stats,
@@ -239,6 +252,10 @@ class BaseAutoML(object):
             return pred
 
     def _predict_stats(self, test_data: DataNode, stats, ens=False, prob=False):
+        # 如果用全数据refit了，就不能包含k_nearest_neighbors, 因为它会将训练数据都预测为label，selection算法只会选knn
+        if self.already_refit and self.ensemble_method == 'ensemble_selection':
+            stats.remove('k_nearest_neighbors')
+
         print("Predicting with stats")
         if ens and self.ensemble_method is not None:
             es = EnsembleBuilder(stats=stats,
@@ -283,8 +300,6 @@ class BaseAutoML(object):
                     return np.argmax(estimator.predict_proba(test_data_node.data[0]), axis=-1)
             else:
                 return estimator.predict(test_data_node.data[0])
-
-
 
     def _predict(self, test_data: DataNode, ens=True):
         if ens and self.ensemble_method is not None:

@@ -81,14 +81,24 @@ class LDA(BaseClassificationModel):
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
+
+        # n_components cannot be larger than min(n_features, n_classes - 1).
+        n_classes = kwargs.get('n_classes', None)
+        n_features = kwargs.get('n_features', None)
+        n_components_upper = 250
+        if n_classes is not None:
+            n_components_upper = min(n_components_upper, n_classes - 1)
+        if n_features is not None:
+            n_components_upper = min(n_components_upper, n_features)
+
         if optimizer == 'smac':
             cs = ConfigurationSpace()
             shrinkage = CategoricalHyperparameter(
                 "shrinkage", ["None", "auto", "manual"], default_value="None")
             shrinkage_factor = UniformFloatHyperparameter(
                 "shrinkage_factor", 0., 1., 0.5)
-            n_components = UniformIntegerHyperparameter('n_components', 1, 250, default_value=1)
+            n_components = UniformIntegerHyperparameter('n_components', 1, n_components_upper, default_value=1)
             tol = UniformFloatHyperparameter("tol", 1e-5, 1e-1, default_value=1e-4, log=True)
             cs.add_hyperparameters([shrinkage, shrinkage_factor, n_components, tol])
 
@@ -96,7 +106,7 @@ class LDA(BaseClassificationModel):
             return cs
         elif optimizer == 'tpe':
             from hyperopt import hp
-            space = {'n_components': hp.randint('lda_n_components', 250) + 1,
+            space = {'n_components': hp.randint('lda_n_components', n_components_upper) + 1,
                      'tol': hp.loguniform('lda_tol', np.log(1e-5), np.log(1e-1)),
                      'shrinkage': hp.choice('lda_shrinkage', ["None", "auto", (
                          "manual", {'shrinkage_factor': hp.uniform('lda_shrinkage_factor', 0, 1)})])

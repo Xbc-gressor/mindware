@@ -71,7 +71,7 @@ class QDA(BaseClassificationModel):
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None):
+    def get_hyperparameter_search_space(dataset_properties=None, **kwargs):
         reg_param = UniformFloatHyperparameter('reg_param', 0.0, 1.0,
                                                default_value=0.0)
 

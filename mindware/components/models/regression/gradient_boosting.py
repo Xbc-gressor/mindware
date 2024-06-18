@@ -120,7 +120,7 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         if optimizer == 'smac':
             cs = ConfigurationSpace()
 

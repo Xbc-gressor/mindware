@@ -42,7 +42,7 @@ class LassoRegressor(BaseRegressionModel):
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         if optimizer == 'smac':
             alpha = UniformFloatHyperparameter("alpha", 0.01, 32, log=True, default_value=1.0)
             tol = UniformFloatHyperparameter("tol", 1e-6, 1e-2, default_value=1e-4,

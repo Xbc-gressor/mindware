@@ -5,6 +5,7 @@ from mindware.components.feature_engineering.transformations.base_transformer im
 
 class PercentileSelectorRegression(Transformer):
     type = 30
+
     def __init__(self, percentile=10, score_func='f_regression', random_state=1):
         super().__init__("percentile_selector_reg")
         self.input_type = [NUMERICAL, DISCRETE, CATEGORICAL]

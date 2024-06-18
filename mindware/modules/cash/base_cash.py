@@ -2,10 +2,14 @@ import os
 import time
 from typing import List
 
+import numpy as np
+
 from mindware.modules.base import BaseAutoML
 from mindware.utils.logging_utils import setup_logger, get_logger
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
+
+from mindware.components.config_space.cs_builder import get_cash_cs
 
 
 class BaseCASH(BaseAutoML):
@@ -43,28 +47,15 @@ class BaseCASH(BaseAutoML):
             os.makedirs(self.output_dir)
         self.logger = self._get_logger(optimizer)
 
-        self.cs = None
-        if self.task_type in CLS_TASKS:
-            from mindware.components.evaluators.cls_evaluator import get_cash_cs as get_cls_cash_cs
-            self.cs = get_cls_cash_cs(self.include_algorithms, self.task_type)
-        else:
-            from mindware.components.evaluators.rgs_evaluator import get_cash_cs as get_rgs_cash_cs
-            self.cs = get_rgs_cash_cs(self.include_algorithms, self.task_type)
+        cs_args = {
+            'resampling_params': resampling_params,
+            'data_node': data_node
+        }
+        self.cs = get_cash_cs(include_algorithms, self.task_type, **cs_args)
 
         # Define evaluator and optimizer
         self.evaluator = None
         if self.task_type in CLS_TASKS:
-            # from mindware.modules.cash.cash_evaluator import CASHClassificationEvaluator
-            # self.evaluator = CASHClassificationEvaluator(
-            #     fixed_config=None,
-            #     scorer=self.metric,
-            #     data_node=data_node,
-            #     if_imbal=self.if_imbal,
-            #     timestamp=self.timestamp,
-            #     output_dir=self.output_dir,
-            #     seed=self.seed,
-            #     resampling_strategy=evaluation,
-            #     resampling_params=resampling_params)
             from mindware.modules.cash.cash_evaluator import CASHCLSEvaluator
             self.evaluator = CASHCLSEvaluator(
                 fixed_config=None,
@@ -77,16 +68,6 @@ class BaseCASH(BaseAutoML):
                 seed=self.seed,
                 if_imbal=self.if_imbal)
         else:
-            # from mindware.modules.cash.cash_evaluator import CASHRegressionEvaluator
-            # self.evaluator = CASHRegressionEvaluator(
-            #     fixed_config=None,
-            #     scorer=self.metric,
-            #     data_node=data_node,
-            #     timestamp=self.timestamp,
-            #     output_dir=self.output_dir,
-            #     seed=self.seed,
-            #     resampling_strategy=evaluation,
-            #     resampling_params=resampling_params)
             from mindware.modules.cash.cash_evaluator import CASHRGSEvaluator
             self.evaluator = CASHRGSEvaluator(
                 fixed_config=None,

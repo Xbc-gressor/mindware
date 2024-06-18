@@ -10,31 +10,33 @@ from mindware.utils.data_manager import DataManager
 from mindware import CASHFE
 from mindware import CASH
 from mindware import EnsembleBuilder
-from mindware import REGRESSION
+from mindware import CLASSIFICATION
 import pickle as pkl
 
 if __name__ == '__main__':
-    task_type = REGRESSION
+    task_type = CLASSIFICATION
     # Load data
-    data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\houseprices\\'
-    # data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/houseprice'
+    data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
 
     dm = DataManager()
 
-    train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), ignore_columns=['Id'],
-                                        label_name='SalePrice')
-    breakpoint()
+    train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), ignore_columns=['ID_code'],
+                                        label_name='target')
     train_data_node = dm.preprocess_fit(train_data_node, task_type)
 
-    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['Id'])
+    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['ID_code'])
     test_data_node = dm.preprocess_transform(test_data_node)
 
     # Initialize CASHFE
 
+    Opt = 'cashfe'
+
+    optimizer = 'smac'
     ensemble_method = "ensemble_selection"
     ensemble_size = 5
-    metric = 'rmse'
+    metric = 'acc'
     evaluation = 'holdout'
+    time_limit = 3024
 
     include_algorithms = [
         'adaboost', 'extra_trees', 'gradient_boosting',
@@ -42,25 +44,20 @@ if __name__ == '__main__':
         'random_forest', 'ridge_regression'
     ]
 
-    # 'lda',
-    # hpo = CASH(
-    #     include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
-    #     metric=metric,
-    #     data_node=train_data_node, evaluation=evaluation, resampling_params=None,
-    #     optimizer='smac', inner_iter_num_per_iter=1,
-    #     time_limit=1024, amount_of_resource=100, per_run_time_limit=600,
-    #     output_dir='./data', seed=1, n_jobs=1,
-    #     ensemble_method=ensemble_method, ensemble_size=ensemble_size
-    # )
+    if Opt == 'cash':
+        # 'lda',
+        OPT = CASH
+    else:
+        OPT = CASHFE
 
-    hpo = CASHFE(
+    hpo = OPT(
         include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params=None,
-        optimizer='mab', inner_iter_num_per_iter=5,
-        time_limit=3024, amount_of_resource=100, per_run_time_limit=600,
+        optimizer=optimizer, inner_iter_num_per_iter=5,
+        time_limit=time_limit, amount_of_resource=100, per_run_time_limit=600,
         output_dir='./data', seed=1, n_jobs=1,
-        ensemble_method=ensemble_method, ensemble_size=5
+        ensemble_method=ensemble_method, ensemble_size=ensemble_size
     )
 
     print(hpo.run())
@@ -71,12 +68,12 @@ if __name__ == '__main__':
     pred = dm.decode_label(pred)
     pred_ens = dm.decode_label(pred_ens)
 
-    passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['Id']
-    result = pd.DataFrame({'Id': passenger_id, 'SalePrice': pred})
-    result.to_csv(os.path.join(data_dir, 'cashfe_mab3024_sel5_result.csv'), index=False)
+    passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['ID_code']
+    result = pd.DataFrame({'Id': passenger_id, 'target': pred})
+    result.to_csv(os.path.join(data_dir, f'{Opt}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'), index=False)
     print('Result has been saved to result.csv.')
-    result_ens = pd.DataFrame({'Id': passenger_id, 'SalePrice': pred_ens})
-    result_ens.to_csv(os.path.join(data_dir, 'cashfe_mab3024_sel5_result_ens.csv'), index=False)
+    result_ens = pd.DataFrame({'Id': passenger_id, 'target': pred_ens})
+    result_ens.to_csv(os.path.join(data_dir, f'{Opt}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'), index=False)
     print('Ensemble result has been saved to result_ens.csv.')
 
     # config_path = 'D:\\xbc\\Fighting\\AutoML\\mindware\\examples\\data\\CASH-smac(1)_2024-06-04-21-21-08-961071\\2024-06-04-21-21-08-961071_topk_config.pkl'

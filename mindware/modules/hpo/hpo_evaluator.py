@@ -15,7 +15,7 @@ from mindware.components.utils.class_loader import get_combined_candidtates
 from mindware.components.models.classification import _classifiers, _addons as _cls_addons
 from mindware.components.models.regression import _regressors, _addons as _rgs_addons
 from mindware.components.utils.constants import *
-from ConfigSpace import ConfigurationSpace, Constant
+from ConfigSpace import ConfigurationSpace, Constant, CategoricalHyperparameter
 
 from mindware.components.evaluators.cls_evaluator import get_estimator as get_cls_estimator
 from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
@@ -35,13 +35,13 @@ def get_hpo_cs(estimator_id, task_type):
     else:
         raise ValueError("Algorithm %s not supported!" % estimator_id)
 
-    tmp_cs = rgs_class.get_hyperparameter_search_space()
     cs = ConfigurationSpace()
-    cs.add_hyperparameter(Constant('algorithm', estimator_id))
+    algo = CategoricalHyperparameter('algorithm', [estimator_id])
+    cs.add_hyperparameter(algo)
 
-    for hyper in tmp_cs.get_hyperparameters():
-        hyper.name = '%s:%s' % (estimator_id, hyper.name)
-        cs.add_hyperparameter(hyper)
+    tmp_cs = rgs_class.get_hyperparameter_search_space()
+    parent_hyperparameter = {'parent': algo, 'value': estimator_id}
+    cs.add_configuration_space(estimator_id, tmp_cs, parent_hyperparameter=parent_hyperparameter)
 
     return cs
 

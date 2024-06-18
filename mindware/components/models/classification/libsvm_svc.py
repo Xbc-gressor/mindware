@@ -98,7 +98,7 @@ class LibSVM_SVC(BaseClassificationModel):
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         if optimizer == 'smac':
             C = UniformFloatHyperparameter("C", 0.03125, 32768, log=True,
                                            default_value=1.0)
