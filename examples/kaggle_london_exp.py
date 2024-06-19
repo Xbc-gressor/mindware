@@ -12,7 +12,8 @@ from mindware import CLASSIFICATION
 if __name__ == '__main__':
 
     # Load data
-    data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/london'
+    # data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/london'
+    data_dir = '/root/automl_data/kaggle/london'
 
     # 读取train和test表格，原来没有表头，添加表头。将trainLabels.csv中的数据合并到train.csv中，形成一个完整的训练集
     # train_data = pd.read_csv(os.path.join(data_dir, 'train.csv'), header=None)

@@ -152,13 +152,13 @@ class BaseAutoML(object):
 
         if refit:
             self.refit()
-
-        if self.ensemble_method is not None:
-            if self.evaluation in ['holdout', 'partial', 'partial_bohb']:
-                self.fit_ensemble()
-            else:  # cv
-                if refit:
+        else:
+            if self.ensemble_method is not None:
+                if self.evaluation in ['holdout', 'partial', 'partial_bohb']:
                     self.fit_ensemble()
+                else:  # cv
+                    if refit:
+                        self.fit_ensemble()
 
         return self.incumbent_perf
 
