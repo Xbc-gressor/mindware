@@ -112,12 +112,12 @@ class MfseBase(object):
                         except Exception as e:
                             # TODO: Distinguish error type
                             val_loss = np.inf
+
+                        if isinstance(val_loss, dict):
+                            val_loss = val_loss['objectives'][0]
+
                         val_losses.append(val_loss)
                         
-                        for _id, _val_loss in enumerate(val_losses):
-                            if isinstance(_val_loss, dict):
-                                val_losses[_id] = _val_loss['objectives'][0]
-                                
                         if np.isfinite(val_loss):
                             self.target_x[int(n_resource)].append(config)
                             self.target_y[int(n_resource)].append(val_loss)
