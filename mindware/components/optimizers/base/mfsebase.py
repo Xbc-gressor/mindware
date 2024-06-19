@@ -3,6 +3,7 @@ import numpy as np
 from collections import OrderedDict
 from math import log, ceil
 from openbox.core.mf_batch_advisor import MFBatchAdvisor
+from openbox import Observation
 
 from mindware.utils.constant import MAX_INT
 from mindware.utils.logging_utils import get_logger
@@ -44,14 +45,14 @@ class MfseBase(object):
 
         # Parameters in MFSE-HB.
         self.iterate_r = []
-        self.target_x = dict()
-        self.target_y = dict()
+        # self.target_x = dict()
+        # self.target_y = dict()
         self.exp_output = dict()
         for index, item in enumerate(np.logspace(0, self.s_max, self.s_max + 1, base=self.eta)):
             r = int(item)
             self.iterate_r.append(r)
-            self.target_x[r] = list()
-            self.target_y[r] = list()
+            # self.target_x[r] = list()
+            # self.target_y[r] = list()
 
         self.mf_advisor = MFBatchAdvisor(config_space, output_dir=output_dir)
         self.eval_dict = dict()
@@ -80,23 +81,28 @@ class MfseBase(object):
                 n_configs = n * self.eta ** (-i)
                 n_resource = r * self.eta ** i
 
+                resource_ratio = float(n_resource / self.R)
+
                 self.logger.info("MFSE: %d configurations x size %d / %d each" %
                                  (int(n_configs), n_resource, self.R))
 
                 if self.n_workers > 1:
                     # TODO: Time limit control
-                    val_losses = executor.parallel_execute(T, resource_ratio=float(n_resource / self.R),
+                    val_losses = executor.parallel_execute(T, resource_ratio=resource_ratio,
                                                            eta=self.eta,
                                                            first_iter=(i == 0))
-                    
+
                     for _id, _val_loss in enumerate(val_losses):
                         if isinstance(_val_loss, dict):
                             val_losses[_id] = _val_loss['objectives'][0]
                                 
                     for _id, _val_loss in enumerate(val_losses):
                         if np.isfinite(_val_loss):
-                            self.target_x[int(n_resource)].append(T[_id])
-                            self.target_y[int(n_resource)].append(_val_loss)
+                            obs = Observation(config=T[_id], objectives=[_val_loss])
+                            self.mf_advisor.update_observation(obs, resource_ratio=resource_ratio)
+
+                            # self.target_x[int(n_resource)].append(T[_id])
+                            # self.target_y[int(n_resource)].append(_val_loss)
                             self.evaluation_stats['timestamps'].append(time.time() - self.global_start_time)
                             self.evaluation_stats['val_scores'].append(_val_loss)
                 else:
@@ -107,7 +113,7 @@ class MfseBase(object):
                             break
                         try:
                             with time_limit(self.per_run_time_limit):
-                                val_loss = self.eval_func(config, resource_ratio=float(n_resource / self.R),
+                                val_loss = self.eval_func(config, resource_ratio=resource_ratio,
                                                           eta=self.eta, first_iter=(i == 0))
                         except Exception as e:
                             # TODO: Distinguish error type
@@ -116,11 +122,15 @@ class MfseBase(object):
                         if isinstance(val_loss, dict):
                             val_loss = val_loss['objectives'][0]
 
+                        if np.isfinite(val_loss):
+                            obs = Observation(config=config, objectives=[val_loss])
+                            self.mf_advisor.update_observation(obs, resource_ratio=resource_ratio)
+
                         val_losses.append(val_loss)
                         
                         if np.isfinite(val_loss):
-                            self.target_x[int(n_resource)].append(config)
-                            self.target_y[int(n_resource)].append(val_loss)
+                            # self.target_x[int(n_resource)].append(config)
+                            # self.target_y[int(n_resource)].append(val_loss)
                             self.evaluation_stats['timestamps'].append(time.time() - self.global_start_time)
                             self.evaluation_stats['val_scores'].append(val_loss)
 
@@ -142,13 +152,13 @@ class MfseBase(object):
                 else:
                     T = [T[indices[0]]]
 
-        if len(self.target_y[self.iterate_r[-1]]) != 0:
-            observations = list()
-            for item in self.target_x:
-                config_dict = OrderedDict()
-                for i, config in enumerate(self.target_x[item]):
-                    config_dict[config] = self.target_y[item][i]
-                observations.append(config_dict)
-            self.mf_advisor.update_mf_observations(observations)
+        # if len(self.target_y[self.iterate_r[-1]]) != 0:
+        #     observations = list()
+        #     for item in self.target_x:
+        #         config_dict = OrderedDict()
+        #         for i, config in enumerate(self.target_x[item]):
+        #             config_dict[config] = self.target_y[item][i]
+        #         observations.append(config_dict)
+        #     self.mf_advisor.update_mf_observations(observations)
 
         return iter_full_eval_configs, iter_full_eval_perfs

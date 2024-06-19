@@ -202,7 +202,7 @@ class BaseEvaluator(_BaseEvaluator):
             _val_index = None
             _act_x_train, _act_y_train = None, None
             if downsample_ratio != 1:
-                down_ss = self._get_spliter(self.resampling_strategy, downsample_ratio=downsample_ratio,
+                down_ss = self._get_spliter(self.resampling_strategy, test_size=downsample_ratio,
                                             random_state=self.seed)
                 for _, _val_index in down_ss.split(_x_train, _y_train):
                     _act_x_train, _act_y_train = _x_train[_val_index], _y_train[_val_index]
