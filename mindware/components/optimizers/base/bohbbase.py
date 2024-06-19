@@ -39,9 +39,9 @@ class BohbBase(object):
         self.eta = eta
         self.seed = seed
         self.logeta = lambda x: log(x) / log(self.eta)
-        self.s_max = int(self.logeta(self.R))
-        self.B = (self.s_max + 1) * self.R
-        self.s_values = list(reversed(range(self.s_max + 1)))
+        self.s_max = int(self.logeta(self.R))  # 3
+        self.B = (self.s_max + 1) * self.R  # 4 * 27, 一整个SH 需要的资源数
+        self.s_values = list(reversed(range(self.s_max + 1)))  # 3, 2, 1, 0
         self.inner_iter_id = 0
 
         # Parameters in BOHB.
@@ -49,7 +49,7 @@ class BohbBase(object):
         self.target_x = dict()
         self.target_y = dict()
         self.exp_output = dict()
-        for index, item in enumerate(np.logspace(0, self.s_max, self.s_max + 1, base=self.eta)):
+        for index, item in enumerate(np.logspace(0, self.s_max, self.s_max + 1, base=self.eta)):  # 0, 3, 9, 27
             r = int(item)
             self.iterate_r.append(r)
             self.target_x[r] = list()
