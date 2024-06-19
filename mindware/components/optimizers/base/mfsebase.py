@@ -136,6 +136,8 @@ class MfseBase(object):
 
                 self.exp_output[time.time()] = (int(n_resource), T, val_losses)
 
+                self.logger.info('iter: %d, resource: %d, val_loss: %s' % (i, n_resource, str(val_losses)))
+
                 if int(n_resource) == self.R:
                     self.full_eval_configs.extend(T)
                     self.full_eval_perfs.extend(val_losses)
