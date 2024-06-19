@@ -23,8 +23,8 @@ class MfseBase(object):
         self.perfs = list()
         self.incumbent_perf = float("-INF")
         self.incumbent_config = self.config_space.get_default_configuration()
-        self.incumbent_configs = list()
-        self.incumbent_perfs = list()
+        self.full_eval_configs = list()
+        self.full_eval_perfs = list()
         self.evaluation_stats = dict()
         self.evaluation_stats['timestamps'] = list()
         self.evaluation_stats['val_scores'] = list()
@@ -68,8 +68,8 @@ class MfseBase(object):
         time_elapsed = time.time() - start_time
         self.logger.info("Choosing next batch of configurations took %.2f sec." % time_elapsed)
 
-        full_config_list = list()
-        full_perf_list = list()
+        iter_full_eval_configs = list()
+        iter_full_eval_perfs = list()
         with ParallelProcessEvaluator(self.eval_func, n_worker=self.n_workers) as executor:
             for i in range((s + 1) - int(skip_last)):  # changed from s + 1
                 if time.time() > budget + start_time:
@@ -88,6 +88,11 @@ class MfseBase(object):
                     val_losses = executor.parallel_execute(T, resource_ratio=float(n_resource / self.R),
                                                            eta=self.eta,
                                                            first_iter=(i == 0))
+                    
+                    for _id, _val_loss in enumerate(val_losses):
+                        if isinstance(_val_loss, dict):
+                            val_losses[_id] = _val_loss['objectives'][0]
+                                
                     for _id, _val_loss in enumerate(val_losses):
                         if np.isfinite(_val_loss):
                             self.target_x[int(n_resource)].append(T[_id])
@@ -108,6 +113,11 @@ class MfseBase(object):
                             # TODO: Distinguish error type
                             val_loss = np.inf
                         val_losses.append(val_loss)
+                        
+                        for _id, _val_loss in enumerate(val_losses):
+                            if isinstance(_val_loss, dict):
+                                val_losses[_id] = _val_loss['objectives'][0]
+                                
                         if np.isfinite(val_loss):
                             self.target_x[int(n_resource)].append(config)
                             self.target_y[int(n_resource)].append(val_loss)
@@ -117,10 +127,10 @@ class MfseBase(object):
                 self.exp_output[time.time()] = (int(n_resource), T, val_losses)
 
                 if int(n_resource) == self.R:
-                    self.incumbent_configs.extend(T)
-                    self.incumbent_perfs.extend(val_losses)
-                    full_config_list.extend(T)
-                    full_perf_list.extend(val_losses)
+                    self.full_eval_configs.extend(T)
+                    self.full_eval_perfs.extend(val_losses)
+                    iter_full_eval_configs.extend(T)
+                    iter_full_eval_perfs.extend(val_losses)
 
                 # Select a number of best configurations for the next loop.
                 # Filter out early stops, if any.
@@ -141,4 +151,4 @@ class MfseBase(object):
                 observations.append(config_dict)
             self.mf_advisor.update_mf_observations(observations)
 
-        return full_config_list, full_perf_list
+        return iter_full_eval_configs, iter_full_eval_perfs

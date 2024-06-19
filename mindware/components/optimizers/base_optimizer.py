@@ -41,6 +41,7 @@ class BaseOptimizer(object):
 
     # TODO：Refactor the other optimizers
     def update_saver(self, config_list, perf_list):
+        # perf_list: perf - the smaller, the better
         # Check if all the configs is valid in case of storing None into the config file
         all_invalid = True
 
@@ -62,7 +63,7 @@ class BaseOptimizer(object):
                 save_flag, model_path, delete_flag, model_path_deleted = self.topk_saver.add(config, -perf,
                                                                                              classifier_id)
                 # By default, the evaluator has already stored the models.
-                if self.eval_type in ['holdout', 'partial']:
+                if self.eval_type in ['holdout', 'partial', 'partial_bohb']:
                     if save_flag:
                         pass
                     else:

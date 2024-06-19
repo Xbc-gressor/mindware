@@ -35,8 +35,8 @@ class MfseOptimizer(BaseOptimizer, MfseBase):
             if _time_elapsed >= budget:
                 break
             budget_left = budget - _time_elapsed
-            config_list, perf_list = self._iterate(self.s_values[self.inner_iter_id], budget=budget_left)
-            self.update_saver(config_list, perf_list)
+            iter_full_eval_configs, iter_full_eval_perfs = self._iterate(self.s_values[self.inner_iter_id], budget=budget_left)
+            self.update_saver(iter_full_eval_configs, iter_full_eval_perfs)
             self.inner_iter_id = (self.inner_iter_id + 1) % (self.s_max + 1)
 
             # Remove tmp model
@@ -50,32 +50,32 @@ class MfseOptimizer(BaseOptimizer, MfseBase):
                         except Exception:
                             pass
 
-        if len(self.incumbent_perfs) > 0:
-            inc_idx = np.argmin(np.array(self.incumbent_perfs))
+        if len(self.full_eval_perfs) > 0:
+            inc_idx = np.argmin(np.array(self.full_eval_perfs))
 
-            for idx in range(len(self.incumbent_perfs)):
+            for idx in range(len(self.full_eval_perfs)):
                 if self.name in ['hpo', 'cash', 'cashfe']:
                     if hasattr(self.evaluator, 'fe_config'):
                         fe_config = self.evaluator.fe_config
                     else:
                         fe_config = None
-                    self.eval_dict[(fe_config, self.incumbent_configs[idx])] = [-self.incumbent_perfs[idx],
+                    self.eval_dict[(fe_config, self.full_eval_configs[idx])] = [-self.full_eval_perfs[idx],
                                                                                 time.time(), FAILED if np.isinf(
-                            self.incumbent_perfs[idx]) else SUCCESS]
+                            self.full_eval_perfs[idx]) else SUCCESS]
                 else:
                     if hasattr(self.evaluator, 'hpo_config'):
                         hpo_config = self.evaluator.hpo_config
                     else:
                         hpo_config = None
-                    self.eval_dict[(self.incumbent_configs[idx], hpo_config)] = [-self.incumbent_perfs[idx],
+                    self.eval_dict[(self.full_eval_configs[idx], hpo_config)] = [-self.full_eval_perfs[idx],
                                                                                  time.time(), FAILED if np.isinf(
-                            self.incumbent_perfs[idx]) else SUCCESS]
+                            self.full_eval_perfs[idx]) else SUCCESS]
 
-            self.incumbent_perf = -self.incumbent_perfs[inc_idx]
-            self.incumbent_config = self.incumbent_configs[inc_idx]
+            self.incumbent_perf = -self.full_eval_perfs[inc_idx]
+            self.incumbent_config = self.full_eval_configs[inc_idx]
 
-        self.perfs = self.incumbent_perfs
-        self.configs = self.incumbent_configs
+        self.perfs = [-loss for loss in self.full_eval_perfs]
+        self.configs = self.full_eval_configs
 
         # Incumbent performance: the large, the better.
         iteration_cost = time.time() - _start_time

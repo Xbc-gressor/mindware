@@ -144,14 +144,21 @@ class BaseAutoML(object):
         self.eval_dict = self.optimizer.eval_dict
         return self.incumbent_perf
 
-    def run(self):
+    def run(self, refit=True):
 
         for i in range(self.amount_of_resource):
             if not (self.early_stop_flag or self.timeout_flag):
                 self.iterate()
 
-        if self.ensemble_method is not None and self.evaluation in ['holdout', 'partial', 'partial_bohb']:
-            self.fit_ensemble()
+        if refit:
+            self.refit()
+
+        if self.ensemble_method is not None:
+            if self.evaluation in ['holdout', 'partial', 'partial_bohb']:
+                self.fit_ensemble()
+            else:  # cv
+                if refit:
+                    self.fit_ensemble()
 
         return self.incumbent_perf
 
@@ -174,21 +181,25 @@ class BaseAutoML(object):
             for algo_id in stats.keys():
                 model_to_eval = stats[algo_id]
                 for idx, (config, perf, path) in enumerate(model_to_eval):
+                    
+                    # TODO: 有的refit会报错，提示X有NaN。原来的X是没有NaN的，可能FE后用一部分数据的时候没有NaN，但是全数据里面有了。
+                    try:
+                        if self.name in ['fe', 'cashfe']:
+                            data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
+                                                            if_imbal=self.if_imbal)
+                        else:
+                            op_list = {}
+                            data_node = self.data_node.copy_()
 
-                    if self.name in ['fe', 'cashfe']:
-                        data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
-                                                          if_imbal=self.if_imbal)
-                    else:
-                        op_list = {}
-                        data_node = self.data_node.copy_()
-
-                    algo_id = config['algorithm']
-                    estimator = fetch_predict_estimator(self.task_type, algo_id, config,
-                                                        data_node.data[0], data_node.data[1],
-                                                        weight_balance=data_node.enable_balance,
-                                                        data_balance=data_node.data_balance)
-                    with open(path, 'wb') as f:
-                        pkl.dump([op_list, estimator, None], f)
+                        algo_id = config['algorithm']
+                        estimator = fetch_predict_estimator(self.task_type, algo_id, config,
+                                                            data_node.data[0], data_node.data[1],
+                                                            weight_balance=data_node.enable_balance,
+                                                            data_balance=data_node.data_balance)
+                        with open(path, 'wb') as f:
+                            pkl.dump([op_list, estimator, None], f)
+                    except:
+                        self.logger.error("Failed to refit for %s !" % path)
 
             self.fit_ensemble()
 

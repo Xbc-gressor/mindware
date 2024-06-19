@@ -27,8 +27,8 @@ class BohbBase(object):
         self.perfs = list()
         self.incumbent_perf = float("-INF")
         self.incumbent_config = self.config_space.get_default_configuration()
-        self.incumbent_configs = list()
-        self.incumbent_perfs = list()
+        self.full_eval_configs = list()
+        self.full_eval_perfs = list()
         self.global_start_time = time.time()
         self.time_ticks = list()
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
@@ -83,6 +83,8 @@ class BohbBase(object):
         time_elapsed = time.time() - start_time
         self.logger.info("Choosing next batch of configurations took %.2f sec." % time_elapsed)
 
+        iter_full_eval_configs = list()
+        iter_full_eval_perfs = list()
         with ParallelProcessEvaluator(self.eval_func, n_worker=self.n_workers) as executor:
             for i in range((s + 1) - int(skip_last)):  # changed from s + 1
                 if time.time() >= budget + start_time:
@@ -113,8 +115,10 @@ class BohbBase(object):
                 self.exp_output[time.time()] = (int(n_resource), T, val_losses)
 
                 if int(n_resource) == self.R:
-                    self.incumbent_configs.extend(T)
-                    self.incumbent_perfs.extend(val_losses)
+                    self.full_eval_configs.extend(T)
+                    self.full_eval_perfs.extend(val_losses)
+                    iter_full_eval_configs.extend(T)
+                    iter_full_eval_perfs.extend(val_losses)
                     self.time_ticks.extend([time.time() - self.global_start_time] * len(T))
 
                     # Only update results using maximal resources
@@ -140,6 +144,9 @@ class BohbBase(object):
                 normalized_y = std_normalization(self.target_y[resource_val])
                 self.surrogate.train(convert_configurations_to_array(self.target_x[resource_val]),
                                      np.array(normalized_y, dtype=np.float64))
+                
+        return iter_full_eval_configs, iter_full_eval_perfs
+    
 
     def smac_get_candidate_configurations(self, num_config):
         if len(self.target_y[self.iterate_r[-1]]) <= 3:
