@@ -85,6 +85,7 @@ class BaseEvaluator(_BaseEvaluator):
         score = -np.inf
         estimator = None
         _x_train, _y_train = None, None
+        _act_x_train, _act_y_train = None, None
         if 'holdout' in self.resampling_strategy:
             # Prepare data node.
             with warnings.catch_warnings():
@@ -260,7 +261,8 @@ class BaseEvaluator(_BaseEvaluator):
             self.logger.info('Evaluation<%s> | Score: %.4f | Time cost: %.2f seconds | Shape: %s' %
                              (estimator_id,
                               self.scorer._sign * score,
-                              time.time() - start_time, _x_train.shape))
+                              time.time() - start_time,
+                              _x_train.shape if 'partial' not in self.resampling_strategy else _act_x_train.shape))
         except:
             pass
 

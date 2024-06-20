@@ -48,8 +48,8 @@ class BaseAutoML(object):
         self.per_run_time_limit = per_run_time_limit
         self.time_limit = time_limit
         self.amount_of_resource = int(1e8) if amount_of_resource is None else amount_of_resource
-        if self.optimizer_name != 'mab':
-            inner_iter_num_per_iter = 1
+        # if self.optimizer_name != 'mab':
+        #     inner_iter_num_per_iter = 1
         self.inner_iter_num_per_iter = inner_iter_num_per_iter
 
         self.timeout_flag = False
@@ -96,7 +96,17 @@ class BaseAutoML(object):
     def build_optimizer(self, name='hpo', **kwargs):
 
         opt_paras = {}
-        if self.evaluation == 'partial':
+        if self.optimizer_name == 'mab':
+            optimizer_class = MabOptimizer
+            if self.evaluation == 'partial':
+                opt_paras['sub_optimizer'] = 'mfse'
+            elif self.evaluation == 'partial_bohb':
+                opt_paras['sub_optimizer'] = 'bohb'
+            else:
+                opt_paras['sub_optimizer'] = kwargs.get('sub_optimizer', 'smac')
+            opt_paras['fe_config_space'] = kwargs.get('fe_config_space', None)
+
+        elif self.evaluation == 'partial':
             optimizer_class = MfseOptimizer
         elif self.evaluation == 'partial_bohb':
             optimizer_class = BohbOptimizer
@@ -108,10 +118,6 @@ class BaseAutoML(object):
                 optimizer_class = TPEOptimizer
             elif self.optimizer_name == 'smac':
                 optimizer_class = SMACOptimizer
-            elif self.optimizer_name == 'mab':
-                optimizer_class = MabOptimizer
-                opt_paras['sub_optimizer'] = kwargs.get('sub_optimizer', 'smac')
-                opt_paras['fe_config_space'] = kwargs.get('fe_config_space', None)
             else:
                 raise ValueError("Invalid optimizer %s" % self.optimizer_name)
 

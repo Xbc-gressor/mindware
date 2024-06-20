@@ -7,6 +7,8 @@ from ConfigSpace import ConfigurationSpace, Constant
 from mindware.components.optimizers.smac_optimizer import SMACOptimizer
 from mindware.components.optimizers.random_search_optimizer import RandomSearchOptimizer
 from mindware.components.optimizers.tpe_optimizer import TPEOptimizer
+from mindware.components.optimizers.bohb_optimizer import BohbOptimizer
+from mindware.components.optimizers.mfse_optimizer import MfseOptimizer
 from mindware.utils.constant import MAX_INT
 
 
@@ -61,6 +63,10 @@ class MabOptimizer(BaseOptimizer):
             optimizer_class = TPEOptimizer
         elif sub_optimizer == 'smac':
             optimizer_class = SMACOptimizer
+        elif sub_optimizer == 'bohb':
+            optimizer_class = BohbOptimizer
+        elif sub_optimizer == 'mfse':
+            optimizer_class = MfseOptimizer
         else:
             raise ValueError("Invalid optimizer %s" % sub_optimizer)
 
