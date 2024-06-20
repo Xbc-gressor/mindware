@@ -40,9 +40,9 @@ if __name__ == '__main__':
     per_time_limit = args.per_time_limit
 
     # Load data
-    data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/spaceship'
+    # data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/spaceship'
     # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\spaceship'
-    # data_dir = '/root/automl_data/kaggle/spaceship'
+    data_dir = '/root/automl_data/kaggle/spaceship'
 
     # 预处理数据，将train和test表格中 Cabin 一列形如 B/0/P 的数据中的第一个和最后一个字母提取出来，形成两列 deck 和 side，并保存
     # train_data = pd.read_csv(os.path.join(data_dir, 'train.csv'))
