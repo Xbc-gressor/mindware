@@ -7,3 +7,7 @@ knn: ValueError: Expected n_neighbors <= n_samples,  but n_samples = 67, n_neigh
 lda: ValueError: n_components cannot be larger than min(n_features, n_classes - 1).
 
 hpo 搜索空间，condition和forbidden也要加进去
+
+TODO: 有的refit会报错，提示X有NaN。原来的X是没有NaN的，可能FE后用一部分数据的时候没有NaN，但是全数据里面有了。
+TODO: MFSE在CASH会出现两个相同的config，可能两个config的hash值相同（hash的时候对浮点数取了5位小数），但是config不同。目前删除的时候会删两边同一个pkl，先在删除的地方判断存不存在
+TODO: BOHB在CASH会出现搜索空间太小，采样不足，这种情况允许相同的config，但是删除这个分支

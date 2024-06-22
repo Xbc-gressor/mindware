@@ -67,9 +67,11 @@ class BaseOptimizer(object):
                     if save_flag:
                         pass
                     else:
-                        os.remove(model_path)
-                        self.logger.info("Model deleted from %s" % model_path)
-
+                        if os.path.exists(model_path):
+                            os.remove(model_path)
+                            self.logger.info("Model deleted from %s" % model_path)
+                        else:
+                            self.logger.error("Model path %s does not exist!" % model_path)
                     try:
                         if delete_flag:
                             os.remove(model_path_deleted)

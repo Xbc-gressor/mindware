@@ -179,9 +179,14 @@ class BohbBase(object):
 
         config_left = num_config
         while config_left:
+            i = 0
             config = self.config_gen.get_config()[0]
-            if config in config_candidates:
-                continue
+            while config in config_candidates:
+                config = self.config_gen.get_config()[0]
+                i += 1
+                if i > 1000:
+                    self.logger.warning('Cannot sample a new configuration after 1000 iters.')
+                    break
             config_candidates.append(config)
             config_left -= 1
 
@@ -195,7 +200,8 @@ class BohbBase(object):
                 while config in candidates:
                     config = sample_configurations(self.config_space, 1)[0]
                     i += 1
-                    if i > 100:
+                    if i > 1000:
+                        self.logger.warning('Cannot sample a new configuration after 1000 iters.')
                         break
             else:
                 config = config_candidates[idx_acq]
