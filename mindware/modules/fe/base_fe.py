@@ -42,8 +42,8 @@ class BaseFE(BaseAutoML):
 
         self.estimator_id = estimator_id
 
-        path = 'FE-%s-%s(%d)_%s' % (
-            self.estimator_id, optimizer, self.seed, self.datetime
+        path = 'FE(%s)-%s(%d)-%s_%s' % (
+            self.estimator_id, self.optimizer_name, self.seed, self.evaluation, self.datetime
         )
         self.output_dir = os.path.join(output_dir, path)
         if not os.path.exists(self.output_dir):
