@@ -190,11 +190,19 @@ class BohbBase(object):
         idx_acq = 0
         for _id in range(num_config):
             if rd.random() < p_threshold:
+                i = 0
                 config = sample_configurations(self.config_space, 1)[0]
+                while config in candidates:
+                    config = sample_configurations(self.config_space, 1)[0]
+                    i += 1
+                    if i > 100:
+                        break
             else:
                 config = config_candidates[idx_acq]
                 idx_acq += 1
-            candidates.append(config)
+            if config not in config_candidates:
+                candidates.append(config)
+
         return candidates
 
     def get_candidate_configurations(self, num_config):
