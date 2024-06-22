@@ -201,7 +201,7 @@ class BohbBase(object):
                     config = sample_configurations(self.config_space, 1)[0]
                     i += 1
                     if i > 1000:
-                        self.logger.warning('Cannot sample a new configuration after 1000 iters.')
+                        self.logger.warning('Cannot sample a new random configuration after 1000 iters.')
                         break
             else:
                 config = config_candidates[idx_acq]
