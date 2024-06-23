@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     # Load data
     # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
-    data_dir = '/root/automl_data/kaggle/spaceship'
+    data_dir = '/root/automl_data/kaggle/santander'
 
     dm = DataManager()
 
