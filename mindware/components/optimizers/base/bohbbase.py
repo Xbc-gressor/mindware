@@ -152,7 +152,7 @@ class BohbBase(object):
 
     def smac_get_candidate_configurations(self, num_config):
         if len(self.target_y[self.iterate_r[-1]]) <= 3:
-            return sample_configurations(self.config_space, num_config)
+            return sample_configurations(self.config_space, num_config, logger=self.logger)
 
         incumbent = dict()
         max_r = self.iterate_r[-1]
@@ -167,7 +167,14 @@ class BohbBase(object):
         idx_acq = 0
         for _id in range(num_config):
             if rd.random() < p_threshold or _id >= len(config_candidates):
+                i = 0
                 config = sample_configurations(self.config_space, 1)[0]
+                while config in candidates:
+                    config = sample_configurations(self.config_space, 1)[0]
+                    i += 1
+                    if i > 1000:
+                        self.logger.warning('Cannot sample a new random configuration after 1000 iters.')
+                        break
             else:
                 config = config_candidates[idx_acq]
                 idx_acq += 1
