@@ -158,7 +158,7 @@ class BaseAutoML(object):
 
         if refit:
             self.refit()
-        else: # refit() 中会fit_ensemble
+        else:  # refit() 中会fit_ensemble
             if self.ensemble_method is not None:
                 if self.evaluation in ['holdout', 'partial', 'partial_bohb']:
                     self.fit_ensemble()
