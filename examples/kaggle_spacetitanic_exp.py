@@ -19,6 +19,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--Opt', type=str, default='cashfe', help='cash or cashfe')
     parser.add_argument('--optimizer', type=str, default='smac', help='smac or mab')
+    parser.add_argument('--x_encode', type=str, default=None, help='smac or mab')
     parser.add_argument('--ensemble_method', type=str, default='blending', help='ensemble_selection or blending')
     parser.add_argument('--ensemble_size', type=int, default=10, help='ensemble size')
     parser.add_argument('--evaluation', type=str, default='holdout', help='evaluation')
@@ -32,6 +33,7 @@ if __name__ == '__main__':
     task_type = CLASSIFICATION
 
     optimizer = args.optimizer
+    x_encode = args.x_encode
     ensemble_method = args.ensemble_method
     ensemble_size = args.ensemble_size
     metric = 'acc'
@@ -41,8 +43,8 @@ if __name__ == '__main__':
 
     # Load data
     # data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/spaceship'
-    # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\spaceship'
-    data_dir = '/root/automl_data/kaggle/spaceship'
+    data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\spaceship'
+    # data_dir = '/root/automl_data/kaggle/spaceship'
 
     # 预处理数据，将train和test表格中 Cabin 一列形如 B/0/P 的数据中的第一个和最后一个字母提取出来，形成两列 deck 和 side，并保存
     # train_data = pd.read_csv(os.path.join(data_dir, 'train.csv'))
@@ -58,11 +60,11 @@ if __name__ == '__main__':
     dm = DataManager()
 
     train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train_new.csv'), label_name='Transported', ignore_columns=['PassengerId', 'Name', 'Cabin'])
-    train_data_node = dm.preprocess_fit(train_data_node, task_type)
+    train_data_node = dm.preprocess_fit(train_data_node, task_type, x_encode=x_encode)
 
     test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test_new.csv'), ignore_columns=['PassengerId', 'Name', 'Cabin'])
     test_data_node = dm.preprocess_transform(test_data_node)
-
+    breakpoint()
     # Initialize CASHFE
 
 
@@ -96,12 +98,14 @@ if __name__ == '__main__':
     pred_ens = dm.decode_label(pred_ens)
     pred = dm.decode_label(pred)
 
+    x_encode_str = '' if x_encode is None else ('_'+x_encode)
+
     passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['PassengerId']
     result = pd.DataFrame({'PassengerId': passenger_id, 'Transported': pred})
-    result.to_csv(os.path.join(data_dir, f'{Opt}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'), index=False)
+    result.to_csv(os.path.join(data_dir, f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'), index=False)
     print('Result has been saved to result.csv.')
     result_ens = pd.DataFrame({'PassengerId': passenger_id, 'Transported': pred_ens})
-    result_ens.to_csv(os.path.join(data_dir, f'{Opt}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'), index=False)
+    result_ens.to_csv(os.path.join(data_dir, f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'), index=False)
     print('Ensemble result has been saved to result_ens.csv.')
 
     # config_path = '/Users/xubeideng/Documents/Scientific Research/AutoML/code/mindware/examples/data/CASHFE-mab(1)_2024-06-05-16-40-50-634829/2024-06-05-16-40-50-634829_topk_config.pkl'

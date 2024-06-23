@@ -35,6 +35,9 @@ class DataManager(object):
         self.task_type = None
         self.variance_selector = None
         self.onehot_encoder = None
+        self.x_encode_method = None
+        self.x_encoder = None
+        self.label_encode_method = None
         self.label_encoder = None
 
         if X is not None:
@@ -158,13 +161,19 @@ class DataManager(object):
 
         self.train_X = df
         data = [self.train_X, self.train_y]
-        return DataNode(data, self.feature_types, feature_names=self.train_X.columns.values)
+        self.feature_names = self.train_X.columns.values
+
+        return DataNode(data, self.feature_types, feature_names=self.feature_names)
 
     def load_test_csv(self, file_location, has_label=False, label_name='ground truth',
                       drop_index=None, keep_default_na=True, header='infer',
                       sep=',', ignore_columns=None):
         df = pd.read_csv(file_location, keep_default_na=keep_default_na,
                          na_values=self.na_values, header=header, sep=sep)
+
+        # 和 train_node 一样的排序
+        df = df[self.feature_names]
+
         # Drop the row with all NaNs.
         df.dropna(how='all')
         if ignore_columns:
@@ -180,10 +189,11 @@ class DataManager(object):
         data = [self.test_X, self.test_y]
         return DataNode(data, self.feature_types, feature_names=self.test_X.columns.values)
 
-    def preprocess(self, input_node, task_type=CLASSIFICATION, train_phase=True, label_encoder=None):
+    def preprocess(self, input_node, task_type=CLASSIFICATION, train_phase=True):
         try:
             input_node = self.remove_uninf_cols(input_node, train_phase=True)
             input_node = self.impute_cols(input_node)
+            input_node = self.x_preprocess(input_node)
             input_node = self.one_hot(input_node)
         except AttributeError as e:
             print('data[0] in input_node should be a DataFrame!')
@@ -192,19 +202,22 @@ class DataManager(object):
         # if self.task_type is None or self.task_type in CLS_TASKS:
         #     # Label encoding.
         #     input_node = self.encode_label(input_node)
-        input_node = self.encode_label(input_node, label_encoder=label_encoder)
+        input_node = self.encode_label(input_node)
         return input_node
 
-    def preprocess_fit(self, input_node, task_type=CLASSIFICATION, label_encoder=None):
+    def preprocess_fit(self, input_node, task_type=CLASSIFICATION, x_encode=None, label_encode=None):
         self.task_type = task_type
+        self.x_encode_method = x_encode
+        self.label_encode_method = label_encode
         self.variance_selector = None
         self.onehot_encoder = None
+        self.x_encoder = None
         self.label_encoder = None
-        preprocessed_node = self.preprocess(input_node, train_phase=True, label_encoder=label_encoder)
+        preprocessed_node = self.preprocess(input_node.copy_(), train_phase=True)
         return preprocessed_node
 
     def preprocess_transform(self, input_node):
-        preprocessed_node = self.preprocess(input_node, train_phase=False)
+        preprocessed_node = self.preprocess(input_node.copy_(), train_phase=False)
         return preprocessed_node
 
     def remove_uninf_cols(self, input_node: DataNode, train_phase=True):
@@ -247,6 +260,50 @@ class DataManager(object):
                         input_node = imputer.operate(input_node, [idx])
         return input_node
 
+    def x_preprocess(self, input_node: DataNode):
+        X, y = input_node.data
+        if isinstance(X, pd.DataFrame):
+            X = X.values
+
+        if self.x_encoder is None:
+            self.x_encoder = {
+                'target_field': [],
+                'encoder': None
+            }
+            _feature_types = input_node.feature_types
+
+            if self.x_encode_method is None:
+                self.x_encoder['encoder'] = None
+            elif self.x_encode_method == 'minmax':
+                self.x_encoder['encoder'] = MinMaxScaler()
+            elif self.x_encode_method == 'normalize':
+                self.x_encoder['encoder'] = StandardScaler()
+            elif self.x_encode_method is None:
+                raise ValueError(
+                    "Invalid x encode method: %s, only support (minmax, normalize)!" % self.x_encode_method)
+
+            if self.x_encoder['encoder'] is not None:
+                for i, _type in enumerate(_feature_types):
+                    if _type in ['discrete', 'numerical', 'ordinal']:
+                        self.x_encoder['target_field'].append(i)
+
+                if len(self.x_encoder['target_field']) == 0:
+                    self.x_encoder['encoder'] = None
+                else:
+                    X_ori = X[:, self.x_encoder['target_field']]
+                    self.x_encoder['encoder'].fit(X_ori)
+
+        if self.x_encoder['encoder'] is not None:  # 说明 target_field 肯定不空
+            X_new = X[:, self.x_encoder['target_field']]
+            X[:, self.x_encoder['target_field']] = self.x_encoder['encoder'].transform(X_new)
+
+        input_node.data = (X, y)
+
+        return input_node
+
+
+
+
     def one_hot(self, input_node: DataNode):
         # One-hot encoding TO categorical features.
         categorical_fields = [idx for idx, type in enumerate(input_node.feature_types) if type == CATEGORICAL]
@@ -262,19 +319,7 @@ class DataManager(object):
         input_node = self.variance_selector.operate(input_node)
         return input_node
 
-    def encode_label_func(self, y):
-        import pandas as pd
-        from sklearn.preprocessing import LabelEncoder
-        if isinstance(y, pd.Series):
-            y = y.values
-            label_encoder = LabelEncoder()
-            if self.label_encoder:
-                label_encoder = self.label_encoder
-            label_encoder.fit(y)
-        y = label_encoder.transform(y)
-        return y
-
-    def encode_label(self, input_node: DataNode, label_encoder=None):
+    def encode_label(self, input_node: DataNode):
         import pandas as pd
         X, y = input_node.data
         if isinstance(X, pd.DataFrame):
@@ -285,14 +330,16 @@ class DataManager(object):
                     self.label_encoder = LabelEncoder()
                     self.label_encoder.fit(y)
                 else:
-                    if label_encoder == 'minmax':
-                        self.label_encoder = label_encoder
+                    if self.label_encode_method is None:
+                        self.label_encoder = None
+                    elif self.label_encode_method == 'minmax':
+                        self.label_encoder = MinMaxScaler()
                         self.label_encoder.fit(y.reshape(-1, 1))
-                    elif label_encoder == 'standard':
+                    elif self.label_encode_method == 'normalize':
                         self.label_encoder = StandardScaler()
                         self.label_encoder.fit(y.reshape(-1, 1))
                     else:
-                        self.label_encoder = None
+                        raise ValueError("Invalid label encode method: %s, only support (minmax, normalize)!" % self.label_encode_method)
 
             if self.label_encoder is not None:
                 if self.task_type is None or self.task_type in CLS_TASKS:

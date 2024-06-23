@@ -20,6 +20,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--Opt', type=str, default='cashfe', help='cash or cashfe')
     parser.add_argument('--optimizer', type=str, default='smac', help='smac or mab')
+    parser.add_argument('--x_encode', type=str, default=None, help='smac or mab')
     parser.add_argument('--ensemble_method', type=str, default='blending', help='ensemble_selection or blending')
     parser.add_argument('--ensemble_size', type=int, default=10, help='ensemble size')
     parser.add_argument('--evaluation', type=str, default='holdout', help='evaluation')
@@ -32,6 +33,7 @@ if __name__ == '__main__':
     task_type = CLASSIFICATION
 
     optimizer = args.optimizer
+    x_encode = args.x_encode
     ensemble_method = args.ensemble_method
     ensemble_size = args.ensemble_size
     metric = 'acc'
@@ -40,17 +42,18 @@ if __name__ == '__main__':
     per_time_limit = args.per_time_limit
 
     # Load data
-    # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
-    data_dir = '/root/automl_data/kaggle/santander'
+    data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
+    # data_dir = '/root/automl_data/kaggle/santander'
 
     dm = DataManager()
 
-    train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), ignore_columns=['ID_code'],
+    _train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), ignore_columns=['ID_code'],
                                         label_name='target')
-    train_data_node = dm.preprocess_fit(train_data_node, task_type)
+    train_data_node = dm.preprocess_fit(_train_data_node, task_type, x_encode=x_encode)
 
     test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['ID_code'])
     test_data_node = dm.preprocess_transform(test_data_node)
+    breakpoint()
 
     # Initialize CASHFE
 
@@ -83,12 +86,14 @@ if __name__ == '__main__':
     pred = dm.decode_label(pred)
     pred_ens = dm.decode_label(pred_ens)
 
+    x_encode_str = '' if x_encode is None else ('_' + x_encode)
+
     passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['ID_code']
-    result = pd.DataFrame({'Id': passenger_id, 'target': pred})
-    result.to_csv(os.path.join(data_dir, f'{Opt}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'), index=False)
+    result = pd.DataFrame({'Id_code': passenger_id, 'target': pred})
+    result.to_csv(os.path.join(data_dir, f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'), index=False)
     print('Result has been saved to result.csv.')
-    result_ens = pd.DataFrame({'Id': passenger_id, 'target': pred_ens})
-    result_ens.to_csv(os.path.join(data_dir, f'{Opt}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'), index=False)
+    result_ens = pd.DataFrame({'Id_code': passenger_id, 'target': pred_ens})
+    result_ens.to_csv(os.path.join(data_dir, f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'), index=False)
     print('Ensemble result has been saved to result_ens.csv.')
 
     # config_path = 'D:\\xbc\\Fighting\\AutoML\\mindware\\examples\\data\\CASH-smac(1)_2024-06-04-21-21-08-961071\\2024-06-04-21-21-08-961071_topk_config.pkl'
