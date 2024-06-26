@@ -231,7 +231,6 @@ class DataManager(object):
 
     def from_test_df(self, df, has_label=False, label_name='ground truth', drop_index=None, ignore_columns=None):
 
-        breakpoint()
         # 和 train_node 一样的排序
         df = df[self.feature_names]
 
