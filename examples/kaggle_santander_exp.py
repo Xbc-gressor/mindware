@@ -42,8 +42,8 @@ if __name__ == '__main__':
     per_time_limit = args.per_time_limit
 
     # Load data
-    # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
-    data_dir = '/root/automl_data/kaggle/santander'
+    data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
+    # data_dir = '/root/automl_data/kaggle/santander'
 
     dm = DataManager()
 
@@ -53,6 +53,8 @@ if __name__ == '__main__':
 
     test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['ID_code'])
     test_data_node = dm.preprocess_transform(test_data_node)
+
+    breakpoint()
 
     # Initialize CASHFE
 

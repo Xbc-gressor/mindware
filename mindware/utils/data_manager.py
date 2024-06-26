@@ -140,6 +140,41 @@ class DataManager(object):
         else:
             raise ValueError('Unsupported file format: %s!' % file_location.split('.')[-1])
 
+        # 将类别型变量转化为字符串
+        if cate_cols:
+            df[cate_cols] = df[cate_cols].astype(str)
+
+        # Drop the row with all NaNs.
+        df.dropna(how='all')
+
+        if ignore_columns:
+            retain_columns = [col for col in df.columns if col not in ignore_columns]
+            df = df[retain_columns]
+
+        # if self.task_type in CLS_TASKS:
+        #     df[label_name] = self.encode_label_func(df[label_name])
+
+        # Clean the data where the label columns have nans.
+        self.clean_data_with_nan(df, label_name, drop_index=drop_index)
+
+        # The columns with missing values.
+        columns_missed = df.columns[df.isnull().any()].tolist()
+
+        # Identify the feature types
+        self.set_feat_types(df, columns_missed, cate_cols=cate_cols)
+
+        self.train_X = df
+        data = [self.train_X, self.train_y]
+        self.feature_names = self.train_X.columns.values
+
+        return DataNode(data, self.feature_types, feature_names=self.feature_names)
+
+    def from_train_df(self, df, label_name='ground truth', drop_index=None, ignore_columns=None, cate_cols=None):
+
+        # 将类别型变量转化为字符串
+        if cate_cols:
+            df[cate_cols] = df[cate_cols].astype(str)
+
         # Drop the row with all NaNs.
         df.dropna(how='all')
 
@@ -173,6 +208,37 @@ class DataManager(object):
 
         # 和 train_node 一样的排序
         df = df[self.feature_names]
+
+        # # 将类别型变量转化为字符串
+        # cat_cols = [col for col in df.columns if self.feature_types[col] == CATEGORICAL]
+        # if cat_cols:
+        #     df[cat_cols] = df[cat_cols].astype(str)
+
+        # Drop the row with all NaNs.
+        df.dropna(how='all')
+        if ignore_columns:
+            retain_columns = [col for col in df.columns if col not in ignore_columns]
+            df = df[retain_columns]
+
+        # if has_label and self.task_type in CLS_TASKS:
+        #     df[label_name] = self.encode_label_func(df[label_name])
+
+        self.clean_data_with_nan(df, label_name, phase='test', drop_index=drop_index, has_label=has_label)
+        self.test_X = df
+
+        data = [self.test_X, self.test_y]
+        return DataNode(data, self.feature_types, feature_names=self.test_X.columns.values)
+
+    def from_test_df(self, df, has_label=False, label_name='ground truth', drop_index=None, ignore_columns=None):
+
+        breakpoint()
+        # 和 train_node 一样的排序
+        df = df[self.feature_names]
+
+        # # 将类别型变量转化为字符串
+        # cat_cols = [col for col in df.columns if self.feature_types[col] == CATEGORICAL]
+        # if cat_cols:
+        #     df[cat_cols] = df[cat_cols].astype(str)
 
         # Drop the row with all NaNs.
         df.dropna(how='all')
