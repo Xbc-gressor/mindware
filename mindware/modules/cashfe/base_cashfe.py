@@ -1,8 +1,10 @@
 import os
 import time
 import numpy as np
-from typing import List
+from typing import List, Union, Callable
 from copy import deepcopy
+
+from sklearn.metrics._scorer import _BaseScorer
 
 from mindware.modules.base import BaseAutoML
 from mindware.utils.logging_utils import setup_logger, get_logger
@@ -14,7 +16,7 @@ from mindware.components.config_space.cs_builder import get_cash_cs, get_fe_cs
 
 class BaseCASHFE(BaseAutoML):
     def __init__(self, include_algorithms: List[str] = None, sub_optimizer: str = 'smac', task_type: str = None,
-                 metric: str = 'acc', data_node: DataNode = None,
+                 metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,

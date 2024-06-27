@@ -1,5 +1,8 @@
 import os
 
+from typing import Union, Callable
+from sklearn.metrics._scorer import _BaseScorer
+
 from mindware.modules.base import BaseAutoML
 from mindware.utils.logging_utils import setup_logger, get_logger
 from mindware.components.utils.constants import CLS_TASKS
@@ -17,7 +20,7 @@ from ConfigSpace import Configuration, Constant
 
 class BaseFE(BaseAutoML):
     def __init__(self, estimator_id: str, task_type: str = None,
-                 metric: str = 'acc', data_node: DataNode = None,
+                 metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac',
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,

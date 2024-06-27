@@ -13,6 +13,31 @@ from mindware import CLASSIFICATION
 import pickle as pkl
 import argparse
 import numpy as np
+from sklearn.metrics._scorer import _BaseScorer
+
+
+def gini(actual, pred):
+    assert len(actual) == len(pred)
+
+    _all = np.asarray(np.c_[actual, pred, np.arange(len(actual))], dtype=float)
+    _all = _all[np.lexsort((_all[:, 2], -1 * _all[:, 1]))]
+    total_losses = _all[:, 0].sum()
+    gini_sum = _all[:, 0].cumsum().sum() / total_losses
+
+    gini_sum -= (len(actual) + 1) / 2.0
+
+    return gini_sum / len(actual)
+
+
+class GiniScorer(_BaseScorer):
+    def __init__(self, **kwargs):
+        super().__init__(score_func=gini, sign=1, kwargs=kwargs)
+
+    def _score(self, method_caller, clf, X, y, sample_weight=None):
+
+        y_pred = clf.predict_proba(X)[:, 1]
+        return self._score_func(y, y_pred, **self._kwargs)
+
 
 if __name__ == '__main__':
 
@@ -36,7 +61,6 @@ if __name__ == '__main__':
     x_encode = args.x_encode
     ensemble_method = args.ensemble_method
     ensemble_size = args.ensemble_size
-    metric = 'auc'
     evaluation = args.evaluation
     time_limit = args.time_limit
     per_time_limit = args.per_time_limit
@@ -65,8 +89,6 @@ if __name__ == '__main__':
     test_data_node = dm.from_test_df(test_df, ignore_columns=['id'])
     test_data_node = dm.preprocess_transform(test_data_node)
 
-    breakpoint()
-
     if Opt == 'cash':
         # 'lda',
         OPT = CASH
@@ -75,7 +97,7 @@ if __name__ == '__main__':
 
     hpo = OPT(
         include_algorithms=None, sub_optimizer='smac', task_type=task_type,
-        metric=metric,
+        metric=GiniScorer(),
         data_node=train_data_node, evaluation=evaluation, resampling_params=None,
         optimizer=optimizer, inner_iter_num_per_iter=5,
         time_limit=time_limit, amount_of_resource=100, per_run_time_limit=per_time_limit,
@@ -83,18 +105,17 @@ if __name__ == '__main__':
         ensemble_method=ensemble_method, ensemble_size=ensemble_size
     )
 
-    # print(hpo.run())
-    # pred_ens = hpo.predict(test_data_node, ens=True)
-    # pred = hpo.predict(test_data_node, ens=False)
+    print(hpo.run())
+    pred_ens = hpo.predict(test_data_node, ens=True, prob=True)[:, 1]
+    pred = hpo.predict(test_data_node, ens=False, prob=True)[:, 1]
 
     x_encode_str = '' if x_encode is None else ('_' + x_encode)
 
-    # passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['id']
-    # result = pd.DataFrame({'Id_code': passenger_id, 'target': pred})
-    # result.to_csv(os.path.join(data_dir, f'{Opt}_auc_{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'), index=False)
-    # print('Result has been saved to result.csv.')
-    # result_ens = pd.DataFrame({'id': passenger_id, 'target': pred_ens})
-    # result_ens.to_csv(os.path.join(data_dir, f'{Opt}_auc_{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'), index=False)
-    # print('Ensemble result has been saved to result_ens.csv.')
+    passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['id']
+    result = pd.DataFrame({'id': passenger_id, 'target': pred})
+    result.to_csv(os.path.join(data_dir, f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'), index=False)
+    print('Result has been saved to result.csv.')
+    result_ens = pd.DataFrame({'id': passenger_id, 'target': pred_ens})
+    result_ens.to_csv(os.path.join(data_dir, f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'), index=False)
+    print('Ensemble result has been saved to result_ens.csv.')
 
-    breakpoint()

@@ -5,6 +5,9 @@ import numpy as np
 import pickle as pkl
 import warnings
 
+from typing import Union, Callable
+from sklearn.metrics._scorer import _BaseScorer
+
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
 from mindware.components.metrics.metric import get_metric
@@ -29,7 +32,7 @@ from mindware.components.ensemble import ensemble_list
 
 class BaseAutoML(object):
     def __init__(self, name: str, task_type: str = None,
-                 metric: str = 'acc', data_node: DataNode = None,
+                 metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,

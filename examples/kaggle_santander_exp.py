@@ -2,7 +2,6 @@ import pandas as pd
 import os
 import sys
 
-
 # 将当前文件所在文件夹的上层目录加入到sys.path中
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -36,7 +35,7 @@ if __name__ == '__main__':
     x_encode = args.x_encode
     ensemble_method = args.ensemble_method
     ensemble_size = args.ensemble_size
-    metric = 'acc'
+    metric = 'auc'
     evaluation = args.evaluation
     time_limit = args.time_limit
     per_time_limit = args.per_time_limit
@@ -48,7 +47,7 @@ if __name__ == '__main__':
     dm = DataManager()
 
     _train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), ignore_columns=['ID_code'],
-                                        label_name='target')
+                                         label_name='target')
     train_data_node = dm.preprocess_fit(_train_data_node, task_type, x_encode=x_encode)
 
     test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['ID_code'])
@@ -79,8 +78,8 @@ if __name__ == '__main__':
     )
 
     print(hpo.run())
-    pred_ens = hpo.predict(test_data_node, ens=True, prob=True)[:,1]
-    pred = hpo.predict(test_data_node, ens=False, prob=True)[:,1]
+    pred_ens = hpo.predict(test_data_node, ens=True, prob=True)[:, 1]
+    pred = hpo.predict(test_data_node, ens=False, prob=True)[:, 1]
 
     # pred = dm.decode_label(pred)
     # pred_ens = dm.decode_label(pred_ens)
@@ -89,8 +88,12 @@ if __name__ == '__main__':
 
     passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['ID_code']
     result = pd.DataFrame({'Id_code': passenger_id, 'target': pred})
-    result.to_csv(os.path.join(data_dir, f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'), index=False)
+    result.to_csv(os.path.join(data_dir,
+                               f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
+                  index=False)
     print('Result has been saved to result.csv.')
     result_ens = pd.DataFrame({'Id_code': passenger_id, 'target': pred_ens})
-    result_ens.to_csv(os.path.join(data_dir, f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'), index=False)
+    result_ens.to_csv(os.path.join(data_dir,
+                                   f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'),
+                      index=False)
     print('Ensemble result has been saved to result_ens.csv.')
