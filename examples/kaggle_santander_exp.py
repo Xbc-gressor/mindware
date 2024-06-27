@@ -42,8 +42,8 @@ if __name__ == '__main__':
     per_time_limit = args.per_time_limit
 
     # Load data
-    data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
-    # data_dir = '/root/automl_data/kaggle/santander'
+    # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
+    data_dir = '/root/automl_data/kaggle/santander'
 
     dm = DataManager()
 
@@ -53,8 +53,6 @@ if __name__ == '__main__':
 
     test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['ID_code'])
     test_data_node = dm.preprocess_transform(test_data_node)
-
-    breakpoint()
 
     # Initialize CASHFE
 
@@ -81,11 +79,11 @@ if __name__ == '__main__':
     )
 
     print(hpo.run())
-    pred_ens = hpo.predict(test_data_node, ens=True)
-    pred = hpo.predict(test_data_node, ens=False)
+    pred_ens = hpo.predict(test_data_node, ens=True, prob=True)[:,1]
+    pred = hpo.predict(test_data_node, ens=False, prob=True)[:,1]
 
-    pred = dm.decode_label(pred)
-    pred_ens = dm.decode_label(pred_ens)
+    # pred = dm.decode_label(pred)
+    # pred_ens = dm.decode_label(pred_ens)
 
     x_encode_str = '' if x_encode is None else ('_' + x_encode)
 
@@ -96,19 +94,3 @@ if __name__ == '__main__':
     result_ens = pd.DataFrame({'Id_code': passenger_id, 'target': pred_ens})
     result_ens.to_csv(os.path.join(data_dir, f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'), index=False)
     print('Ensemble result has been saved to result_ens.csv.')
-
-    # config_path = 'D:\\xbc\\Fighting\\AutoML\\mindware\\examples\\data\\CASH-smac(1)_2024-06-04-21-21-08-961071\\2024-06-04-21-21-08-961071_topk_config.pkl'
-    # with open(config_path, 'rb') as f:
-    #     stats = pkl.load(f)
-    #
-    # # Ensembling all intermediate/ultimate models found in above optimization process.
-    # es = EnsembleBuilder(stats=stats,
-    #                      data_node=train_data_node,
-    #                      ensemble_method=ensemble_method,
-    #                      ensemble_size=ensemble_size*2,
-    #                      task_type=task_type,
-    #                      metric=hpo.metric,
-    #                      output_dir=hpo.output_dir)
-    #
-    # es.fit(train_data_node)
-    # breakpoint()

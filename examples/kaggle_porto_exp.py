@@ -42,8 +42,8 @@ if __name__ == '__main__':
     per_time_limit = args.per_time_limit
 
     # Load data
-    data_dir = 'D:\\xbc\Fighting\AutoML\datas\kaggle\porto-seguro-safe-driver-prediction'
-    # data_dir = '/root/automl_data/kaggle/santander'
+    # data_dir = 'D:\\xbc\Fighting\AutoML\datas\kaggle\porto-seguro-safe-driver-prediction'
+    data_dir = '/root/automl_data/kaggle/porto-seguro-safe-driver-prediction'
 
     dm = DataManager(na_values=[-1])
 
