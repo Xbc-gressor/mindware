@@ -12,15 +12,17 @@ from mindware.components.optimizers.base.config_space_utils import convert_confi
 from mindware.components.computation.parallel_process import ParallelProcessEvaluator
 from mindware.utils.logging_utils import get_logger
 from mindware.components.optimizers.base.prob_rf import RandomForestWithInstances
+from mindware.utils.decorators import time_limit
 
 
 class BohbBase(object):
-    def __init__(self, eval_func, config_space, config_generator='tpe',
+    def __init__(self, eval_func, config_space, config_generator='tpe', per_run_time_limit=600,
                  seed=1, R=27, eta=3, n_jobs=1):
         self.eval_func = eval_func
         self.config_space = config_space
         self.config_generator = config_generator
         self.n_workers = n_jobs
+        self.per_run_time_limit = per_run_time_limit
 
         self.trial_cnt = 0
         self.configs = list()
@@ -96,21 +98,47 @@ class BohbBase(object):
                 n_configs = n * self.eta ** (-i)
                 n_resource = r * self.eta ** i
 
+                resource_ratio = float(n_resource / self.R)
+
                 self.logger.info("BOHB: %d configurations x size %d / %d each" %
                                  (int(n_configs), n_resource, self.R))
 
-                val_losses = executor.parallel_execute(T, resource_ratio=float(n_resource / self.R),
-                                                       eta=self.eta,
-                                                       first_iter=(i == 0))
+                if self.n_workers > 1:
+                    val_losses = executor.parallel_execute(T, resource_ratio=resource_ratio,
+                                                           eta=self.eta,
+                                                           first_iter=(i == 0))
 
-                for _id, _val_loss in enumerate(val_losses):
-                    if isinstance(_val_loss, dict):
-                        val_losses[_id] = _val_loss['objectives'][0]
+                    for _id, _val_loss in enumerate(val_losses):
+                        if isinstance(_val_loss, dict):
+                            val_losses[_id] = _val_loss['objectives'][0]
 
-                for _id, _val_loss in enumerate(val_losses):
-                    if np.isfinite(_val_loss):
-                        self.target_x[int(n_resource)].append(T[_id])
-                        self.target_y[int(n_resource)].append(_val_loss)
+                    for _id, _val_loss in enumerate(val_losses):
+                        if np.isfinite(_val_loss):
+                            self.target_x[int(n_resource)].append(T[_id])
+                            self.target_y[int(n_resource)].append(_val_loss)
+
+                else:
+                    val_losses = list()
+                    for config in T:
+                        if time.time() - start_time > budget:
+                            self.logger.warning('Time limit exceeded!')
+                            break
+
+                        try:
+                            with time_limit(self.per_run_time_limit):
+                                val_loss = self.eval_func(config, resource_ratio=resource_ratio,
+                                                          eta=self.eta, first_iter=(i == 0))
+                        except Exception as e:
+                            val_loss = np.inf
+
+                        if isinstance(val_loss, dict):
+                            val_loss = val_loss['objectives'][0]
+
+                        val_losses.append(val_loss)
+
+                        if np.isfinite(val_loss):
+                            self.target_x[int(n_resource)].append(config)
+                            self.target_y[int(n_resource)].append(val_loss)
 
                 self.exp_output[time.time()] = (int(n_resource), T, val_losses)
 
@@ -148,7 +176,6 @@ class BohbBase(object):
                                      np.array(normalized_y, dtype=np.float64))
                 
         return iter_full_eval_configs, iter_full_eval_perfs
-    
 
     def smac_get_candidate_configurations(self, num_config):
         if len(self.target_y[self.iterate_r[-1]]) <= 3:

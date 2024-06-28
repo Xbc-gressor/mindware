@@ -111,6 +111,7 @@ class MfseBase(object):
                         if time.time() - start_time > budget:
                             self.logger.warning('Time limit exceeded!')
                             break
+
                         try:
                             with time_limit(self.per_run_time_limit):
                                 val_loss = self.eval_func(config, resource_ratio=resource_ratio,
@@ -122,13 +123,12 @@ class MfseBase(object):
                         if isinstance(val_loss, dict):
                             val_loss = val_loss['objectives'][0]
 
+                        val_losses.append(val_loss)
+                        
                         if np.isfinite(val_loss):
                             obs = Observation(config=config, objectives=[val_loss])
                             self.mf_advisor.update_observation(obs, resource_ratio=resource_ratio)
 
-                        val_losses.append(val_loss)
-                        
-                        if np.isfinite(val_loss):
                             # self.target_x[int(n_resource)].append(config)
                             # self.target_y[int(n_resource)].append(val_loss)
                             self.evaluation_stats['timestamps'].append(time.time() - self.global_start_time)

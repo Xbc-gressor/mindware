@@ -13,6 +13,7 @@ class BohbOptimizer(BaseOptimizer, BohbBase):
         BaseOptimizer.__init__(self, evaluator, config_space, name, eval_type=eval_type, timestamp=timestamp,
                                output_dir=output_dir, seed=seed)
         BohbBase.__init__(self, eval_func=self.evaluator, config_generator=mode, config_space=self.config_space,
+                          per_run_time_limit=per_run_time_limit,
                           seed=seed, R=R, eta=eta, n_jobs=n_jobs)
         self.time_limit = time_limit
         self.evaluation_num_limit = evaluation_limit
@@ -45,7 +46,6 @@ class BohbOptimizer(BaseOptimizer, BohbBase):
                             os.remove(filepath)
                         except:
                             pass
-
 
         if len(self.full_eval_perfs) > 0:
             inc_idx = np.argmin(np.array(self.full_eval_perfs))
