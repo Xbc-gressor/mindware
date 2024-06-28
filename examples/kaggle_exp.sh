@@ -21,7 +21,7 @@
 
 #python ./kaggle_santander_exp.py --Opt cashfe --time_limit 10024 --per_time_limit 1200 --optimizer smac --evaluation holdout
 # python ./kaggle_santander_exp.py --Opt cashfe --time_limit 10024 --per_time_limit 1200 --optimizer smac --evaluation holdout --x_encode normalize
-python ./kaggle_santander_exp.py --Opt cashfe --time_limit 20024 --per_time_limit 4800 --optimizer smac --evaluation cv --x_encode normalize
+python ./kaggle_santander_exp.py --Opt cashfe --time_limit 20024 --per_time_limit 1800 --optimizer smac --evaluation partial_bohb --x_encode normalize
 
-python ./kaggle_porto_exp.py --Opt cashfe --time_limit 10024 --per_time_limit 1200 --optimizer smac --evaluation holdout --x_encode normalize
-python ./kaggle_porto_exp.py --Opt cashfe --time_limit 20024 --per_time_limit 4800 --optimizer smac --evaluation cv --x_encode normalize
+python ./kaggle_porto_exp.py --Opt cashfe --time_limit 20024 --per_time_limit 1800 --optimizer smac --evaluation holdout --x_encode normalize
+python ./kaggle_porto_exp.py --Opt cashfe --time_limit 30024 --per_time_limit 1800 --optimizer smac --evaluation partial_bohb --x_encode normalize
