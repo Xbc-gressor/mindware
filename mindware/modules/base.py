@@ -271,7 +271,8 @@ class BaseAutoML(object):
     def _predict_stats(self, test_data: DataNode, stats, ens=False, prob=False):
         # 如果用全数据refit了，就不能包含k_nearest_neighbors, 因为它会将训练数据都预测为label，selection算法只会选knn
         if self.already_refit and ens and self.ensemble_method == 'ensemble_selection':
-            stats.remove('k_nearest_neighbors')
+            if 'k_nearest_neighbors' in stats:
+                stats.pop('k_nearest_neighbors')
 
         print("Predicting with stats")
         if ens and self.ensemble_method is not None:
