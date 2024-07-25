@@ -185,6 +185,8 @@ class BaseAutoML(object):
             with open(config_path, 'rb') as f:
                 stats = pkl.load(f)
             for algo_id in stats.keys():
+                if algo_id == 'neural_network':
+                    continue
                 model_to_eval = stats[algo_id]
                 for idx, (config, perf, path) in enumerate(model_to_eval):
                     
@@ -220,20 +222,21 @@ class BaseAutoML(object):
                 self.timestamp, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
             config = self.incumbent.copy()
 
-            if self.name in ['fe', 'cashfe']:
-                data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
-                                                  if_imbal=self.if_imbal)
-            else:
-                op_list = {}
-                data_node = self.data_node.copy_()
-
             algo_id = config['algorithm']
-            estimator = fetch_predict_estimator(self.task_type, algo_id, config,
-                                                data_node.data[0], data_node.data[1],
-                                                weight_balance=data_node.enable_balance,
-                                                data_balance=data_node.data_balance)
-            with open(model_path, 'wb') as f:
-                pkl.dump([op_list, estimator, None], f)
+            if algo_id != 'neural_network':
+                if self.name in ['fe', 'cashfe']:
+                    data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
+                                                      if_imbal=self.if_imbal)
+                else:
+                    op_list = {}
+                    data_node = self.data_node.copy_()
+
+                estimator = fetch_predict_estimator(self.task_type, algo_id, config,
+                                                    data_node.data[0], data_node.data[1],
+                                                    weight_balance=data_node.enable_balance,
+                                                    data_balance=data_node.data_balance)
+                with open(model_path, 'wb') as f:
+                    pkl.dump([op_list, estimator, None], f)
 
         self.already_refit = True
 
@@ -245,7 +248,8 @@ class BaseAutoML(object):
 
             # 如果用全数据refit了，就不能包含k_nearest_neighbors, 因为它会将训练数据都预测为label，selection算法只会选knn
             if self.already_refit and self.ensemble_method == 'ensemble_selection':
-                stats.remove('k_nearest_neighbors')
+                if 'k_nearest_neighbors' in stats:
+                    stats.pop('k_nearest_neighbors')
 
             # Ensembling all intermediate/ultimate models found in above optimization process.
             self.es = EnsembleBuilder(stats=stats,
@@ -271,7 +275,8 @@ class BaseAutoML(object):
     def _predict_stats(self, test_data: DataNode, stats, ens=False, prob=False):
         # 如果用全数据refit了，就不能包含k_nearest_neighbors, 因为它会将训练数据都预测为label，selection算法只会选knn
         if self.already_refit and ens and self.ensemble_method == 'ensemble_selection':
-            stats.remove('k_nearest_neighbors')
+            if 'k_nearest_neighbors' in stats:
+                stats.pop('k_nearest_neighbors')
 
         print("Predicting with stats")
         if ens and self.ensemble_method is not None:

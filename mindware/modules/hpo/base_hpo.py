@@ -9,7 +9,7 @@ from mindware.utils.logging_utils import setup_logger, get_logger
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
 
-from mindware.modules.hpo.hpo_evaluator import get_hpo_cs
+from mindware.components.config_space.cs_builder import get_hpo_cs
 
 
 class BaseHPO(BaseAutoML):
@@ -46,8 +46,12 @@ class BaseHPO(BaseAutoML):
             os.makedirs(self.output_dir)
         self.logger = self._get_logger(optimizer)
 
+        cs_args = {
+            'resampling_params': resampling_params,
+            'data_node': data_node
+        }
         # _candidates = None
-        self.cs = get_hpo_cs(self.estimator_id, self.task_type)
+        self.cs = get_hpo_cs(self.estimator_id, self.task_type, **cs_args)
 
         # Define evaluator and optimizer
         self.evaluator = None

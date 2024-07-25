@@ -5,13 +5,18 @@ from mindware.components.config_space.cls_cs_builder import get_fe_cs as get_cls
 from mindware.components.config_space.rgs_cs_builder import get_fe_cs as get_rgs_fe_cs
 from mindware.components.utils.constants import *
 
+from mindware.components.utils.class_loader import get_combined_candidtates
+from mindware.components.models.classification import _classifiers, _addons as _cls_addons
+from mindware.components.models.regression import _regressors, _addons as _rgs_addons
+
+from ConfigSpace import ConfigurationSpace, Constant, CategoricalHyperparameter
+
 import numpy as np
 
 
-def get_cash_cs(include_algorithms=None, task_type=CLASSIFICATION, **cs_args):
-
-    resampling_params = cs_args.get('resampling_params', None)
-    data_node = cs_args.get('data_node', None)
+def get_cs_args(**kwargs):
+    resampling_params = kwargs.get('resampling_params', None)
+    data_node = kwargs.get('data_node', None)
 
     test_size = 0.33
     if resampling_params is not None and 'test_size' in resampling_params:
@@ -26,10 +31,41 @@ def get_cash_cs(include_algorithms=None, task_type=CLASSIFICATION, **cs_args):
             'n_samples': n_samples
         }
 
+    return _cs_args
+
+def get_cash_cs(include_algorithms=None, task_type=CLASSIFICATION, **cs_args):
+
+    _cs_args = get_cs_args(**cs_args)
+
     if task_type in CLS_TASKS:
         cs = get_cls_cash_cs(include_algorithms, task_type, **_cs_args)
     else:
         cs = get_rgs_cash_cs(include_algorithms, task_type, **_cs_args)
+
+    return cs
+
+
+def get_hpo_cs(estimator_id, task_type, **cs_args):
+
+    _cs_args = get_cs_args(**cs_args)
+
+    if task_type in CLS_TASKS:
+        _candidates = get_combined_candidtates(_classifiers, _cls_addons)
+    else:
+        _candidates = get_combined_candidtates(_regressors, _rgs_addons)
+
+    if estimator_id in _candidates:
+        rgs_class = _candidates[estimator_id]
+    else:
+        raise ValueError("Algorithm %s not supported!" % estimator_id)
+
+    cs = ConfigurationSpace()
+    algo = CategoricalHyperparameter('algorithm', [estimator_id])
+    cs.add_hyperparameter(algo)
+
+    tmp_cs = rgs_class.get_hyperparameter_search_space(**_cs_args)
+    parent_hyperparameter = {'parent': algo, 'value': estimator_id}
+    cs.add_configuration_space(estimator_id, tmp_cs, parent_hyperparameter=parent_hyperparameter)
 
     return cs
 

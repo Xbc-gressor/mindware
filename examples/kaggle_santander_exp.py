@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mindware.utils.data_manager import DataManager
 from mindware import CASHFE
 from mindware import CASH
+from mindware import HPO
 from mindware import EnsembleBuilder
 from mindware import CLASSIFICATION
 import pickle as pkl
@@ -39,6 +40,7 @@ if __name__ == '__main__':
     evaluation = args.evaluation
     time_limit = args.time_limit
     per_time_limit = args.per_time_limit
+    estimator_id = 'neural_network'
 
     # Load data
     # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
@@ -67,18 +69,29 @@ if __name__ == '__main__':
     else:
         OPT = CASHFE
 
-    hpo = OPT(
-        include_algorithms=None, sub_optimizer='smac', task_type=task_type,
+    hpo = HPO(
+        estimator_id=estimator_id, task_type=task_type,
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params=None,
-        optimizer=optimizer, inner_iter_num_per_iter=5,
-        time_limit=time_limit, amount_of_resource=100, per_run_time_limit=per_time_limit,
+        optimizer=optimizer,
+        time_limit=time_limit, amount_of_resource=50, per_run_time_limit=per_time_limit,
         output_dir='./data', seed=1, n_jobs=1,
-        ensemble_method=ensemble_method, ensemble_size=ensemble_size
+        ensemble_method=None, ensemble_size=ensemble_size
     )
 
+
+    # hpo = OPT(
+    #     include_algorithms=None, sub_optimizer='smac', task_type=task_type,
+    #     metric=metric,
+    #     data_node=train_data_node, evaluation=evaluation, resampling_params=None,
+    #     optimizer=optimizer, inner_iter_num_per_iter=5,
+    #     time_limit=time_limit, amount_of_resource=100, per_run_time_limit=per_time_limit,
+    #     output_dir='./data', seed=1, n_jobs=1,
+    #     ensemble_method=ensemble_method, ensemble_size=ensemble_size
+    # )
+
     print(hpo.run())
-    pred_ens = hpo.predict(test_data_node, ens=True, prob=True)[:, 1]
+    # pred_ens = hpo.predict(test_data_node, ens=True, prob=True)[:, 1]
     pred = hpo.predict(test_data_node, ens=False, prob=True)[:, 1]
 
     # pred = dm.decode_label(pred)
@@ -89,11 +102,11 @@ if __name__ == '__main__':
     passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['ID_code']
     result = pd.DataFrame({'Id_code': passenger_id, 'target': pred})
     result.to_csv(os.path.join(data_dir,
-                               f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
+                               f'{Opt}{estimator_id}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
                   index=False)
     print('Result has been saved to result.csv.')
-    result_ens = pd.DataFrame({'Id_code': passenger_id, 'target': pred_ens})
-    result_ens.to_csv(os.path.join(data_dir,
-                                   f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'),
-                      index=False)
-    print('Ensemble result has been saved to result_ens.csv.')
+    # result_ens = pd.DataFrame({'Id_code': passenger_id, 'target': pred_ens})
+    # result_ens.to_csv(os.path.join(data_dir,
+    #                                f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'),
+    #                   index=False)
+    # print('Ensemble result has been saved to result_ens.csv.')
