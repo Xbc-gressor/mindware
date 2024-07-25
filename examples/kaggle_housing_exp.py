@@ -23,7 +23,6 @@ if __name__ == '__main__':
 
     train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), ignore_columns=['Id'],
                                         label_name='SalePrice')
-    breakpoint()
     train_data_node = dm.preprocess_fit(train_data_node, task_type)
 
     test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['Id'])

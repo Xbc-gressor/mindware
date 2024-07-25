@@ -209,10 +209,10 @@ class DataManager(object):
         # 和 train_node 一样的排序
         df = df[self.feature_names]
 
-        # # 将类别型变量转化为字符串
-        # cat_cols = [col for col in df.columns if self.feature_types[col] == CATEGORICAL]
-        # if cat_cols:
-        #     df[cat_cols] = df[cat_cols].astype(str)
+        # 将类别型变量转化为字符串
+        cat_cols = [col for (i, col) in enumerate(df.columns) if self.feature_types[i] == CATEGORICAL]
+        if cat_cols:
+            df[cat_cols] = df[cat_cols].astype(str)
 
         # Drop the row with all NaNs.
         df.dropna(how='all')
@@ -268,6 +268,7 @@ class DataManager(object):
         #     # Label encoding.
         #     input_node = self.encode_label(input_node)
         input_node = self.encode_label(input_node)
+        input_node.data = (input_node.data[0].astype(float), input_node.data[1])
         return input_node
 
     def preprocess_fit(self, input_node, task_type=CLASSIFICATION, x_encode=None, label_encode=None):

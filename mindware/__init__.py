@@ -15,6 +15,11 @@ from mindware.components.models.regression import _regressors, _addons as regres
 candidates_classifiers = list(get_combined_candidtates(_classifiers, classifiers_addons).keys())
 candidates_regressors = list(get_combined_candidtates(_regressors, regressors_addons).keys())
 
+if 'neural_network' in candidates_classifiers:
+    candidates_classifiers.remove('neural_network')
+if 'neural_network' in candidates_regressors:
+    candidates_regressors.remove('neural_network')
+
 __all__ = [
     "HPO",
     "FE",
