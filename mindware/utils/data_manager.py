@@ -40,6 +40,8 @@ class DataManager(object):
         self.label_encode_method = None
         self.label_encoder = None
 
+        self.user_cate_cols = None
+
         if X is not None:
             self.train_X = np.array(X)
             self.train_y = np.array(y)
@@ -140,6 +142,7 @@ class DataManager(object):
         else:
             raise ValueError('Unsupported file format: %s!' % file_location.split('.')[-1])
 
+        self.user_cate_cols = cate_cols
         # 将类别型变量转化为字符串
         if cate_cols:
             df[cate_cols] = df[cate_cols].astype(str)
@@ -210,9 +213,8 @@ class DataManager(object):
         df = df[self.feature_names]
 
         # 将类别型变量转化为字符串
-        cat_cols = [col for (i, col) in enumerate(df.columns) if self.feature_types[i] == CATEGORICAL]
-        if cat_cols:
-            df[cat_cols] = df[cat_cols].astype(str)
+        if self.user_cate_cols:
+            df[self.user_cate_cols] = df[self.user_cate_cols].astype(str)
 
         # Drop the row with all NaNs.
         df.dropna(how='all')

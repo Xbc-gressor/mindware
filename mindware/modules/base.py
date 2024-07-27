@@ -24,7 +24,7 @@ from mindware.utils.functions import is_imbalanced_dataset
 from mindware.components.utils.constants import type_dict
 
 from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
-from mindware.components.utils.topk_saver import load_combined_transformer_estimator
+from mindware.components.utils.topk_saver import load_combined_transformer_estimator, CombinedTopKModelSaver
 
 from mindware.components.feature_engineering.parse import construct_node
 from mindware.components.ensemble import ensemble_list
@@ -351,3 +351,12 @@ class BaseAutoML(object):
         if self.task_type not in CLS_TASKS:
             raise AttributeError("predict_proba is not supported in regression")
         return self._predict(test_data)
+
+    def get_model_info(self):
+        model_info = dict()
+        if self.es is not None:
+            model_info['ensemble'] = self.es.get_ens_model_info()
+        path = os.path.join(self.output_dir, '%s_%s.pkl' % (self.datetime, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
+        model_info['best'] = (self.incumbent['algorithm'], self.incumbent, path)
+
+        return model_info

@@ -34,7 +34,7 @@ class NeuralNetworkClassifier(BaseClassificationModel):
     def __init__(self, optimizer, batch_size, epoch_num, lr_decay,
                  sgd_learning_rate=None, sgd_momentum=None, weight_decay=None, nesterov=None,
                  adam_learning_rate=None, beta1=None,
-                 random_state=None, device='cpu', **kwargs):
+                 random_state=None, device='cuda', **kwargs):
         super(NeuralNetworkClassifier, self).__init__()
 
         self.optimizer = optimizer
@@ -174,13 +174,13 @@ class NeuralNetworkClassifier(BaseClassificationModel):
     def predict(self, X):
         if self.model is None:
             raise NotImplementedError()
-        proba = self.model(torch.Tensor(X).to(self.device)).detach().numpy()
+        proba = self.model(torch.Tensor(X).to(self.device)).detach().cpu().numpy()
         return np.argmax(proba, axis=1)
 
     def predict_proba(self, X):
         if self.model is None:
             raise NotImplementedError()
-        return self.model(torch.Tensor(X).to(self.device)).detach().numpy()
+        return self.model(torch.Tensor(X).to(self.device)).detach().cpu().numpy()
 
     @staticmethod
     def get_properties(dataset_properties=None):
