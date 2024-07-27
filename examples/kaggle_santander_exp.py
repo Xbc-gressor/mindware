@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('--ensemble_method', type=str, default='blending', help='ensemble_selection or blending')
     parser.add_argument('--ensemble_size', type=int, default=10, help='ensemble size')
     parser.add_argument('--evaluation', type=str, default='holdout', help='evaluation')
-    parser.add_argument('--time_limit', type=int, default=2024, help='time limit')
+    parser.add_argument('--time_limit', type=int, default=5024, help='time limit')
     parser.add_argument('--per_time_limit', type=int, default=600, help='time limit')
     args = parser.parse_args()
 
@@ -69,44 +69,52 @@ if __name__ == '__main__':
     else:
         OPT = CASHFE
 
-    hpo = HPO(
-        estimator_id=estimator_id, task_type=task_type,
+    x_encode_str = '' if x_encode is None else ('_' + x_encode)
+    passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['ID_code']
+
+    opt_hpo = HPO(
+        estimator_id='neural_network', task_type=task_type,
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params={'test_size': 0.2},
         optimizer=optimizer,
-        time_limit=time_limit, amount_of_resource=30, per_run_time_limit=per_time_limit,
+        time_limit=time_limit, amount_of_resource=50, per_run_time_limit=per_time_limit,
         output_dir='./data', seed=1, n_jobs=1,
         ensemble_method=None, ensemble_size=ensemble_size
     )
 
+    print(opt_hpo.run())
+    pred_hpo = opt_hpo.predict(test_data_node, ens=False, prob=True)[:, 1]
 
-    # hpo = OPT(
-    #     include_algorithms=None, sub_optimizer='smac', task_type=task_type,
-    #     metric=metric,
-    #     data_node=train_data_node, evaluation=evaluation, resampling_params=None,
-    #     optimizer=optimizer, inner_iter_num_per_iter=5,
-    #     time_limit=time_limit, amount_of_resource=100, per_run_time_limit=per_time_limit,
-    #     output_dir='./data', seed=1, n_jobs=1,
-    #     ensemble_method=ensemble_method, ensemble_size=ensemble_size
-    # )
-
-    print(hpo.run())
-    # pred_ens = hpo.predict(test_data_node, ens=True, prob=True)[:, 1]
-    pred = hpo.predict(test_data_node, ens=False, prob=True)[:, 1]
-
-    # pred = dm.decode_label(pred)
-    # pred_ens = dm.decode_label(pred_ens)
-
-    x_encode_str = '' if x_encode is None else ('_' + x_encode)
-
-    passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['ID_code']
-    result = pd.DataFrame({'Id_code': passenger_id, 'target': pred})
-    result.to_csv(os.path.join(data_dir,
+    result_hpo = pd.DataFrame({'Id_code': passenger_id, 'target': pred_hpo})
+    result_hpo.to_csv(os.path.join(data_dir,
                                f'{Opt}{estimator_id}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
                   index=False)
+    print('Result has been saved to result_hpo.csv.')
+
+    opt = OPT(
+        include_algorithms=None, sub_optimizer='smac', task_type=task_type,
+        metric=metric,
+        data_node=train_data_node, evaluation=evaluation, resampling_params=None,
+        optimizer=optimizer, inner_iter_num_per_iter=1,
+        time_limit=time_limit, amount_of_resource=50, per_run_time_limit=per_time_limit,
+        output_dir='./data', seed=1, n_jobs=1,
+        ensemble_method=ensemble_method, ensemble_size=ensemble_size
+    )
+
+    print(opt_hpo.run())
+    pred = opt.predict(test_data_node, ens=False, prob=True)[:, 1]
+
+    result = pd.DataFrame({'Id_code': passenger_id, 'target': pred})
+    result.to_csv(os.path.join(data_dir,
+                               f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
+                  index=False)
     print('Result has been saved to result.csv.')
-    # result_ens = pd.DataFrame({'Id_code': passenger_id, 'target': pred_ens})
-    # result_ens.to_csv(os.path.join(data_dir,
-    #                                f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'),
-    #                   index=False)
-    # print('Ensemble result has been saved to result_ens.csv.')
+
+    pred_ens = opt.predict(test_data_node, ens=True, prob=True)[:, 1]
+    result_ens = pd.DataFrame({'Id_code': passenger_id, 'target': pred_ens})
+    result_ens.to_csv(os.path.join(data_dir,
+                                   f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'),
+                      index=False)
+    print('Ensemble result has been saved to result_ens.csv.')
+
+    breakpoint()

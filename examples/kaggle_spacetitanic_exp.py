@@ -31,7 +31,7 @@ if __name__ == '__main__':
     parser.add_argument('--ensemble_method', type=str, default='blending', help='ensemble_selection or blending')
     parser.add_argument('--ensemble_size', type=int, default=10, help='ensemble size')
     parser.add_argument('--evaluation', type=str, default='holdout', help='evaluation')
-    parser.add_argument('--time_limit', type=int, default=2024, help='time limit')
+    parser.add_argument('--time_limit', type=int, default=5024, help='time limit')
     parser.add_argument('--per_time_limit', type=int, default=300, help='time limit')
     args = parser.parse_args()
 
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params={'test_size': 0.2},
         optimizer=optimizer,
-        time_limit=time_limit, amount_of_resource=50, per_run_time_limit=per_time_limit,
+        time_limit=time_limit, amount_of_resource=100, per_run_time_limit=per_time_limit,
         output_dir='./data', seed=1, n_jobs=1,
         ensemble_method=None, ensemble_size=ensemble_size
     )
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params=None,
         optimizer=optimizer, inner_iter_num_per_iter=1,
-        time_limit=time_limit, amount_of_resource=50, per_run_time_limit=per_time_limit,
+        time_limit=time_limit, amount_of_resource=100, per_run_time_limit=per_time_limit,
         output_dir='./data', seed=1, n_jobs=1,
         ensemble_method=ensemble_method, ensemble_size=ensemble_size
     )
