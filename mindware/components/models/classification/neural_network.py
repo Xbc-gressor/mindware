@@ -72,12 +72,12 @@ class NeuralNetworkClassifier(BaseClassificationModel):
 
         model = nn.Sequential(
             nn.Linear(input_shape, DIMS[idx]),
-            nn.ReLU(),
+            nn.ReLU(), 
             *layer_list,
             nn.Linear(DIMS[0], output_shape),
             nn.Softmax(dim=1)
         )
-        return model
+        return model.to(self.device)
 
     # init model with kaiming initialization
     def _init_model(self, model):
@@ -93,6 +93,8 @@ class NeuralNetworkClassifier(BaseClassificationModel):
 
         if self.model is None:
             self.model = self.build_model(X.shape[1], len(np.unique(Y)))
+
+        self._init_model(self.model)
 
         train_loader = DataLoader(dataset=MyDataset(X, Y), batch_size=self.batch_size, shuffle=True)
         val_loader = DataLoader(dataset=MyDataset(X_val, Y_val), batch_size=self.batch_size, shuffle=False)
@@ -139,7 +141,8 @@ class NeuralNetworkClassifier(BaseClassificationModel):
 
             epoch_avg_loss /= num_train_samples
 
-            print('Epoch %d: Train loss %.4f.' % (epoch, epoch_avg_loss))
+            if epoch % 10 == 0:
+                print('Epoch %d: Train loss %.4f.' % (epoch, epoch_avg_loss))
 
             if val_loader is not None:
                 self.model.eval()
@@ -152,7 +155,8 @@ class NeuralNetworkClassifier(BaseClassificationModel):
                         val_avg_loss += val_loss.to('cpu').detach() * len(batch_x)
 
                     val_avg_loss /= num_val_samples
-                    print('Epoch %d: Val loss %.4f.' % (epoch, val_avg_loss))
+                    if epoch % 10 == 0:
+                        print('Epoch %d: Val loss %.4f.' % (epoch, val_avg_loss))
 
                     early_stop.update(val_avg_loss)
                     if early_stop.cur_patience == 0:
@@ -194,40 +198,43 @@ class NeuralNetworkClassifier(BaseClassificationModel):
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         cs = ConfigurationSpace()
-        optimizer = CategoricalHyperparameter('optimizer', ['SGD', 'Adam'], default_value='SGD')
+        # optimizer = CategoricalHyperparameter('optimizer', ['SGD', 'Adam'], default_value='Adam')
+        optimizer = CategoricalHyperparameter('optimizer', ['Adam'], default_value='Adam')
 
-        sgd_learning_rate = CategoricalHyperparameter(
-            "sgd_learning_rate", [1e-3, 3e-3, 7e-3, 1e-2, 3e-2, 7e-2, 1e-1], default_value=1e-1)
-        sgd_momentum = UniformFloatHyperparameter(
-            "sgd_momentum", lower=0.5, upper=0.99, default_value=0.9, log=False)
+        # sgd_learning_rate = CategoricalHyperparameter(
+        #     "sgd_learning_rate", [1e-3, 3e-3, 7e-3, 1e-2, 3e-2, 7e-2, 1e-1], default_value=1e-1)
+        # sgd_momentum = UniformFloatHyperparameter(
+        #     "sgd_momentum", lower=0.5, upper=0.99, default_value=0.9, log=False)
         weight_decay = CategoricalHyperparameter("weight_decay", [1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3],
                                                  default_value=1e-4)
-        nesterov = CategoricalHyperparameter('nesterov', ['True', 'False'], default_value='True')
+        # nesterov = CategoricalHyperparameter('nesterov', ['True', 'False'], default_value='True')
 
         adam_learning_rate = UniformFloatHyperparameter(
             "adam_learning_rate", lower=1e-4, upper=1e-2, default_value=2e-3, log=True)
         beta1 = UniformFloatHyperparameter(
             "beta1", lower=0.5, upper=0.999, default_value=0.9, log=False)
 
+        # batch_size = CategoricalHyperparameter(
+        #     "batch_size", [16, 32, 64, 128, 256], default_value=32)
         batch_size = CategoricalHyperparameter(
-            "batch_size", [16, 32, 64, 128, 256], default_value=32)
+            "batch_size", [128, 256, 512, 1024], default_value=256)
         lr_decay = CategoricalHyperparameter("lr_decay", [1e-2, 5e-2, 1e-1, 2e-1], default_value=1e-1)
         epoch_num = UnParametrizedHyperparameter("epoch_num", 150)
 
         cs.add_hyperparameters(
-            [optimizer,
-             sgd_learning_rate, sgd_momentum, weight_decay, nesterov,
+            [optimizer, weight_decay,
+            #  sgd_learning_rate, sgd_momentum, nesterov,
              adam_learning_rate, beta1,
              batch_size, epoch_num, lr_decay])
 
-        sgd_lr_depends_on_sgd = EqualsCondition(sgd_learning_rate, optimizer, "SGD")
-        sgd_momentum_depends_on_sgd = EqualsCondition(sgd_momentum, optimizer, "SGD")
-        nesterov_depends_on_sgd = EqualsCondition(nesterov, optimizer, 'SGD')
+        # sgd_lr_depends_on_sgd = EqualsCondition(sgd_learning_rate, optimizer, "SGD")
+        # sgd_momentum_depends_on_sgd = EqualsCondition(sgd_momentum, optimizer, "SGD")
+        # nesterov_depends_on_sgd = EqualsCondition(nesterov, optimizer, 'SGD')
         adam_lr_depends_on_adam = EqualsCondition(adam_learning_rate, optimizer, "Adam")
         beta_depends_on_adam = EqualsCondition(beta1, optimizer, "Adam")
 
         cs.add_conditions([
-            sgd_lr_depends_on_sgd, sgd_momentum_depends_on_sgd, nesterov_depends_on_sgd,
+            # sgd_lr_depends_on_sgd, sgd_momentum_depends_on_sgd, nesterov_depends_on_sgd,
             adam_lr_depends_on_adam, beta_depends_on_adam
         ])
 

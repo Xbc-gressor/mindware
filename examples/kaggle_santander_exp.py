@@ -25,7 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('--ensemble_size', type=int, default=10, help='ensemble size')
     parser.add_argument('--evaluation', type=str, default='holdout', help='evaluation')
     parser.add_argument('--time_limit', type=int, default=2024, help='time limit')
-    parser.add_argument('--per_time_limit', type=int, default=300, help='time limit')
+    parser.add_argument('--per_time_limit', type=int, default=600, help='time limit')
     args = parser.parse_args()
 
     Opt = args.Opt
@@ -72,9 +72,9 @@ if __name__ == '__main__':
     hpo = HPO(
         estimator_id=estimator_id, task_type=task_type,
         metric=metric,
-        data_node=train_data_node, evaluation=evaluation, resampling_params=None,
+        data_node=train_data_node, evaluation=evaluation, resampling_params={'test_size': 0.2},
         optimizer=optimizer,
-        time_limit=time_limit, amount_of_resource=50, per_run_time_limit=per_time_limit,
+        time_limit=time_limit, amount_of_resource=30, per_run_time_limit=per_time_limit,
         output_dir='./data', seed=1, n_jobs=1,
         ensemble_method=None, ensemble_size=ensemble_size
     )
