@@ -55,6 +55,8 @@ if __name__ == '__main__':
     test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['ID_code'])
     test_data_node = dm.preprocess_transform(test_data_node)
 
+    breakpoint()
+
     # Initialize CASHFE
 
     include_algorithms = [
@@ -91,30 +93,30 @@ if __name__ == '__main__':
                   index=False)
     print('Result has been saved to result_hpo.csv.')
 
-    opt = OPT(
-        include_algorithms=None, sub_optimizer='smac', task_type=task_type,
-        metric=metric,
-        data_node=train_data_node, evaluation=evaluation, resampling_params=None,
-        optimizer=optimizer, inner_iter_num_per_iter=1,
-        time_limit=time_limit, amount_of_resource=50, per_run_time_limit=per_time_limit,
-        output_dir='./data', seed=1, n_jobs=1,
-        ensemble_method=ensemble_method, ensemble_size=ensemble_size
-    )
-
-    print(opt.run())
-    pred = opt.predict(test_data_node, ens=False, prob=True)[:, 1]
-
-    result = pd.DataFrame({'Id_code': passenger_id, 'target': pred})
-    result.to_csv(os.path.join(data_dir,
-                               f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
-                  index=False)
-    print('Result has been saved to result.csv.')
-
-    pred_ens = opt.predict(test_data_node, ens=True, prob=True)[:, 1]
-    result_ens = pd.DataFrame({'Id_code': passenger_id, 'target': pred_ens})
-    result_ens.to_csv(os.path.join(data_dir,
-                                   f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'),
-                      index=False)
-    print('Ensemble result has been saved to result_ens.csv.')
+    # opt = OPT(
+    #     include_algorithms=None, sub_optimizer='smac', task_type=task_type,
+    #     metric=metric,
+    #     data_node=train_data_node, evaluation=evaluation, resampling_params=None,
+    #     optimizer=optimizer, inner_iter_num_per_iter=1,
+    #     time_limit=time_limit, amount_of_resource=50, per_run_time_limit=per_time_limit,
+    #     output_dir='./data', seed=1, n_jobs=1,
+    #     ensemble_method=ensemble_method, ensemble_size=ensemble_size
+    # )
+    #
+    # print(opt.run())
+    # pred = opt.predict(test_data_node, ens=False, prob=True)[:, 1]
+    #
+    # result = pd.DataFrame({'Id_code': passenger_id, 'target': pred})
+    # result.to_csv(os.path.join(data_dir,
+    #                            f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
+    #               index=False)
+    # print('Result has been saved to result.csv.')
+    #
+    # pred_ens = opt.predict(test_data_node, ens=True, prob=True)[:, 1]
+    # result_ens = pd.DataFrame({'Id_code': passenger_id, 'target': pred_ens})
+    # result_ens.to_csv(os.path.join(data_dir,
+    #                                f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'),
+    #                   index=False)
+    # print('Ensemble result has been saved to result_ens.csv.')
 
     breakpoint()

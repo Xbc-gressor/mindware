@@ -29,6 +29,9 @@ from mindware.components.utils.topk_saver import load_combined_transformer_estim
 from mindware.components.feature_engineering.parse import construct_node
 from mindware.components.ensemble import ensemble_list
 
+from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
+from mindware.components.utils.topk_saver import CombinedTopKModelSaver
+from mindware.components.feature_engineering.parse import parse_config
 
 class BaseAutoML(object):
     def __init__(self, name: str, task_type: str = None,
@@ -159,89 +162,99 @@ class BaseAutoML(object):
             if not (self.early_stop_flag or self.timeout_flag):
                 self.iterate()
 
-        if refit:
-            self.refit()
-        else:  # refit() 中会fit_ensemble
-            if self.ensemble_method is not None:
-                if self.evaluation in ['holdout', 'partial', 'partial_bohb']:
-                    self.fit_ensemble()
+        if self.ensemble_method is not None:
+            if self.evaluation == 'cv':
+                self.refit()
+
+            self.fit_ensemble(refit)  # 如果是cv，就不再refit
+
+        if self.evaluation == 'cv' or refit:
+            if not self.already_refit:
+                self.refit_incumbent()
 
         return self.incumbent_perf
 
-    # train with whole data
-    def refit(self):
-        from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
-        from mindware.components.utils.topk_saver import CombinedTopKModelSaver
-        from mindware.components.feature_engineering.parse import parse_config
+    def refit_incumbent(self):
 
-        if self.ensemble_method is not None:
-            self.logger.info('Start to refit all the well-performed models!')
-            config_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.datetime)
+        self.logger.info('Start to refit the best model!')
 
-            if not os.path.exists(config_path):
-                warnings.warn("Config path %s not found! Please check if all the evaluations are failed!" % config_path)
-                return
+        if self.incumbent is None:
+            raise AssertionError("The best config is None! Please check if all the evaluations are failed!")
 
-            with open(config_path, 'rb') as f:
-                stats = pkl.load(f)
-            for algo_id in stats.keys():
-                if algo_id == 'neural_network':
-                    continue
-                model_to_eval = stats[algo_id]
-                for idx, (config, perf, path) in enumerate(model_to_eval):
-                    
-                    # TODO: 有的refit会报错，提示X有NaN。原来的X是没有NaN的，可能FE后用一部分数据的时候没有NaN，但是全数据里面有了。
-                    try:
-                        if self.name in ['fe', 'cashfe']:
-                            data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
-                                                            if_imbal=self.if_imbal)
-                        else:
-                            op_list = {}
-                            data_node = self.data_node.copy_()
+        config = self.incumbent.copy()
+        algo_id = config['algorithm']
+        if algo_id != 'neural_network':
 
-                        algo_id = config['algorithm']
-                        estimator = fetch_predict_estimator(self.task_type, algo_id, config,
-                                                            data_node.data[0], data_node.data[1],
-                                                            weight_balance=data_node.enable_balance,
-                                                            data_balance=data_node.data_balance)
-                        with open(path, 'wb') as f:
-                            pkl.dump([op_list, estimator, None], f)
-                    except:
-                        self.logger.error("Failed to refit for %s !" % path)
+            if self.name in ['fe', 'cashfe']:
+                data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
+                                                  if_imbal=self.if_imbal)
+            else:
+                op_list = {}
+                data_node = self.data_node.copy_()
 
-            self.fit_ensemble()
-
-        else:
-            self.logger.info('Start to refit the best model!')
-
-            if self.incumbent is None:
-                warnings.warn("The best config is None! Please check if all the evaluations are failed!")
-                return
+            estimator = fetch_predict_estimator(self.task_type, algo_id, config,
+                                                data_node.data[0], data_node.data[1],
+                                                weight_balance=data_node.enable_balance,
+                                                data_balance=data_node.data_balance)
 
             model_path = os.path.join(self.output_dir, '%s_%s.pkl' % (
                 self.timestamp, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
-            config = self.incumbent.copy()
+            with open(model_path, 'wb') as f:
+                pkl.dump([op_list, estimator, -self.incumbent_perf], f)
 
-            algo_id = config['algorithm']
-            if algo_id != 'neural_network':
-                if self.name in ['fe', 'cashfe']:
-                    data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
-                                                      if_imbal=self.if_imbal)
-                else:
-                    op_list = {}
-                    data_node = self.data_node.copy_()
 
-                estimator = fetch_predict_estimator(self.task_type, algo_id, config,
-                                                    data_node.data[0], data_node.data[1],
-                                                    weight_balance=data_node.enable_balance,
-                                                    data_balance=data_node.data_balance)
-                with open(model_path, 'wb') as f:
-                    pkl.dump([op_list, estimator, None], f)
+    # train with whole data
+    def refit(self):
+
+        if self.ensemble_method is None:
+            self.logger.error("No ensemble method is specified, no need to refit!")
+
+        self.logger.info('Start to refit all the well-performed models!')
+        config_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.datetime)
+
+        if not os.path.exists(config_path):
+            warnings.warn("Config path %s not found! Please check if all the evaluations are failed!" % config_path)
+            return
+
+        with open(config_path, 'rb') as f:
+            stats = pkl.load(f)
+        for algo_id in stats.keys():
+            if algo_id == 'neural_network':
+                continue
+            model_to_eval = stats[algo_id]
+            for idx, (config, perf, path) in enumerate(model_to_eval):
+
+                # TODO: 有的refit会报错，提示X有NaN。原来的X是没有NaN的，可能FE后用一部分数据的时候没有NaN，但是全数据里面有了。
+                try:
+                    if self.name in ['fe', 'cashfe']:
+                        data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
+                                                        if_imbal=self.if_imbal)
+                    else:
+                        op_list = {}
+                        data_node = self.data_node.copy_()
+
+                    algo_id = config['algorithm']
+                    estimator = fetch_predict_estimator(self.task_type, algo_id, config,
+                                                        data_node.data[0], data_node.data[1],
+                                                        weight_balance=data_node.enable_balance,
+                                                        data_balance=data_node.data_balance)
+                    with open(path, 'wb') as f:
+                        pkl.dump([op_list, estimator, perf], f)
+                except:
+                    self.logger.error("Failed to refit for %s !" % path)
 
         self.already_refit = True
 
-    def fit_ensemble(self):
+    def fit_ensemble(self, refit=True):
+
+        self.logger.info('Start to fit ensemble model!')
+
         if self.ensemble_method is not None:
+
+            if self.evaluation == 'cv':
+                if not self.already_refit:
+                    raise AttributeError("Please call refit() for cross-validation!")
+
             config_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.datetime)
             with open(config_path, 'rb') as f:
                 stats = pkl.load(f)
@@ -261,6 +274,11 @@ class BaseAutoML(object):
                                       output_dir=self.output_dir)
             self.es.fit(data=self.data_node)
 
+            if not self.already_refit and refit:
+                self.es.refit()
+        else:
+            raise ValueError("No ensemble method is specified!")
+
     def predict(self, test_data: DataNode, ens=True, prob=False):
         pred = self._predict(test_data, ens)
 
@@ -273,8 +291,9 @@ class BaseAutoML(object):
             return pred
 
     def _predict_stats(self, test_data: DataNode, stats, ens=False, prob=False):
+        stats = stats.copy()
         # 如果用全数据refit了，就不能包含k_nearest_neighbors, 因为它会将训练数据都预测为label，selection算法只会选knn
-        if self.already_refit and ens and self.ensemble_method == 'ensemble_selection':
+        if ens and self.ensemble_method == 'ensemble_selection':
             if 'k_nearest_neighbors' in stats:
                 stats.pop('k_nearest_neighbors')
 

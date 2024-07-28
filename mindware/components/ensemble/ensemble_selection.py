@@ -8,6 +8,7 @@ from mindware.components.utils.constants import *
 from mindware.components.ensemble.base_ensemble import BaseEnsembleModel
 from mindware.components.feature_engineering.parse import construct_node
 
+from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
 
 class EnsembleSelection(BaseEnsembleModel):
     def __init__(
@@ -253,20 +254,19 @@ class EnsembleSelection(BaseEnsembleModel):
 
     def refit(self):
         # Refit models on whole training data
-        # model_cnt = 0
-        # for algo_id in self.stats:
-        #     model_to_eval = self.stats[algo_id]
-        #     for idx, (config, _, model_path) in enumerate(model_to_eval):
-        #         X, y = node.data
-        #         if self.weights_[model_cnt] != 0:
-        #             self.logger.info("Refit model %d" % model_cnt)
-        #             estimator = fetch_predict_estimator(self.task_type, config, X, y,
-        #                                                 weight_balance=node.enable_balance,
-        #                                                 data_balance=node.data_balance)
-        #             with open(model_path, 'wb') as f:
-        #                 pkl.dump(estimator, f)
-        #         model_cnt += 1
-        raise NotImplementedError
+        model_cnt = 0
+        for algo_id in self.stats:
+            model_to_eval = self.stats[algo_id]
+            for idx, (config, _, model_path) in enumerate(model_to_eval):
+                X, y = self.node.data
+                if self.weights_[model_cnt] != 0:
+                    self.logger.info("Refit model %d" % model_cnt)
+                    estimator = fetch_predict_estimator(self.task_type, config, X, y,
+                                                        weight_balance=self.node.enable_balance,
+                                                        data_balance=self.node.data_balance)
+                    with open(model_path, 'wb') as f:
+                        pkl.dump(estimator, f)
+                model_cnt += 1
 
     def get_models_with_weights(self, models):
         output = []

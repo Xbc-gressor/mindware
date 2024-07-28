@@ -193,3 +193,6 @@ class Blending(BaseEnsembleModel):
         ens_info['config'] = ens_config
         ens_info['meta_learner'] = self.meta_method
         return ens_info
+
+    def refit(self):
+        pass
