@@ -95,7 +95,7 @@ if __name__ == '__main__':
     opt_hpo = HPO(
         estimator_id='neural_network', task_type=task_type,
         metric=metric,
-        data_node=train_data_node, evaluation=evaluation, resampling_params={'test_size': 0.2},
+        data_node=train_data_node, evaluation=evaluation, resampling_params={'test_size': 0.25},
         optimizer=optimizer,
         time_limit=time_limit, amount_of_resource=100, per_run_time_limit=per_time_limit,
         output_dir='./data', seed=1, n_jobs=1,

@@ -43,8 +43,8 @@ if __name__ == '__main__':
     estimator_id = 'neural_network'
 
     # Load data
-    # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
-    data_dir = '/root/automl_data/kaggle/santander'
+    data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
+    # data_dir = '/root/automl_data/kaggle/santander'
 
     dm = DataManager()
 
@@ -87,7 +87,7 @@ if __name__ == '__main__':
 
     result_hpo = pd.DataFrame({'Id_code': passenger_id, 'target': pred_hpo})
     result_hpo.to_csv(os.path.join(data_dir,
-                               f'{Opt}{estimator_id}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
+                               f'hpo{estimator_id}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
                   index=False)
     print('Result has been saved to result_hpo.csv.')
 
@@ -101,7 +101,7 @@ if __name__ == '__main__':
         ensemble_method=ensemble_method, ensemble_size=ensemble_size
     )
 
-    print(opt_hpo.run())
+    print(opt.run())
     pred = opt.predict(test_data_node, ens=False, prob=True)[:, 1]
 
     result = pd.DataFrame({'Id_code': passenger_id, 'target': pred})
