@@ -6,6 +6,8 @@ import pickle as pkl
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.ensemble.base_ensemble import BaseEnsembleModel
 from mindware.components.feature_engineering.parse import construct_node
+
+from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
 from functools import reduce
 
 
@@ -69,3 +71,27 @@ class Bagging(BaseEnsembleModel):
         ens_info['ensemble_method'] = 'bagging'
         ens_info['config'] = ens_config
         return ens_info
+
+    def refit(self):
+        self.logger.debug("Start to refit all models needed by ensemble!")
+        # Refit models on whole training data
+        model_cnt = 0
+        for algo_id in self.stats:
+            model_to_eval = self.stats[algo_id]
+            for idx, (config, _, model_path) in enumerate(model_to_eval):
+                # X, y = self.node.data
+                if self.base_model_mask[model_cnt] == 1:
+                    self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], model_path))
+                    with open(model_path, 'rb') as f:
+                        op_list, estimator, perf = pkl.load(f)
+
+                    _node = self.node.copy_()
+                    _node = construct_node(_node, op_list)
+
+                    estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
+                                                        _node.data[0], _node.data[1],
+                                                        weight_balance=_node.enable_balance,
+                                                        data_balance=_node.data_balance)
+                    with open(model_path, 'wb') as f:
+                        pkl.dump((op_list, estimator, perf), f)
+                model_cnt += 1

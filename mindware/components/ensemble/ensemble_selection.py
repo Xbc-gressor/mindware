@@ -206,23 +206,22 @@ class EnsembleSelection(BaseEnsembleModel):
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
             for idx, (_, _, path) in enumerate(model_to_eval):
-                with open(path, 'rb')as f:
-                    op_list, estimator, _ = pkl.load(f)
-                _node = data.copy_()
-
-                _node = construct_node(_node, op_list)
-
-                X_test = _node.data[0]
                 if cur_idx in self.model_idx:
+                    with open(path, 'rb')as f:
+                        op_list, estimator, _ = pkl.load(f)
+                    _node = data.copy_()
+                    _node = construct_node(_node, op_list)
+
+                    X_test = _node.data[0]
                     if self.task_type in CLS_TASKS:
                         predictions.append(estimator.predict_proba(X_test))
                     else:
                         predictions.append(estimator.predict(X_test))
                 else:
                     if len(self.shape) == 1:
-                        predictions.append(np.zeros(len(_node.data[0])))
+                        predictions.append(np.zeros(len(data.data[0])))
                     else:
-                        predictions.append(np.zeros((len(_node.data[0]), self.shape[1])))
+                        predictions.append(np.zeros((len(data.data[0]), self.shape[1])))
                 cur_idx += 1
         predictions = np.asarray(predictions)
 
@@ -251,22 +250,6 @@ class EnsembleSelection(BaseEnsembleModel):
                 ' '.join([str(identifier) for idx, identifier in
                           enumerate(self.identifiers_)
                           if self.weights_[idx] > 0]))
-
-    def refit(self):
-        # Refit models on whole training data
-        model_cnt = 0
-        for algo_id in self.stats:
-            model_to_eval = self.stats[algo_id]
-            for idx, (config, _, model_path) in enumerate(model_to_eval):
-                X, y = self.node.data
-                if self.weights_[model_cnt] != 0:
-                    self.logger.info("Refit model %d" % model_cnt)
-                    estimator = fetch_predict_estimator(self.task_type, config, X, y,
-                                                        weight_balance=self.node.enable_balance,
-                                                        data_balance=self.node.data_balance)
-                    with open(model_path, 'wb') as f:
-                        pkl.dump(estimator, f)
-                model_cnt += 1
 
     def get_models_with_weights(self, models):
         output = []
@@ -308,3 +291,27 @@ class EnsembleSelection(BaseEnsembleModel):
         ens_info['config'] = ens_config
         ens_info['ensemble_weights'] = self.weights_
         return ens_info
+
+    def refit(self):
+        self.logger.debug("Start to refit all models needed by ensemble!")
+        # Refit models on whole training data
+        model_cnt = 0
+        for algo_id in self.stats:
+            model_to_eval = self.stats[algo_id]
+            for idx, (config, _, model_path) in enumerate(model_to_eval):
+                # X, y = self.node.data
+                if self.weights_[model_cnt] != 0:
+                    self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], model_path))
+                    with open(model_path, 'rb') as f:
+                        op_list, estimator, perf = pkl.load(f)
+
+                    _node = self.node.copy_()
+                    _node = construct_node(_node, op_list)
+
+                    estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
+                                                        _node.data[0], _node.data[1],
+                                                        weight_balance=_node.enable_balance,
+                                                        data_balance=_node.data_balance)
+                    with open(model_path, 'wb') as f:
+                        pkl.dump((op_list, estimator, perf), f)
+                model_cnt += 1

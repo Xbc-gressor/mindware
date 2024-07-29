@@ -176,7 +176,7 @@ class BaseAutoML(object):
 
     def refit_incumbent(self):
 
-        self.logger.info('Start to refit the best model!')
+        self.logger.debug('Start to refit the best model!')
 
         if self.incumbent is None:
             raise AssertionError("The best config is None! Please check if all the evaluations are failed!")
@@ -202,14 +202,13 @@ class BaseAutoML(object):
             with open(model_path, 'wb') as f:
                 pkl.dump([op_list, estimator, -self.incumbent_perf], f)
 
-
     # train with whole data
     def refit(self):
 
         if self.ensemble_method is None:
             self.logger.error("No ensemble method is specified, no need to refit!")
 
-        self.logger.info('Start to refit all the well-performed models!')
+        self.logger.debug('Start to refit all the well-performed models!')
         config_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.datetime)
 
         if not os.path.exists(config_path):
@@ -247,7 +246,7 @@ class BaseAutoML(object):
 
     def fit_ensemble(self, refit=True):
 
-        self.logger.info('Start to fit ensemble model!')
+        self.logger.debug('Start to fit ensemble model!')
 
         if self.ensemble_method is not None:
 

@@ -5,7 +5,7 @@ from ConfigSpace.hyperparameters import CategoricalHyperparameter, \
     UniformIntegerHyperparameter
 from ConfigSpace.conditions import EqualsCondition
 from mindware.components.utils.configspace_utils import check_for_bool, check_none
-
+import sklearn
 
 class FastIcaDecomposer(Transformer):
     type = 10
@@ -42,7 +42,12 @@ class FastIcaDecomposer(Transformer):
         if self.model is None:
             from sklearn.decomposition import FastICA
 
-            self.whiten = check_for_bool(self.whiten)
+            if sklearn.__version__ <= '1.0.2':
+                self.whiten = check_for_bool(self.whiten)
+            else:
+                if self.whiten == 'False':
+                    self.whiten = False
+
             if check_none(self.n_components):
                 self.n_components = None
             else:
@@ -76,8 +81,13 @@ class FastIcaDecomposer(Transformer):
                 "n_components", 10, 2000, default_value=100)
             algorithm = CategoricalHyperparameter('algorithm',
                                                   ['parallel', 'deflation'], 'parallel')
-            whiten = CategoricalHyperparameter('whiten',
-                                               ['False', 'True'], 'False')
+            if sklearn.__version__ <= '1.0.2':
+                whiten = CategoricalHyperparameter('whiten',
+                                                   ['False', 'True'], 'False')
+            else:
+                whiten = CategoricalHyperparameter('whiten',
+                                                   ['False', 'unit-variance', 'arbitrary-variance’'], 'unit-variance')
+
             fun = CategoricalHyperparameter(
                 'fun', ['logcosh', 'exp', 'cube'], 'logcosh')
             cs.add_hyperparameters([n_components, algorithm, whiten, fun])

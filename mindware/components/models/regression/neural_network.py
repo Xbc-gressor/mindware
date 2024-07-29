@@ -55,6 +55,8 @@ class NeuralNetworkClassifier(BaseRegressionModel):
         self.random_state = random_state
         self.model = None
         self.best_model_stats = None
+        if not torch.cuda.is_available():
+            device = 'cpu'
         self.device = torch.device(device)
         self.time_limit = None
         self.load_path = None
@@ -117,7 +119,7 @@ class NeuralNetworkClassifier(BaseRegressionModel):
 
         scheduler = MultiStepLR(optimizer, milestones=[int(self.epoch_num * 0.5), int(self.epoch_num * 0.75)],
                                 gamma=self.lr_decay)
-        loss_func = nn.CrossEntropyLoss()
+        loss_func = nn.MSELoss()
         early_stop = EarlyStop(patience=10, mode='min')
 
         for epoch in range(self.epoch_num):
@@ -131,7 +133,8 @@ class NeuralNetworkClassifier(BaseRegressionModel):
                 batch_x, batch_y = data
                 num_train_samples += len(data)
                 logits = self.model(batch_x.float().to(self.device))
-                loss = loss_func(logits, batch_y.to(self.device))
+
+                loss = loss_func(logits, batch_y.float().to(self.device))
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -173,13 +176,8 @@ class NeuralNetworkClassifier(BaseRegressionModel):
     def predict(self, X):
         if self.model is None:
             raise NotImplementedError()
-        proba = self.model(torch.Tensor(X).to(self.device)).detach().cpu().numpy()
-        return np.argmax(proba, axis=1)
-
-    def predict_proba(self, X):
-        if self.model is None:
-            raise NotImplementedError()
-        return self.model(torch.Tensor(X).to(self.device)).detach().cpu().numpy()
+        res = self.model(torch.Tensor(X).to(self.device)).detach().cpu().numpy()
+        return res
 
     @staticmethod
     def get_properties(dataset_properties=None):

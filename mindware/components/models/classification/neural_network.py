@@ -55,6 +55,8 @@ class NeuralNetworkClassifier(BaseClassificationModel):
         self.random_state = random_state
         self.model = None
         self.best_model_stats = None
+        if not torch.cuda.is_available():
+            device = 'cpu'
         self.device = torch.device(device)
         self.time_limit = None
         self.load_path = None

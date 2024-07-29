@@ -4,6 +4,7 @@ from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
     UnParametrizedHyperparameter, Constant
 from mindware.components.feature_engineering.transformations.base_transformer import *
 from mindware.components.utils.configspace_utils import check_none, check_for_bool
+import sklearn
 
 
 class ExtraTreeBasedSelectorRegression(Transformer):
@@ -115,8 +116,20 @@ class ExtraTreeBasedSelectorRegression(Transformer):
             cs = ConfigurationSpace()
 
             n_estimators = Constant("n_estimators", 100)
-            criterion = CategoricalHyperparameter("criterion",
-                                                  ["mse", "friedman_mse"])
+            if sklearn.__version__ >= '1.2.2':
+                criterion = CategoricalHyperparameter('criterion',
+                                                      ["squared_error", "absolute_error", "friedman_mse", "poisson"], default="squared_error")
+            elif sklearn.__version__ >= '1.0.2':
+                criterion = CategoricalHyperparameter('criterion',
+                                                      ["squared_error", "absolute_error"],
+                                                      default="squared_error")
+            elif sklearn.__version__ >= '0.18':
+                criterion = CategoricalHyperparameter("criterion",
+                                                      ["mse", "mae"])
+            else:
+                criterion = CategoricalHyperparameter("criterion",
+                                                      ["mse", "friedman_mse"])
+
             max_features = UniformFloatHyperparameter(
                 "max_features", 0.1, 1.0, default_value=1.0, q=0.05)
 

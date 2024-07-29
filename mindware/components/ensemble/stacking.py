@@ -197,4 +197,4 @@ class Stacking(BaseEnsembleModel):
         return ens_info
 
     def refit(self):
-        pass
+        self.logger.debug("Start to refit all models needed by ensemble, no need with stacking!")
