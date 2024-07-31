@@ -235,4 +235,38 @@ class NeuralNetworkClassifier(BaseRegressionModel):
             adam_lr_depends_on_adam, beta_depends_on_adam
         ])
 
+
+        # # optimizer = CategoricalHyperparameter('optimizer', ['SGD', 'Adam'], default_value='Adam')
+        # optimizer = CategoricalHyperparameter('optimizer', ['SGD'], default_value='SGD')
+        #
+        # sgd_learning_rate = CategoricalHyperparameter(
+        #     "sgd_learning_rate", [1e-3, 3e-3, 7e-3, 1e-2, 3e-2, 7e-2, 1e-1], default_value=1e-1)
+        # sgd_momentum = UniformFloatHyperparameter(
+        #     "sgd_momentum", lower=0.5, upper=0.99, default_value=0.9, log=False)
+        # weight_decay = CategoricalHyperparameter("weight_decay", [1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3],
+        #                                          default_value=1e-4)
+        # nesterov = CategoricalHyperparameter('nesterov', ['True', 'False'], default_value='True')
+        #
+        #
+        #
+        # batch_size = CategoricalHyperparameter(
+        #     "batch_size", [16, 32, 64, 128, 256], default_value=32)
+        # # batch_size = CategoricalHyperparameter(
+        # #     "batch_size", [128, 256, 512, 1024], default_value=256)
+        # lr_decay = CategoricalHyperparameter("lr_decay", [1e-2, 5e-2, 1e-1, 2e-1], default_value=1e-1)
+        # epoch_num = UnParametrizedHyperparameter("epoch_num", 150)
+        #
+        # cs.add_hyperparameters(
+        #     [optimizer, weight_decay,
+        #      sgd_learning_rate, sgd_momentum, nesterov,
+        #      batch_size, epoch_num, lr_decay])
+        #
+        # sgd_lr_depends_on_sgd = EqualsCondition(sgd_learning_rate, optimizer, "SGD")
+        # sgd_momentum_depends_on_sgd = EqualsCondition(sgd_momentum, optimizer, "SGD")
+        # nesterov_depends_on_sgd = EqualsCondition(nesterov, optimizer, 'SGD')
+        #
+        # cs.add_conditions([
+        #     sgd_lr_depends_on_sgd, sgd_momentum_depends_on_sgd, nesterov_depends_on_sgd,
+        # ])
+
         return cs
