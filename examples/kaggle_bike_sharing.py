@@ -16,32 +16,32 @@ import pickle as pkl
 if __name__ == '__main__':
     task_type = REGRESSION
     # Load data
-    data_dir = 'D:\\Code\\MindWare\\Data\\house-prices-advanced-regression-techniques'
+    data_dir = 'D:\\Code\\MindWare\\Data\\bike-sharing-demand'
     # data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/houseprice'
 
     dm = DataManager()
 
-    train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), ignore_columns=['Id'],
-                                        label_name='SalePrice')
+    train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), ignore_columns=['datetime'],
+                                        label_name='count')
     # breakpoint()
     train_data_node = dm.preprocess_fit(train_data_node, task_type)
 
-    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['Id'])
+    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['datetime'])
     test_data_node = dm.preprocess_transform(test_data_node)
 
     # Initialize CASHFE
 
-    ensemble_method = 'cross_validation'
+    ensemble_method = "ensemble_selection"
     ensemble_size = 5
     metric = 'rmse'
     evaluation = 'holdout'
 
-    # include_algorithms = [
-    #     'adaboost', 'extra_trees', 'gradient_boosting',
-    #     'lasso_regression', 'liblinear_svr', 'libsvm_svr',
-    #     'random_forest', 'ridge_regression', 'lightgbm'
-    # ]
-    include_algorithms = ['lightgbm']
+    include_algorithms = [
+        'adaboost', 'extra_trees', 'gradient_boosting',
+        'lasso_regression', 'liblinear_svr', 'libsvm_svr',
+        'random_forest', 'ridge_regression'
+    ]
+
     # 'lda',
     # hpo = CASH(
     #     include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
@@ -71,12 +71,12 @@ if __name__ == '__main__':
     pred = dm.decode_label(pred)
     pred_ens = dm.decode_label(pred_ens)
 
-    passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['Id']
-    result = pd.DataFrame({'Id': passenger_id, 'SalePrice': pred})
-    result.to_csv(os.path.join(data_dir, '0907_lgbm_fe_result.csv'), index=False)
+    date = pd.read_csv(os.path.join(data_dir, 'test.csv'))['datetime']
+    result = pd.DataFrame({'datetime': date, 'count': pred})
+    result.to_csv(os.path.join(data_dir, 'cashfe_mab3024_sel5_result.csv'), index=False)
     print('Result has been saved to result.csv.')
-    result_ens = pd.DataFrame({'Id': passenger_id, 'SalePrice': pred_ens})
-    result_ens.to_csv(os.path.join(data_dir, '0907_lgbm_fe_result_ens.csv'), index=False)
+    result_ens = pd.DataFrame({'datetime': date, 'count': pred_ens})
+    result_ens.to_csv(os.path.join(data_dir, 'cashfe_mab3024_sel5_result_ens.csv'), index=False)
     print('Ensemble result has been saved to result_ens.csv.')
 
     # config_path = 'D:\\xbc\\Fighting\\AutoML\\mindware\\examples\\data\\CASH-smac(1)_2024-06-04-21-21-08-961071\\2024-06-04-21-21-08-961071_topk_config.pkl'

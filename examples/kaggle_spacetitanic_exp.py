@@ -44,7 +44,7 @@ if __name__ == '__main__':
     # Load data
     # data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/spaceship'
     # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\spaceship'
-    data_dir = '/root/automl_data/kaggle/spaceship'
+    data_dir = 'D:\\Code\\MindWare\\Data\\spaceship-titanic'
 
     # 预处理数据，将train和test表格中 Cabin 一列形如 B/0/P 的数据中的第一个和最后一个字母提取出来，形成两列 deck 和 side，并保存
     # train_data = pd.read_csv(os.path.join(data_dir, 'train.csv'))
@@ -59,19 +59,21 @@ if __name__ == '__main__':
 
     dm = DataManager()
 
-    train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train_new.csv'), label_name='Transported', ignore_columns=['PassengerId', 'Name', 'Cabin'])
+    train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), label_name='Transported', ignore_columns=['PassengerId', 'Name', 'Cabin'])
     train_data_node = dm.preprocess_fit(train_data_node, task_type, x_encode=x_encode)
 
-    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test_new.csv'), ignore_columns=['PassengerId', 'Name', 'Cabin'])
+    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['PassengerId', 'Name', 'Cabin'])
     test_data_node = dm.preprocess_transform(test_data_node)
     # Initialize CASHFE
 
 
-    include_algorithms = [
-        'adaboost', 'extra_trees', 'gradient_boosting',
-        'lasso_regression', 'liblinear_svr', 'libsvm_svr',
-        'random_forest', 'ridge_regression'
-    ]
+    # include_algorithms = [
+    #     'adaboost', 'extra_trees', 'gradient_boosting',
+    #     'lasso_regression', 'liblinear_svr', 'libsvm_svr',
+    #     'random_forest', 'ridge_regression'
+    # ]
+
+    include_algorithms = ['lightgbm']
 
     if Opt == 'cash':
         # 'lda',
@@ -80,17 +82,16 @@ if __name__ == '__main__':
         OPT = CASHFE
 
     hpo = OPT(
-        include_algorithms=None, sub_optimizer='smac', task_type=task_type,
+        include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params=None,
         optimizer=optimizer, inner_iter_num_per_iter=5,
         time_limit=time_limit, amount_of_resource=100, per_run_time_limit=per_time_limit,
         output_dir='./data', seed=1, n_jobs=1,
-        ensemble_method=ensemble_method, ensemble_size=ensemble_size
+        ensemble_method='cross_validation', ensemble_size=ensemble_size
     )
 
     print(hpo.run())
-    
     pred_ens = hpo.predict(test_data_node, ens=True)
     pred = hpo.predict(test_data_node, ens=False)
 
@@ -101,10 +102,10 @@ if __name__ == '__main__':
 
     passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['PassengerId']
     result = pd.DataFrame({'PassengerId': passenger_id, 'Transported': pred})
-    result.to_csv(os.path.join(data_dir, f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'), index=False)
+    result.to_csv(os.path.join(data_dir, f'0907{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'), index=False)
     print('Result has been saved to result.csv.')
     result_ens = pd.DataFrame({'PassengerId': passenger_id, 'Transported': pred_ens})
-    result_ens.to_csv(os.path.join(data_dir, f'{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'), index=False)
+    result_ens.to_csv(os.path.join(data_dir, f'0907{Opt}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result_ens.csv'), index=False)
     print('Ensemble result has been saved to result_ens.csv.')
 
     # config_path = '/Users/xubeideng/Documents/Scientific Research/AutoML/code/mindware/examples/data/CASHFE-mab(1)_2024-06-05-16-40-50-634829/2024-06-05-16-40-50-634829_topk_config.pkl'

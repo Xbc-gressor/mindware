@@ -39,10 +39,9 @@ if __name__ == '__main__':
     evaluation = args.evaluation
     time_limit = args.time_limit
     per_time_limit = args.per_time_limit
-
     # Load data
     # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
-    data_dir = '/root/automl_data/kaggle/santander'
+    data_dir = 'D:\\Code\\MindWare\\Data\\santander-customer-transaction-prediction'
 
     dm = DataManager()
 
@@ -55,11 +54,7 @@ if __name__ == '__main__':
 
     # Initialize CASHFE
 
-    include_algorithms = [
-        'adaboost', 'extra_trees', 'gradient_boosting',
-        'lasso_regression', 'liblinear_svr', 'libsvm_svr',
-        'random_forest', 'ridge_regression'
-    ]
+    include_algorithms = ['lightgbm']
 
     if Opt == 'cash':
         # 'lda',
@@ -68,13 +63,13 @@ if __name__ == '__main__':
         OPT = CASHFE
 
     hpo = OPT(
-        include_algorithms=None, sub_optimizer='smac', task_type=task_type,
+        include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params=None,
-        optimizer=optimizer, inner_iter_num_per_iter=5,
-        time_limit=time_limit, amount_of_resource=100, per_run_time_limit=per_time_limit,
+        optimizer=optimizer, inner_iter_num_per_iter=1,
+        time_limit=919200, amount_of_resource=100, per_run_time_limit=120000,
         output_dir='./data', seed=1, n_jobs=1,
-        ensemble_method=ensemble_method, ensemble_size=ensemble_size
+        ensemble_method='cross_validation', ensemble_size=ensemble_size
     )
 
     print(hpo.run())
