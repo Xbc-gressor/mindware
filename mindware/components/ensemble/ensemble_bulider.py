@@ -1,11 +1,11 @@
 from sklearn.metrics._scorer import _BaseScorer
-
 from mindware.components.ensemble.bagging import Bagging
 from mindware.components.ensemble.blending import Blending
+from mindware.components.ensemble.crossvalidation_ensemble import CrossValidationEnsembleModel
 from mindware.components.ensemble.stacking import Stacking
 from mindware.components.ensemble.ensemble_selection import EnsembleSelection
 
-ensemble_list = ['bagging', 'blending', 'stacking', 'ensemble_selection']
+ensemble_list = ['bagging', 'blending', 'stacking', 'ensemble_selection', 'cross_validation']
 
 
 class EnsembleBuilder:
@@ -44,6 +44,13 @@ class EnsembleBuilder:
                                            task_type=task_type,
                                            metric=metric,
                                            output_dir=output_dir)
+        elif ensemble_method == 'cross_validation':
+            self.model = CrossValidationEnsembleModel(stats=stats,
+                                                      data_node=data_node,
+                                                      ensemble_size=ensemble_size,
+                                                      task_type=task_type,
+                                                      metric=metric,
+                                                      output_dir=output_dir)
         else:
             raise ValueError("%s is not supported for ensemble!" % ensemble_method)
 
