@@ -16,8 +16,8 @@ def seed_everything(seed):
 
 seed_everything(seed=2024)
 #读取训练数据和测试数据
-train_df = pd.read_csv("/Data/santander-customer-transaction-prediction/train.csv")
-test_df = pd.read_csv("/Data/santander-customer-transaction-prediction/test.csv")
+train_df = pd.read_csv("D:\\Code\\MindWare\\Data\\santander-customer-transaction-prediction\\train.csv")
+test_df = pd.read_csv("D:\\Code\\MindWare\\Data\\santander-customer-transaction-prediction\\test.csv")
 train_df.head()
 
 #除了target以外的所有特征

@@ -24,6 +24,7 @@ class LightGBM(BaseClassificationModel):
         self.var_stats = {}
         self.features = None
         self.n_jobs = 4
+        self.reverse_map = {}
 
     def fit(self, X, y):
         from lightgbm import LGBMClassifier
@@ -50,7 +51,17 @@ class LightGBM(BaseClassificationModel):
                                         n_jobs=self.n_jobs,
                                         verbose=self.verbose)
 
-        self.estimator.fit(X, y)
+        if self.augment_data == 1:
+            self.estimator.fit(X, y,
+                               eval_set=(X, y),
+                               eval_metric='auc',
+                               categorical_feature=[2]
+                               )
+        else:
+            self.estimator.fit(X, y,
+                               eval_set=(X, y),
+                               eval_metric='auc',
+                               )
         return self
 
     def predict(self, X):
@@ -169,6 +180,13 @@ class LightGBM(BaseClassificationModel):
             if corr < 0:
                 print(f"Feature {feature_id} is negatively correlated with target. Multiplying by -1.")
                 new_df["var"] = -new_df["var"]
+                self.reverse_map[feature_id] = True
+            else:
+                self.reverse_map[feature_id] = False
+
+        if self.reverse_map.get(feature_id, False):
+            print(f"Reversing feature {feature_id} based on correlation map.")
+            new_df["var"] = -new_df["var"]
 
         return new_df.values
 
