@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from mindware.utils.data_manager import DataManager
 from mindware.components.utils.constants import CLASSIFICATION
+from mindware.components.feature_engineering.parse import construct_node
 
 def load_model_from_directory(directory_path):
     for filename in os.listdir(directory_path):
@@ -15,22 +16,22 @@ def load_model_from_directory(directory_path):
                 print(f"Loaded model from {filepath}")
                 print(f"Operations: {op_list}")
                 print(f"Model Type: {type(model).__name__}")
-                return model
+                return op_list, model
             except Exception as e:
                 print(f"Failed to load {filename}: {str(e)}")
                 continue
     print("No model found in the directory.")
-    return None
+    return None, None
 
 directory_path = './data/test_fe' # pkl文件的位置，代码是拿测试交叉验证的改的所以从是文件夹里批量读，这里文件夹里放训练出来的那一个模型就可以
 
-model = load_model_from_directory(directory_path)
+op_list, model = load_model_from_directory(directory_path)
 
 if model is None:
     print("No model to predict.")
     exit()
 
-data_dir = 'D:\\Code\\MindWare\\Data\\santander-customer-transaction-prediction'
+data_dir = 'E:\\data\\kaggle\\santander-customer-transaction-prediction'
 
 dm = DataManager()
 train_data_node = dm.load_train_csv(
@@ -46,11 +47,14 @@ test_data_node = dm.load_test_csv(
 )
 test_data_node = dm.preprocess_transform(test_data_node)
 
+
+
+
+test_data_node = construct_node(test_data_node, op_list)
 X_test = test_data_node.data
 
 print(f"type of X_test: {type(X_test)}")
 print(f"X_test: {X_test}")
-
 predictions = model.predict_proba(X_test[0])[:, 1]
 print(predictions)
 

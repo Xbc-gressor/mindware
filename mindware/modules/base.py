@@ -226,7 +226,7 @@ class BaseAutoML(object):
                 # TODO: 有的refit会报错，提示X有NaN。原来的X是没有NaN的，可能FE后用一部分数据的时候没有NaN，但是全数据里面有了。
                 try:
                     if self.name in ['fe', 'cashfe']:
-                        data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
+                        data_node, op_list = parse_config(self.data_node, config, record=True,
                                                         if_imbal=self.if_imbal)
                     else:
                         op_list = {}

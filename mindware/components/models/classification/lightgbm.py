@@ -19,9 +19,9 @@ class LightGBM(BaseClassificationModel):
         self.random_state = random_state
         self.verbose = verbose
         self.estimator = None
-        self.var_mean = {}
-        self.var_var = {}
-        self.var_stats = {}
+
+        self.var_counts = {}
+        self.var_neg_corr = {}
         self.features = None
         self.n_jobs = 4
 
@@ -33,11 +33,11 @@ class LightGBM(BaseClassificationModel):
         if self.augment_data == 1:
             print("Augmenting data...")
             self.target = y
+            X = X.values if isinstance(X, pd.DataFrame) else X
             X, y = self.augment_data_func(X, y)
             print(f"Shape after augment_data_func - X: {X.shape}, y: {len(y)}")
 
-        self.features = X.shape[1]
-        print(f"Training LightGBM model with {self.features} features")
+        print(f"Training LightGBM model with {X.shape[1]} features")
 
         self.estimator = LGBMClassifier(num_leaves=self.num_leaves,
                                         max_depth=self.max_depth,
@@ -50,7 +50,12 @@ class LightGBM(BaseClassificationModel):
                                         n_jobs=self.n_jobs,
                                         verbose=self.verbose)
 
-        self.estimator.fit(X, y)
+        if self.augment_data == 1:
+            self.estimator.fit(X, y,
+                               categorical_feature=[2])
+        else:
+            self.estimator.fit(X, y)
+
         return self
 
     def predict(self, X):
@@ -79,40 +84,28 @@ class LightGBM(BaseClassificationModel):
 
     def predict_for_each_feature(self, X, mode="predict_proba"):
         if isinstance(X, pd.DataFrame):
-            features = X.columns
-        else:
-            features = [i for i in range(X.shape[1])]
-            X = pd.DataFrame(X, columns=features)
+            X = X.values
 
         y_preds = []
 
-        for idx, feature in enumerate(features):
-            X_single_feature = X[[feature]]
+        for idx in range(X.shape[1]):
 
             tmp = self.var_to_feat(
-                feature_data=X_single_feature[feature],
+                feature_data=X[:, idx],
                 feature_id=idx,
                 is_train=False
             )
 
-            tmp[:, 0] = (tmp[:, 0] - self.var_mean[idx]) / self.var_var[idx]
-
-            if mode == "predict":
-                y_pred = self.estimator.predict(tmp)
-            else:
-                y_pred = self.estimator.predict_proba(tmp)[:, 1]
-
+            y_pred = self.estimator.predict_proba(tmp)[:, 1]
             y_preds.append(y_pred)
 
         y_preds = np.array(y_preds)
-        print(y_preds)
         y_preds = np.sum(self.logit(y_preds), axis=0)
 
         if mode == "predict":
             y_preds = (y_preds > 0).astype(int)
         else:
             y_preds = self.sigmoid(y_preds)
-
             y_preds = np.vstack([1 - y_preds, y_preds]).T
 
         return y_preds
@@ -131,18 +124,14 @@ class LightGBM(BaseClassificationModel):
 
             feature_data = X_df[feature]
 
-            if idx not in self.var_stats:
-                self.var_stats[idx] = feature_data.value_counts()
+            if idx not in self.var_counts:
+                self.var_counts[idx] = feature_data.value_counts()
 
             tmp = self.var_to_feat(
                 feature_data=feature_data,
                 feature_id=idx,
                 is_train=True
             )
-
-            self.var_mean[idx], self.var_var[idx] = np.mean(tmp[:, 0]), np.var(tmp[:, 0])
-
-            tmp[:, 0] = (tmp[:, 0] - self.var_mean[idx]) / self.var_var[idx]
 
             augmented_data.append(tmp)
             augmented_labels.append(y)
@@ -153,14 +142,14 @@ class LightGBM(BaseClassificationModel):
         print(f"Final augmented data shape - X: {X_augmented.shape}, y: {len(y_augmented)}")
         return X_augmented, y_augmented
 
-    def var_to_feat(self, feature_data, feature_id, is_train=True):
-        new_df = pd.DataFrame()
+    def var_to_feat(self, feature_data, feature_id, is_train=False):
+        new_df = pd.DataFrame(columns=["var", "count", "feature_id", "var_rank"])
         new_df["var"] = feature_data.values if isinstance(feature_data, pd.Series) else feature_data
 
-        var_stats = self.var_stats[feature_id]
+        var_stats = self.var_counts[feature_id]
 
-        new_df["hist"] = pd.Series(feature_data).map(var_stats)
-        new_df["hist"].fillna(0, inplace=True)
+        new_df["count"] = pd.Series(feature_data).map(var_stats)
+        new_df["count"] = new_df["count"].fillna(0)
         new_df["feature_id"] = feature_id
         new_df["var_rank"] = new_df["var"].rank(method='average') / len(new_df)
 
@@ -168,6 +157,13 @@ class LightGBM(BaseClassificationModel):
             corr = np.corrcoef(self.target, new_df["var"])[0, 1]
             if corr < 0:
                 print(f"Feature {feature_id} is negatively correlated with target. Multiplying by -1.")
+                new_df["var"] = -new_df["var"]
+                self.var_neg_corr[feature_id] = True
+            else:
+                self.var_neg_corr[feature_id] = False
+        else:
+            if self.var_neg_corr.get(feature_id, False):
+                # print(f"Feature {feature_id} is negatively correlated with target. Multiplying by -1.")
                 new_df["var"] = -new_df["var"]
 
         return new_df.values
@@ -194,7 +190,7 @@ class LightGBM(BaseClassificationModel):
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         cs = ConfigurationSpace()
         n_estimators = UniformIntegerHyperparameter("n_estimators", 100, 1000, default_value=500, q=50)
-        num_leaves = UniformIntegerHyperparameter("num_leaves", 31, 256, default_value=128)
+        num_leaves = UniformIntegerHyperparameter("num_leaves", 31, 2047, default_value=128)
         max_depth = UniformIntegerHyperparameter('max_depth', 3, 15, default_value=15)
         learning_rate = UniformFloatHyperparameter("learning_rate", 1e-3, 0.3, default_value=0.1, log=True)
         min_child_samples = UniformIntegerHyperparameter("min_child_samples", 5, 1000, default_value=20)

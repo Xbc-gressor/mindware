@@ -369,9 +369,6 @@ class DataManager(object):
 
         return input_node
 
-
-
-
     def one_hot(self, input_node: DataNode):
         # One-hot encoding TO categorical features.
         categorical_fields = [idx for idx, type in enumerate(input_node.feature_types) if type == CATEGORICAL]
