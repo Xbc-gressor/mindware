@@ -179,7 +179,7 @@ class DataManager(object):
             df[cate_cols] = df[cate_cols].astype(str)
 
         # Drop the row with all NaNs.
-        df.dropna(how='all')
+        df = df.dropna(how='all')
 
         if ignore_columns:
             retain_columns = [col for col in df.columns if col not in ignore_columns]
@@ -217,7 +217,7 @@ class DataManager(object):
             df[self.user_cate_cols] = df[self.user_cate_cols].astype(str)
 
         # Drop the row with all NaNs.
-        df.dropna(how='all')
+        df = df.dropna(how='all')
         if ignore_columns:
             retain_columns = [col for col in df.columns if col not in ignore_columns]
             df = df[retain_columns]
@@ -242,7 +242,7 @@ class DataManager(object):
         #     df[cat_cols] = df[cat_cols].astype(str)
 
         # Drop the row with all NaNs.
-        df.dropna(how='all')
+        df = df.dropna(how='all')
         if ignore_columns:
             retain_columns = [col for col in df.columns if col not in ignore_columns]
             df = df[retain_columns]
@@ -346,7 +346,7 @@ class DataManager(object):
                 self.x_encoder['encoder'] = MinMaxScaler()
             elif self.x_encode_method == 'normalize':
                 self.x_encoder['encoder'] = StandardScaler()
-            elif self.x_encode_method is None:
+            else:
                 raise ValueError(
                     "Invalid x encode method: %s, only support (minmax, normalize)!" % self.x_encode_method)
 

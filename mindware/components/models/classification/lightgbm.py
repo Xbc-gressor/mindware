@@ -120,7 +120,7 @@ class LightGBM(BaseClassificationModel):
         augmented_labels = []
 
         for idx, feature in enumerate(features):
-            print(f"Processing feature index: {idx}")
+            # print(f"Processing feature index: {idx}")
 
             feature_data = X_df[feature]
 
@@ -156,7 +156,7 @@ class LightGBM(BaseClassificationModel):
         if is_train and hasattr(self, 'target'):
             corr = np.corrcoef(self.target, new_df["var"])[0, 1]
             if corr < 0:
-                print(f"Feature {feature_id} is negatively correlated with target. Multiplying by -1.")
+                # print(f"Feature {feature_id} is negatively correlated with target. Multiplying by -1.")
                 new_df["var"] = -new_df["var"]
                 self.var_neg_corr[feature_id] = True
             else:
