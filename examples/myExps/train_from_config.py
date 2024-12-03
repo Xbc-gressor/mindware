@@ -49,7 +49,8 @@ if __name__ == '__main__':
     per_time_limit = args.per_time_limit
     # Load data
     # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
-    data_dir = 'E:\\data\\kaggle\\santander-customer-transaction-prediction'
+    # data_dir = 'E:\\data\\kaggle\\santander-customer-transaction-prediction'
+    data_dir = '/root/automl_data/kaggle/santander'
 
     dm = DataManager()
 
@@ -137,7 +138,7 @@ if __name__ == '__main__':
         'lightgbm:subsample': 0.85,
         'lightgbm:verbose': -1,
         'preprocessor': 'empty',
-        'rescaler': 'standard',
+        'rescaler': 'empty',
     }
 
     config = Configuration(cs, values=values)
@@ -146,15 +147,51 @@ if __name__ == '__main__':
     breakpoint()
 
 
-    file_path = 'E:\codes\mindware\examples\myExps\data\\2024-09-25-21-20-07-895081_bc4b94dc52a29bbd4251bbc2c9f0bce48d146705.pkl'
+    # file_path = 'E:\codes\mindware\examples\myExps\data\\2024-09-25-21-20-07-895081_bc4b94dc52a29bbd4251bbc2c9f0bce48d146705.pkl'
+    file_path = '/root/mindware/examples/data/HPO(lightgbm)-smac(1)-holdout_2024-11-24-20-34-26-298565/2024-11-24-20-34-26-298565_161336064593550de978d7bee09544283d054c28.pkl'
     op_list, model, _ = pkl.load(open(file_path, 'rb'))
+    breakpoint()
 
-    # refit
+    # # refit
     from mindware.components.feature_engineering.parse import parse_config
     data_node, op_list = parse_config(train_data_node, config.get_dictionary(), record=True)
-    model.fit(data_node.data[0], data_node.data[1])
+    # model.fit(data_node.data[0], data_node.data[1])
 
     _test_data_node = construct_node(test_data_node, op_list)
+
+    y_preds = []
+    X = _test_data_node.data[0][:1000]
+    for idx in range(X.shape[1]):
+        
+
+        tmp = model.var_to_feat(
+            feature_data=X[:, idx],
+            feature_id=idx,
+            is_train=False
+        )
+
+    #     y_pred = self.estimator.predict_proba(tmp)[:, 1]
+    #     y_preds.append(y_pred)
+
+    # y_preds = np.array(y_preds)
+    # y_preds = np.sum(self.logit(y_preds), axis=0)
+
+    # if mode == "predict":
+    #     y_preds = (y_preds > 0).astype(int)
+    # else:
+    #     from scipy.stats import rankdata
+    #     y_preds = self.sigmoid(y_preds)
+    #     y_preds = rankdata(y_preds) / len(y_preds)
+    #     y_preds = np.vstack([1 - y_preds, y_preds]).T
+        y_pred = model.estimator.predict_proba(tmp)
+        y_preds.append(y_pred)
+        
+    import numpy as np
+    def logit(p):
+        return np.log(p + 1e-15) - np.log(1 - p + 1e-15)
+
+    breakpoint()
+
 
     predictions = model.predict_proba(_test_data_node.data[0])[:, 1]
     print(predictions)

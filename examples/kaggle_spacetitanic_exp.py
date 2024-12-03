@@ -48,12 +48,12 @@ if __name__ == '__main__':
     evaluation = args.evaluation
     time_limit = args.time_limit
     per_time_limit = args.per_time_limit
-    estimator_id = 'neural_network'
+    estimator_id = 'lightgbm'
 
     # Load data
-    data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/spaceship'
+    # data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/spaceship'
     # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\spaceship'
-    # data_dir = '/root/automl_data/kaggle/spaceship'
+    data_dir = '/root/automl_data/kaggle/spaceship'
 
     # 预处理数据，将train和test表格中 Cabin 一列形如 B/0/P 的数据中的第一个和最后一个字母提取出来，形成两列 deck 和 side，并保存
     # train_data = pd.read_csv(os.path.join(data_dir, 'train.csv'))
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params={'test_size': 0.25},
         optimizer=optimizer,
-        time_limit=time_limit, amount_of_resource=100, per_run_time_limit=per_time_limit,
+        time_limit=time_limit, amount_of_resource=1, per_run_time_limit=per_time_limit,
         output_dir='./data', seed=1, n_jobs=1,
         ensemble_method=None, ensemble_size=ensemble_size
     )

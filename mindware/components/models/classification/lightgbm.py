@@ -16,6 +16,17 @@ class LightGBM(BaseClassificationModel):
         self.min_child_samples = int(min_child_samples)
         self.colsample_bytree = colsample_bytree
         self.augment_data = augment_data
+        
+        # self.n_estimators = 120
+        # self.learning_rate = 4e-2
+        # self.num_leaves = 31
+        # self.max_depth = 15
+        # self.subsample = 0.85
+        # self.min_child_samples = 1000
+        # self.colsample_bytree = 1.0
+        # self.augment_data = 1
+        
+        
         self.random_state = random_state
         self.verbose = verbose
         self.estimator = None
@@ -24,6 +35,7 @@ class LightGBM(BaseClassificationModel):
         self.var_neg_corr = {}
         self.features = None
         self.n_jobs = 4
+        
 
     def fit(self, X, y):
         from lightgbm import LGBMClassifier
@@ -104,11 +116,33 @@ class LightGBM(BaseClassificationModel):
 
         if mode == "predict":
             y_preds = (y_preds > 0).astype(int)
+            print(np.sum(y_preds))
         else:
+            from scipy.stats import rankdata
             y_preds = self.sigmoid(y_preds)
+            y_preds = rankdata(y_preds) / len(y_preds)
             y_preds = np.vstack([1 - y_preds, y_preds]).T
-
+        
         return y_preds
+            
+        #     y_pred = self.estimator.predict_proba(tmp)
+        #     y_preds.append(y_pred)
+
+        # y_preds = np.array(y_preds)
+        # y_preds = np.sum(np.log(y_preds + 1e-15), axis=0)
+        # final_y_preds = np.zeros(y_preds.shape)
+        # for i in range(y_preds.shape[1]):
+        #     tmp = y_preds - y_preds[:,i:i+1]
+        #     final_y_preds[:, i] = 1 / np.exp(tmp).sum(axis=1)
+
+        # if mode == "predict":
+        #     final_y_preds = np.argmax(final_y_preds, axis=1)
+        # else:
+        #     from scipy.stats import rankdata
+        #     for i in range(final_y_preds.shape[1]):
+        #         final_y_preds[:,i] = rankdata(-final_y_preds[:,i]) / len(final_y_preds[:,i])
+
+        # return final_y_preds
 
     def augment_data_func(self, X, y):
         X_df = pd.DataFrame(X)
@@ -188,6 +222,12 @@ class LightGBM(BaseClassificationModel):
 
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
+        n_classes = kwargs.get('n_classes', None)
+        
+        aug_choices = [0]
+        if n_classes is not None and n_classes == 2:
+            aug_choices = [0, 1]
+        
         cs = ConfigurationSpace()
         n_estimators = UniformIntegerHyperparameter("n_estimators", 100, 1000, default_value=500, q=50)
         num_leaves = UniformIntegerHyperparameter("num_leaves", 31, 2047, default_value=128)
@@ -196,7 +236,7 @@ class LightGBM(BaseClassificationModel):
         min_child_samples = UniformIntegerHyperparameter("min_child_samples", 5, 1000, default_value=20)
         subsample = UniformFloatHyperparameter("subsample", 0.7, 1.0, default_value=1.0, q=0.1)
         colsample_bytree = UniformFloatHyperparameter("colsample_bytree", 0.7, 1.0, default_value=1.0, q=0.1)
-        augment_data = CategoricalHyperparameter("augment_data", [0, 1], default_value=0)
+        augment_data = CategoricalHyperparameter("augment_data", aug_choices, default_value=0)
         verbose = UnParametrizedHyperparameter("verbose", -1)
         cs.add_hyperparameters([n_estimators, num_leaves, max_depth, learning_rate, min_child_samples, subsample,
                                 colsample_bytree, augment_data, verbose])

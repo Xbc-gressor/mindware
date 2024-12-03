@@ -198,7 +198,7 @@ class BaseAutoML(object):
                                                 data_balance=data_node.data_balance)
 
             model_path = os.path.join(self.output_dir, '%s_%s.pkl' % (
-                self.timestamp, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
+                self.datetime, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
             with open(model_path, 'wb') as f:
                 pkl.dump([op_list, estimator, -self.incumbent_perf], f)
 
