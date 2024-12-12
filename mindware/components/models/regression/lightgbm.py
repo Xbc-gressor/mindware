@@ -167,10 +167,10 @@ class LightGBM(BaseRegressionModel):
             colsample_bytree = UniformFloatHyperparameter("colsample_bytree", 0.5, 1, default_value=1)
             reg_alpha = UniformFloatHyperparameter('reg_alpha', 1e-10, 10, log=True, default_value=1e-10)
             reg_lambda = UniformFloatHyperparameter("reg_lambda", 1e-10, 10, log=True, default_value=1e-10)
-            augment_data = CategoricalHyperparameter("augment_data", [0, 1], default_value=0)  # 控制扩展数据的选项
+            # augment_data = CategoricalHyperparameter("augment_data", [0], default_value=0)  # 控制扩展数据的选项
             verbose = UnParametrizedHyperparameter("verbose", -1)
             cs.add_hyperparameters([n_estimators, num_leaves, learning_rate, min_child_weight, subsample,
-                                    colsample_bytree, reg_alpha, reg_lambda, augment_data, verbose])
+                                    colsample_bytree, reg_alpha, reg_lambda, verbose])
             return cs
         elif optimizer == 'tpe':
             from hyperopt import hp

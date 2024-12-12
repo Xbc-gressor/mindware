@@ -66,6 +66,15 @@ def get_hpo_cs(estimator_id, task_type, **cs_args):
     tmp_cs = rgs_class.get_hyperparameter_search_space(**_cs_args)
     parent_hyperparameter = {'parent': algo, 'value': estimator_id}
     cs.add_configuration_space(estimator_id, tmp_cs, parent_hyperparameter=parent_hyperparameter)
+    
+    # tmp_cs = rgs_class.get_hyperparameter_search_space()
+    # cs = ConfigurationSpace()
+    # cs.add_hyperparameter(Constant('algorithm', estimator_id))
+
+    # for hyper in tmp_cs.get_hyperparameters():
+    #     hyper.name = '%s:%s' % (estimator_id, hyper.name)
+    #     cs.add_hyperparameter(hyper)
+
 
     return cs
 

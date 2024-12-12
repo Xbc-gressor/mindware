@@ -225,8 +225,9 @@ class LightGBM(BaseClassificationModel):
         n_classes = kwargs.get('n_classes', None)
         
         aug_choices = [0]
-        if n_classes is not None and n_classes == 2:
-            aug_choices = [0, 1]
+        # if n_classes is not None and n_classes == 2:
+        #     aug_choices = [0, 1]
+        # augment_data = CategoricalHyperparameter("augment_data", aug_choices, default_value=0)
         
         cs = ConfigurationSpace()
         n_estimators = UniformIntegerHyperparameter("n_estimators", 100, 1000, default_value=500, q=50)
@@ -236,8 +237,7 @@ class LightGBM(BaseClassificationModel):
         min_child_samples = UniformIntegerHyperparameter("min_child_samples", 5, 1000, default_value=20)
         subsample = UniformFloatHyperparameter("subsample", 0.7, 1.0, default_value=1.0, q=0.1)
         colsample_bytree = UniformFloatHyperparameter("colsample_bytree", 0.7, 1.0, default_value=1.0, q=0.1)
-        augment_data = CategoricalHyperparameter("augment_data", aug_choices, default_value=0)
         verbose = UnParametrizedHyperparameter("verbose", -1)
         cs.add_hyperparameters([n_estimators, num_leaves, max_depth, learning_rate, min_child_samples, subsample,
-                                colsample_bytree, augment_data, verbose])
+                                colsample_bytree, verbose])
         return cs

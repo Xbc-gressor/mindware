@@ -87,7 +87,7 @@ if __name__ == '__main__':
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params={'test_size': 0.2},
         optimizer=optimizer,
-        time_limit=time_limit, amount_of_resource=50, per_run_time_limit=per_time_limit,
+        time_limit=time_limit, amount_of_resource=50, per_run_time_limit=1200,
         output_dir='./data', seed=1, n_jobs=1,
         ensemble_method=None, ensemble_size=ensemble_size
     )
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     
     result_hpo = pd.DataFrame({'Id_code': passenger_id, 'target': pred_hpo})
     result_hpo.to_csv(os.path.join(data_dir,
-                               f'hpo{estimator_id}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
+                               f'hpo111{estimator_id}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
                   index=False)
     print('Result has been saved to result_hpo.csv.')
 

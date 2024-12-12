@@ -18,7 +18,7 @@ def get_hpo_cs(estimator_id, task_type=CLASSIFICATION, **cs_args):
 def get_cash_cs(include_algorithms=None, task_type=CLASSIFICATION, **cs_args):
     _candidates = get_combined_candidtates(_classifiers, _addons).keys() - {'neural_network'}
     if include_algorithms is not None:
-        _candidates = set(include_algorithms).intersection(set(_candidates.keys())) - {'neural_network'}
+        _candidates = set(include_algorithms).intersection(set(_candidates)) - {'neural_network'}
         if len(_candidates) == 0:
             raise ValueError("No algorithms included! Please check the spelling of the included algorithms!")
     cs = ConfigurationSpace()

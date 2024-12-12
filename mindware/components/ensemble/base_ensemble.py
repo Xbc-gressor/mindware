@@ -10,6 +10,7 @@ from mindware.components.ensemble.unnamed_ensemble import choose_base_models_cla
     choose_base_models_regression
 from mindware.components.feature_engineering.parse import construct_node
 from mindware.utils.logging_utils import get_logger
+from mindware.utils.functions import is_imbalanced_dataset
 
 
 class BaseEnsembleModel(object):
@@ -34,6 +35,10 @@ class BaseEnsembleModel(object):
         self.timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
         logger_name = 'EnsembleBuilder'
         self.logger = get_logger(logger_name)
+        
+        self.if_imbal = False
+        if self.task_type in CLS_TASKS:
+            self.if_imbal = is_imbalanced_dataset(self.node)
 
         model_cnt = 0
         for algo_id in self.stats.keys():

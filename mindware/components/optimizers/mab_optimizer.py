@@ -221,6 +221,9 @@ class MabOptimizer(BaseOptimizer):
                         if i != j:
                             if upper_bounds[i] < lower_bounds[j]:
                                 flags[i] = True
+                for i in range(n):
+                    if np.isnan(upper_bounds[i]) or not np.isfinite(lower_bounds[i]):
+                        flags[i] = True
 
                 if np.sum(flags) == n:
                     self.logger.error('Removing all the arms simultaneously!')
