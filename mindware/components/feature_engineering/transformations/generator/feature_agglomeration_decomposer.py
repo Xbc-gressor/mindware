@@ -26,6 +26,7 @@ class FeatureAgglomerationDecomposer(Transformer):
 
     @ease_trans
     def operate(self, input_datanode, target_fields=None):
+        import sklearn
         from sklearn.cluster import FeatureAgglomeration
 
         X, y = input_datanode.data
@@ -36,10 +37,17 @@ class FeatureAgglomerationDecomposer(Transformer):
             n_clusters = min(self.n_clusters, X.shape[1])
             if not callable(self.pooling_func):
                 self.pooling_func = self.pooling_func_mapping[self.pooling_func]
+            if sklearn.__version__ < '1.2.2':
+                self.model = FeatureAgglomeration(
+                    n_clusters=n_clusters, affinity=self.affinity,
+                    linkage=self.linkage, pooling_func=self.pooling_func)
+            elif '1.2.2' <= sklearn.__version__ <= '1.3.2':
+                self.model = FeatureAgglomeration(
+                    n_clusters=n_clusters, metric=self.affinity,
+                    linkage=self.linkage, pooling_func=self.pooling_func)
+            else:
+                raise ValueError("Unsupported sklearn version %s" % sklearn.__version__)
 
-            self.model = FeatureAgglomeration(
-                n_clusters=n_clusters, affinity=self.affinity,
-                linkage=self.linkage, pooling_func=self.pooling_func)
             self.model.fit(X)
 
         X_new = self.model.transform(X)

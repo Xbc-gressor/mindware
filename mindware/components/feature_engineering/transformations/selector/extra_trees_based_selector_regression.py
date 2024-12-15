@@ -116,19 +116,18 @@ class ExtraTreeBasedSelectorRegression(Transformer):
             cs = ConfigurationSpace()
 
             n_estimators = Constant("n_estimators", 100)
-            if sklearn.__version__ >= '1.2.2':
-                criterion = CategoricalHyperparameter('criterion',
-                                                      ["squared_error", "absolute_error", "friedman_mse", "poisson"], default="squared_error")
-            elif sklearn.__version__ >= '1.0.2':
-                criterion = CategoricalHyperparameter('criterion',
-                                                      ["squared_error", "absolute_error"],
-                                                      default="squared_error")
-            elif sklearn.__version__ >= '0.18':
-                criterion = CategoricalHyperparameter("criterion",
-                                                      ["mse", "mae"])
+
+            if sklearn.__version__ < "1.0.2":
+                criterion = CategoricalHyperparameter(
+                    "criterion", ["mse", "mae"], default_value="mse")
+            elif "1.0.2" <= sklearn.__version__ < "1.2.2":
+                criterion = CategoricalHyperparameter(
+                    "criterion", ["squared_error", "absolute_error"], default_value="squared_error")
+            elif '1.2.2' <= sklearn.__version__ <= '1.3.2':
+                criterion = CategoricalHyperparameter(
+                    "criterion", ["squared_error", "absolute_error", "friedman_mse", "poisson"], default_value="squared_error")
             else:
-                criterion = CategoricalHyperparameter("criterion",
-                                                      ["mse", "friedman_mse"])
+                raise ValueError("scikit-learn version %s is not supported." % sklearn.__version__)
 
             max_features = UniformFloatHyperparameter(
                 "max_features", 0.1, 1.0, default_value=1.0, q=0.05)

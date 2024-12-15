@@ -4,6 +4,7 @@ from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
     UnParametrizedHyperparameter, Constant
 from mindware.components.feature_engineering.transformations.base_transformer import *
 from mindware.components.utils.configspace_utils import check_none, check_for_bool
+import sklearn
 
 
 class ExtraTreeBasedSelector(Transformer):
@@ -115,8 +116,16 @@ class ExtraTreeBasedSelector(Transformer):
         if optimizer == 'smac':
             cs = ConfigurationSpace()
             n_estimators = Constant("n_estimators", 100)
-            criterion = CategoricalHyperparameter(
-                "criterion", ["gini", "entropy"], default_value="gini")
+
+            if sklearn.__version__ < "1.1.3":
+                criterion = CategoricalHyperparameter(
+                    "criterion", ["gini", "entropy"], default_value="gini")
+            elif '1.1.3' <= sklearn.__version__ <= '1.3.2':
+                criterion = CategoricalHyperparameter(
+                    "criterion", ["gini", "entropy", "log_loss"], default_value="gini")
+            else:
+                raise ValueError("sklearn version %s is not supported." % sklearn.__version__)
+
             max_features = UniformFloatHyperparameter("max_features", 0, 1,
                                                       default_value=0.5, q=0.05)
 
