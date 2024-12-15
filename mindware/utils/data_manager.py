@@ -148,7 +148,7 @@ class DataManager(object):
             df[cate_cols] = df[cate_cols].astype(str)
 
         # Drop the row with all NaNs.
-        df.dropna(how='all')
+        df = df.dropna(how='all')
 
         if ignore_columns:
             retain_columns = [col for col in df.columns if col not in ignore_columns]
@@ -185,9 +185,6 @@ class DataManager(object):
             retain_columns = [col for col in df.columns if col not in ignore_columns]
             df = df[retain_columns]
 
-        # if self.task_type in CLS_TASKS:
-        #     df[label_name] = self.encode_label_func(df[label_name])
-
         # Clean the data where the label columns have nans.
         self.clean_data_with_nan(df, label_name, drop_index=drop_index)
 
@@ -205,7 +202,7 @@ class DataManager(object):
 
     def load_test_csv(self, file_location, has_label=False, label_name='ground truth',
                       drop_index=None, keep_default_na=True, header='infer',
-                      sep=',', ignore_columns=None):
+                      sep=','):
         df = pd.read_csv(file_location, keep_default_na=keep_default_na,
                          na_values=self.na_values, header=header, sep=sep)
 
@@ -218,12 +215,6 @@ class DataManager(object):
 
         # Drop the row with all NaNs.
         df = df.dropna(how='all')
-        if ignore_columns:
-            retain_columns = [col for col in df.columns if col not in ignore_columns]
-            df = df[retain_columns]
-
-        # if has_label and self.task_type in CLS_TASKS:
-        #     df[label_name] = self.encode_label_func(df[label_name])
 
         self.clean_data_with_nan(df, label_name, phase='test', drop_index=drop_index, has_label=has_label)
         self.test_X = df
