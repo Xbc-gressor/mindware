@@ -128,12 +128,14 @@ class RandomForest(
             if sklearn.__version__ < "1.0.2":
                 criterion = CategoricalHyperparameter(
                     "criterion", ["mse", "mae"], default_value="mse")
-            elif sklearn.__version__ < "1.2.2":
+            elif "1.0.2" <= sklearn.__version__ < "1.2.2":
                 criterion = CategoricalHyperparameter(
                     "criterion", ["squared_error", "absolute_error", "poisson"], default_value="squared_error")
-            else:
+            elif "1.2.2" <= sklearn.__version__ <= "1.3.2":
                 criterion = CategoricalHyperparameter(
                     "criterion", ["squared_error", "absolute_error", "friedman_mse", "poisson"], default_value="squared_error")
+            else:
+                raise ValueError("scikit-learn version %s is not supported." % sklearn.__version)
 
             # The maximum number of features used in the forest is calculated as m^max_features, where
             # m is the total number of features, and max_features is the hyperparameter specified below.

@@ -123,9 +123,11 @@ class ExtraTreesClassifier(IterativeComponentWithSampleWeight, BaseClassificatio
         if sklearn.__version__ < "1.1.3":
             criterion = CategoricalHyperparameter(
                 "criterion", ["gini", "entropy"], default_value="gini")
-        else:
+        elif '1.1.3' <= sklearn.__version__ <= '1.3.2':
             criterion = CategoricalHyperparameter(
                 "criterion", ["gini", "entropy", "log_loss"], default_value="gini")
+        else:
+            raise ValueError("sklearn version %s is not supported." % sklearn.__version__)
 
         # The maximum number of features used in the forest is calculated as m^max_features, where
         # m is the total number of features, and max_features is the hyperparameter specified below.

@@ -126,11 +126,13 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
 
             if sklearn.__version__ < "1.0.2":
                 loss = CategoricalHyperparameter("loss", ['ls', 'lad', 'huber', 'quantile'], default_value='ls')
-            else:
+            elif '1.0.2' <= sklearn.__version__ <= '1.3.2':
                 loss = CategoricalHyperparameter(
                     "loss", ['squared_error', 'absolute_error', 'huber', 'quantile'],
                     default_value='squared_error'
                 )
+            else:
+                raise ValueError("scikit-learn version %s is not supported." % sklearn.__version__)
 
             learning_rate = UniformFloatHyperparameter(
                 name="learning_rate", lower=0.01, upper=1, default_value=0.1, log=True)
@@ -141,10 +143,12 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
 
             if sklearn.__version__ < "1.0.2":
                 criterion = CategoricalHyperparameter(
-                    'criterion', ['friedman_mse', 'mse', 'mae'], default_value='friedman_mse')
-            else:
+                    'criterion', ['friedman_mse', 'mse'], default_value='friedman_mse')
+            elif '1.0.2' <= sklearn.__version__ <= '1.3.2':
                 criterion = CategoricalHyperparameter(
                     'criterion', ["friedman_mse", "squared_error"], default_value='friedman_mse')
+            else:
+                raise ValueError("scikit-learn version %s is not supported." % sklearn.__version__)
 
             min_samples_split = UniformIntegerHyperparameter(
                 name="min_samples_split", lower=2, upper=20, default_value=2)
