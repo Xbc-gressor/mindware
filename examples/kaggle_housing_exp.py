@@ -29,8 +29,8 @@ if __name__ == '__main__':
 
     # Load data
     # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\houseprices\\'
-    # data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/houseprice'
-    data_dir = '/root/automl_data/kaggle/houseprice'
+    data_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/automl_data/kaggle/houseprice'
+    # data_dir = '/root/automl_data/kaggle/houseprice'
 
     dm = DataManager()
 
@@ -38,7 +38,7 @@ if __name__ == '__main__':
                                         label_name='SalePrice')
     train_data_node = dm.preprocess_fit(train_data_node, task_type, x_encode=x_encode, label_encode=label_encode)
 
-    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['Id'])
+    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'))
     test_data_node = dm.preprocess_transform(test_data_node)
 
 
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     # )
     include_algorithms = [
         'adaboost', 'extra_trees', 'gradient_boosting',
-        'lasso_regression', 'liblinear_svr', 'libsvm_svr',
+        'liblinear_svr', 'libsvm_svr',
         'random_forest', 'lightgbm'
     ]
     opt_hpo = CASH(
@@ -66,7 +66,7 @@ if __name__ == '__main__':
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params=None,
         optimizer='mab', inner_iter_num_per_iter=10,
-        time_limit=6000, amount_of_resource=100, per_run_time_limit=300,
+        time_limit=600, amount_of_resource=100, per_run_time_limit=300,
         output_dir='./data', seed=1, n_jobs=1,
         ensemble_method=ensemble_method, ensemble_size=ensemble_size
     )
