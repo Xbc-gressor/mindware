@@ -26,7 +26,7 @@ class BaseFE(BaseAutoML):
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1,
                  ensemble_method=None, ensemble_size=None,
-                 include_preprocessors=None, model_config=None):
+                 include_preprocessors=None, model_config=None, task_id='test'):
 
         super(BaseFE, self).__init__(
             name='fe', task_type=task_type,
@@ -35,7 +35,7 @@ class BaseFE(BaseAutoML):
             optimizer=optimizer, inner_iter_num_per_iter=1,
             time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=per_run_time_limit,
             output_dir=output_dir, seed=seed, n_jobs=n_jobs,
-            ensemble_method=ensemble_method, ensemble_size=ensemble_size
+            ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
         )
 
         if optimizer not in ['smac', 'tpe', 'random_search']:

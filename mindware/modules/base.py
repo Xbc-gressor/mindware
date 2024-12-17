@@ -40,7 +40,7 @@ class BaseAutoML(object):
                  optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=None, n_jobs=1,
-                 ensemble_method=None, ensemble_size=5):
+                 ensemble_method=None, ensemble_size=5, task_id='test'):
 
         self.name = name
 
@@ -95,6 +95,7 @@ class BaseAutoML(object):
         self.already_refit = False
 
         self.logger = None
+        self.task_idx = task_id
 
     def _get_logger(self, name):
         raise NotImplementedError()

@@ -19,7 +19,7 @@ class BaseCASH(BaseAutoML):
                  optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1,
-                 ensemble_method=None, ensemble_size=5):
+                 ensemble_method=None, ensemble_size=5, task_id='test'):
 
         super(BaseCASH, self).__init__(
             name='cash', task_type=task_type,
@@ -28,7 +28,7 @@ class BaseCASH(BaseAutoML):
             optimizer=optimizer, inner_iter_num_per_iter=inner_iter_num_per_iter,
             time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=per_run_time_limit,
             output_dir=output_dir, seed=seed, n_jobs=n_jobs,
-            ensemble_method=ensemble_method, ensemble_size=ensemble_size
+            ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
         )
 
         if optimizer not in ['smac', 'tpe', 'random_search', 'mab']:
