@@ -21,6 +21,17 @@ for i in 0 1 3 4; do
     TASKS+=("python cls_benchmark.py --Opt cash --time_limit 1800 --job_idx $i")
 done
 
+# 生成任务列表
+for i in 3; do
+    TASKS+=("python rgs_benchmark.py --Opt cashfe --time_limit 7200 --job_idx $i")
+    TASKS+=("python rgs_benchmark.py --Opt cash --time_limit 3600 --job_idx $i")
+done
+
+# 生成任务列表
+for i in 0 1 2; do
+    TASKS+=("python rgs_benchmark.py --Opt cashfe --time_limit 3600 --job_idx $i")
+    TASKS+=("python rgs_benchmark.py --Opt cash --time_limit 1800 --job_idx $i")
+done
 
 
 # 遍历任务列表并执行
