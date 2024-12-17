@@ -1,14 +1,24 @@
 #!/bin/bash
 
 # 最大并发数
-MAX_JOBS=3
+MAX_JOBS=6
 
 # 当前运行的作业数
 CURRENT_JOBS=0
 
+# 初始化任务列表
+declare -a TASKS
+
+# 生成任务列表
 for i in {0..5}; do
+    TASKS+=("python cls_benchmark.py --Opt CASHFE --time_limit 3600 --job_idx $i")
+    TASKS+=("python cls_benchmark.py --Opt CASH --time_limit 1800 --job_idx $i")
+done
+
+# 遍历任务列表并执行
+for TASK in "${TASKS[@]}"; do
     # 启动后台作业
-    python cls_benchmark.py --Opt CASHFE --job_idx $i &
+    eval "$TASK &"
 
     # 增加当前作业计数
     ((CURRENT_JOBS++))

@@ -95,7 +95,7 @@ class BaseAutoML(object):
         self.already_refit = False
 
         self.logger = None
-        self.task_idx = task_id
+        self.task_id = task_id
 
     def _get_logger(self, name):
         raise NotImplementedError()

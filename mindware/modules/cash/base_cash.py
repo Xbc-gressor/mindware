@@ -39,8 +39,8 @@ class BaseCASH(BaseAutoML):
             raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
 
         self.include_algorithms = include_algorithms
-        path = 'CASH-%s(%d)-%s_%s' % (
-            optimizer, self.seed, self.evaluation, self.datetime
+        path = 'CASH-%s(%d)-%s_%s_%s' % (
+            optimizer, self.seed, self.evaluation, self.task_id, self.datetime
         )
         self.output_dir = os.path.join(output_dir, path)
         if not os.path.exists(self.output_dir):

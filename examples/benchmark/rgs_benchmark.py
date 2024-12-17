@@ -82,7 +82,7 @@ if '__main__' == __name__:
             optimizer='mab', inner_iter_num_per_iter=10,
             time_limit=args.time_limit, amount_of_resource=100, per_run_time_limit=300,
             output_dir='./data', seed=1, n_jobs=1,
-            ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size
+            ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
         )
 
         print(opt.run())

@@ -38,8 +38,8 @@ class BaseHPO(BaseAutoML):
 
         self.estimator_id = estimator_id
 
-        path = 'HPO(%s)-%s(%d)-%s_%s' % (
-            self.estimator_id, optimizer, self.seed, self.evaluation, self.datetime
+        path = 'HPO(%s)-%s(%d)-%s_%s_%s' % (
+            self.estimator_id, optimizer, self.seed, self.evaluation, self.task_id, self.datetime
         )
         self.output_dir = os.path.join(output_dir, path)
         if not os.path.exists(self.output_dir):
