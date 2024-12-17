@@ -8,8 +8,8 @@ from mindware.utils.data_manager import DataManager
 from mindware.components.utils.constants import *
 from mindware import CASH, CASHFE
 
-datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
-# datasets_dir = '/root/automl_data/sub_automl_data/'
+# datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
+datasets_dir = '/root/automl_data/sub_automl_data/'
 # 读取 Excel 文件中的特定 sheet
 datasets_info = pd.read_excel(os.path.join(datasets_dir, '数据集.xlsx'), sheet_name='REG_SORT')
 candidate_datasets = [
