@@ -8,7 +8,7 @@ from mindware.utils.data_manager import DataManager
 from mindware.components.utils.constants import *
 from mindware import CASH, CASHFE
 
-datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/automl_data/'
+datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
 # 读取 Excel 文件中的特定 sheet
 datasets_info = pd.read_excel(os.path.join(datasets_dir, '数据集.xlsx'), sheet_name='REG_SORT')
 candidate_datasets = [
@@ -22,8 +22,15 @@ can_datasets_info = datasets_info[datasets_info['Datasets'].isin(candidate_datas
 chosen_datasets = ['debutanizer', 'cpu_act', 'Moneyball', 'black_friday']
 chosen_datasets_info = can_datasets_info.loc[chosen_datasets]
 chosen_datasets_info['label_col'] = -1
-print(chosen_datasets_info)
+"""
+              Instances  Continuous  Nominal  label_col
+Datasets                                               
+debutanizer        2394           7        0         -1
+cpu_act            8192          21        0         -1
+Moneyball          1232           8        6         -1
+black_friday     166821           5        4         -1
 
+"""
 
 if '__main__' == __name__:
 
@@ -52,9 +59,10 @@ if '__main__' == __name__:
 
     if args.job_idx is not None and len(args.job_idx) > 0:
         chosen_datasets = [chosen_datasets[idx] for idx in args.job_idx]
-    breakpoint()
+
     for dataset in chosen_datasets:
         dataset_path = os.path.join(datasets_dir, 'rgs_datasets', dataset + '.csv')
+
         dm = DataManager()
 
         df = dm.load_csv(dataset_path)

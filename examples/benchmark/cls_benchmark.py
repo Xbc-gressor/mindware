@@ -8,7 +8,7 @@ from mindware.utils.data_manager import DataManager
 from mindware.components.utils.constants import *
 from mindware import CASH, CASHFE
 
-datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/automl_data/'
+datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
 # 读取 Excel 文件中的特定 sheet
 datasets_info = pd.read_excel(os.path.join(datasets_dir, '数据集.xlsx'), sheet_name='CLS')
 candidate_datasets = [
@@ -26,7 +26,6 @@ chosen_datasets = ['kc1', 'ailerons', 'higgs', 'sick', 'mv', 'covertype']
 chosen_datasets_info = can_datasets_info.loc[chosen_datasets]
 chosen_datasets_info['label_col'] = -1
 chosen_datasets_info.loc['higgs', 'label_col'] = 0
-print(chosen_datasets_info)
 """
            Instances  Classes  Continuous  Nominal  label_col
 Datasets                                                     
