@@ -33,27 +33,27 @@ for i in 0 1 2 3 4; do
     TASKS+=("python rgs_benchmark.py --Opt cash --time_limit 1800 --job_idx $i")
 done
 
-# # 遍历任务列表并执行
-# for TASK in "${TASKS[@]}"; do
-#     # 启动后台
-#     eval "$TASK "
-# done
-
-
 # 遍历任务列表并执行
 for TASK in "${TASKS[@]}"; do
-    # 启动后台作业
-    eval "$TASK &"
-
-    # 增加当前作业计数
-    ((CURRENT_JOBS++))
-
-    # 如果当前作业数达到最大限制，等待任何作业完成
-    if [[ $CURRENT_JOBS -ge $MAX_JOBS ]]; then
-        wait -n  # 等待至少有一个作业完成
-        ((CURRENT_JOBS--))
-    fi
+    # 启动后台
+    eval "$TASK "
 done
 
-# 等待所有剩余作业完成
-wait
+
+# # 遍历任务列表并执行
+# for TASK in "${TASKS[@]}"; do
+#     # 启动后台作业
+#     eval "$TASK &"
+
+#     # 增加当前作业计数
+#     ((CURRENT_JOBS++))
+
+#     # 如果当前作业数达到最大限制，等待任何作业完成
+#     if [[ $CURRENT_JOBS -ge $MAX_JOBS ]]; then
+#         wait -n  # 等待至少有一个作业完成
+#         ((CURRENT_JOBS--))
+#     fi
+# done
+
+# # 等待所有剩余作业完成
+# wait
