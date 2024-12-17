@@ -70,7 +70,6 @@ if '__main__' == __name__:
         chosen_datasets = [chosen_datasets[idx] for idx in args.job_idx]
 
     for dataset in chosen_datasets:
-        print(dataset)
         dataset_path = os.path.join(datasets_dir, 'cls_datasets', dataset + '.csv')
         dm = DataManager()
 
@@ -88,7 +87,7 @@ if '__main__' == __name__:
             metric=metric,
             data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
             optimizer='mab', inner_iter_num_per_iter=10,
-            time_limit=args.time_limit, amount_of_resource=1e6, per_run_time_limit=300,
+            time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
             output_dir='./data', seed=1, n_jobs=1,
             ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
         )
