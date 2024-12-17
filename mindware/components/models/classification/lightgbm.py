@@ -78,8 +78,7 @@ class LightGBM(BaseClassificationModel):
             y_pred = self.predict_for_each_feature(X, mode="predict")
         else:
             y_pred = self.estimator.predict(X)
-        print("predict y_pred.shape: ")
-        print(y_pred.shape)
+
         return y_pred
 
     def predict_proba(self, X):

@@ -1,6 +1,5 @@
 import os
-import time
-import numpy as np
+import json
 from typing import List, Union, Callable
 from copy import deepcopy
 
@@ -97,3 +96,14 @@ class BaseCASHFE(BaseAutoML):
         logger_name = 'MindWare-CASHFE-task_type%d-%s(%d)' % (self.task_type, optimizer_name, self.seed)
         setup_logger(os.path.join(self.output_dir, '%s.log' % str(logger_name)))
         return get_logger(logger_name)
+
+    def get_conf(self, save=False):
+
+        conf = super(BaseCASHFE, self).get_conf()
+        conf['include_algorithms'] = self.cs['algorithm'].choices
+
+        if save:
+            with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:
+                json.dump(conf, f, indent=4)
+
+        return conf

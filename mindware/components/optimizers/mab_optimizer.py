@@ -255,3 +255,16 @@ class MabOptimizer(BaseOptimizer):
         iteration_cost = time.time() - _start_time
 
         return self.incumbent_perf, iteration_cost, self.incumbent_config
+
+    def get_opt_trajectory(self):
+
+        trajectory = {
+            'action_sequence': self.action_sequence,
+            'rewards_of_bandits': self.rewards,
+            'final_rewards': self.final_rewards,
+            'detail_perfs': ",".join([str(p) for p in self.perfs])
+        }
+
+        return trajectory
+
+

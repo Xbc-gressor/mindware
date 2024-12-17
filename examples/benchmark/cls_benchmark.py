@@ -88,12 +88,14 @@ if '__main__' == __name__:
             metric=metric,
             data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
             optimizer='mab', inner_iter_num_per_iter=10,
-            time_limit=args.time_limit, amount_of_resource=100, per_run_time_limit=300,
+            time_limit=args.time_limit, amount_of_resource=1e6, per_run_time_limit=300,
             output_dir='./data', seed=1, n_jobs=1,
             ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
         )
+        print(opt.get_conf(save=True))  # 保存设置
 
         print(opt.run())
+        print(opt.get_model_info(save=True))  # 保存最优模型信息
         scorer = opt.metric
         pred = dm.decode_label(opt.predict(test_data_node, ens=False))
         perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign

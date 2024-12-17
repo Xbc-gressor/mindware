@@ -1,5 +1,5 @@
 import os
-
+import json
 from typing import Union, Callable
 from sklearn.metrics._scorer import _BaseScorer
 
@@ -112,3 +112,13 @@ class BaseFE(BaseAutoML):
         logger_name = 'MindWare-FE-%s-%s(%d)' % (self.estimator_id, optimizer_name, self.seed)
         setup_logger(os.path.join(self.output_dir, '%s.log' % str(logger_name)))
         return get_logger(logger_name)
+
+    def get_conf(self, save=False):
+
+        conf = super(BaseFE, self).get_conf()
+        conf['estimator_id'] = self.estimator_id
+
+        if save:
+            with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:
+                json.dump(conf, f, indent=4)
+        return conf

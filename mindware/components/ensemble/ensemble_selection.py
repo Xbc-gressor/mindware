@@ -290,7 +290,7 @@ class EnsembleSelection(BaseEnsembleModel):
                 model_cnt += 1
         ens_info['ensemble_method'] = 'ensemble_selection'
         ens_info['config'] = ens_config
-        ens_info['ensemble_weights'] = self.weights_
+        ens_info['ensemble_weights'] = list(self.weights_)
         return ens_info
 
     def refit(self):

@@ -91,3 +91,6 @@ class BaseOptimizer(object):
 
     def gc(self):
         return
+
+    def get_opt_trajectory(self):
+        return None

@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import datetime
 import numpy as np
 import pickle as pkl
@@ -371,11 +372,36 @@ class BaseAutoML(object):
             raise AttributeError("predict_proba is not supported in regression")
         return self._predict(test_data)
 
-    def get_model_info(self):
+    def get_model_info(self, save=False):
         model_info = dict()
         if self.es is not None:
             model_info['ensemble'] = self.es.get_ens_model_info()
         path = os.path.join(self.output_dir, '%s_%s.pkl' % (self.datetime, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
         model_info['best'] = (self.incumbent['algorithm'], self.incumbent, path)
 
+        opt_trajectory = self.optimizer.get_opt_trajectory()
+        if opt_trajectory is not None:
+            model_info['opt_trajectory'] = opt_trajectory
+
+        if save:
+            with open(os.path.join(self.output_dir, 'best_model_info.json'), 'w') as f:
+                json.dump(model_info, f, indent=4)
+
         return model_info
+
+    def get_conf(self):
+        # 获取对象的配置信息
+        conf = {
+            'name': self.name,
+            'task_type': self.task_type,
+            'task_id': self.task_id,
+            'metric': str(self.metric),
+            'optimizer': self.optimizer_name,
+            'time_limit': self.time_limit,
+            'per_run_time_limit': self.per_run_time_limit,
+            'evaluation': self.evaluation,
+            'seed': self.seed,
+            'if_imbal': self.if_imbal
+        }
+
+        return conf

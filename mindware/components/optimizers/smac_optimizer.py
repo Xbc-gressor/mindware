@@ -143,3 +143,11 @@ class SMACOptimizer(BaseOptimizer):
         iteration_cost = time.time() - _start_time
         # incumbent_perf: the large the better
         return self.incumbent_perf, iteration_cost, self.incumbent_config
+
+    def get_opt_trajectory(self):
+
+        trajectory = {
+            'detail_perfs': ",".join([str(p) for p in self.perfs]),
+        }
+
+        return trajectory

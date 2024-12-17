@@ -10,6 +10,7 @@ from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
 
 from mindware.components.config_space.cs_builder import get_hpo_cs
+import json
 
 
 class BaseHPO(BaseAutoML):
@@ -85,3 +86,14 @@ class BaseHPO(BaseAutoML):
         logger_name = 'MindWare-HPO-%s-%s(%d)' % (self.estimator_id, optimizer_name, self.seed)
         setup_logger(os.path.join(self.output_dir, '%s.log' % str(logger_name)))
         return get_logger(logger_name)
+
+    def get_conf(self, save=False):
+
+        conf = super(BaseHPO, self).get_conf()
+        conf['estimator_id'] = self.estimator_id
+
+        if save:
+            with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:
+                json.dump(conf, f, indent=4)
+
+        return conf
