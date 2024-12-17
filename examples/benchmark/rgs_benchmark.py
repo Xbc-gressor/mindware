@@ -33,6 +33,11 @@ black_friday     166821           5        4         -1
 
 """
 
+include_algorithms = [
+    'adaboost', 'extra_trees', 'gradient_boosting',
+    'random_forest', 'lightgbm', 'xgboost'
+]
+
 if '__main__' == __name__:
 
     # 从命令行参数中解析出参数
@@ -43,7 +48,7 @@ if '__main__' == __name__:
     parser.add_argument('--x_encode', type=str, default=None, help='normalize, minmax')
     parser.add_argument('--ensemble_method', type=str, default='ensemble_selection', help='ensemble_selection or blending')
     parser.add_argument('--ensemble_size', type=int, default=50, help='ensemble size')
-    parser.add_argument('--evaluation', type=str, default='cv', help='evaluation')
+    parser.add_argument('--evaluation', type=str, default='holdout', help='evaluation')
     parser.add_argument('--time_limit', type=int, default=3600, help='time limit')
     parser.add_argument('--per_time_limit', type=int, default=600, help='time limit')
     parser.add_argument('--job_idx', type=int, nargs='*', help='job index')
@@ -76,7 +81,7 @@ if '__main__' == __name__:
         test_data_node = dm.preprocess_transform(test_data_node)
 
         opt = OPT(
-            include_algorithms=None, sub_optimizer='smac', task_type=task_type,
+            include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
             metric=metric,
             data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
             optimizer='mab', inner_iter_num_per_iter=10,

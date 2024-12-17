@@ -8,8 +8,8 @@ from mindware.utils.data_manager import DataManager
 from mindware.components.utils.constants import *
 from mindware import CASH, CASHFE
 
-# datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
-datasets_dir = '/root/automl_data/sub_automl_data/'
+datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
+# datasets_dir = '/root/automl_data/sub_automl_data/'
 
 # 读取 Excel 文件中的特定 sheet
 datasets_info = pd.read_excel(os.path.join(datasets_dir, '数据集.xlsx'), sheet_name='CLS')
@@ -40,6 +40,10 @@ covertype     110393        7          14       40         -1
 
 """
 
+include_algorithms = [
+    'adaboost', 'extra_trees', 'gradient_boosting',
+    'random_forest', 'lightgbm', 'xgboost'
+]
 
 if '__main__' == __name__:
 
@@ -51,7 +55,7 @@ if '__main__' == __name__:
     parser.add_argument('--x_encode', type=str, default=None, help='normalize, minmax')
     parser.add_argument('--ensemble_method', type=str, default='ensemble_selection', help='ensemble_selection or blending')
     parser.add_argument('--ensemble_size', type=int, default=50, help='ensemble size')
-    parser.add_argument('--evaluation', type=str, default='cv', help='evaluation')
+    parser.add_argument('--evaluation', type=str, default='holdout', help='evaluation')
     parser.add_argument('--time_limit', type=int, default=3600, help='time limit')
     parser.add_argument('--per_time_limit', type=int, default=600, help='time limit')
     parser.add_argument('--job_idx', type=int, nargs='*', help='job index')
@@ -83,11 +87,11 @@ if '__main__' == __name__:
         test_data_node = dm.preprocess_transform(test_data_node)
 
         opt = OPT(
-            include_algorithms=None, sub_optimizer='smac', task_type=task_type,
+            include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
             metric=metric,
             data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
-            optimizer='mab', inner_iter_num_per_iter=10,
-            time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
+            optimizer='mab', inner_iter_num_per_iter=1,
+            time_limit=args.time_limit, amount_of_resource=1, per_run_time_limit=300,
             output_dir='./data', seed=1, n_jobs=1,
             ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
         )
@@ -96,11 +100,13 @@ if '__main__' == __name__:
         print(opt.run())
         print(opt.get_model_info(save=True))  # 保存最优模型信息
         scorer = opt.metric
-        pred = dm.decode_label(opt.predict(test_data_node, ens=False))
+        pred = opt.predict(test_data_node, ens=False)
         perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
 
-        ens_pred = dm.decode_label(opt.predict(test_data_node, ens=True))
+        ens_pred = opt.predict(test_data_node, ens=True)
         ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
 
         with open('results.txt', 'a+') as f:
             f.write(f'CLS: {args.Opt}, {dataset}: {perf}, {ens_perf}\n')
+
+        breakpoint()
