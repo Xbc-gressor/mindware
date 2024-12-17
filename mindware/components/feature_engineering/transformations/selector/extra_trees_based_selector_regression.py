@@ -20,9 +20,7 @@ class ExtraTreeBasedSelectorRegression(Transformer):
 
         self.n_estimators = n_estimators
         self.estimator_increment = 10
-        if criterion not in ("mse", "friedman_mse", "mae"):
-            raise ValueError("'criterion' is not in ('mse', 'friedman_mse', "
-                             "'mae'): %s" % criterion)
+
         self.criterion = criterion
         self.min_samples_leaf = min_samples_leaf
         self.min_samples_split = min_samples_split

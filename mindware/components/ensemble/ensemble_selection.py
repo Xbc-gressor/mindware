@@ -11,6 +11,7 @@ from mindware.components.feature_engineering.parse import construct_node
 from mindware.components.feature_engineering.parse import parse_config
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
 
+
 class EnsembleSelection(BaseEnsembleModel):
     def __init__(
             self, stats, data_node,
@@ -208,7 +209,7 @@ class EnsembleSelection(BaseEnsembleModel):
             model_to_eval = self.stats[algo_id]
             for idx, (_, _, path) in enumerate(model_to_eval):
                 if cur_idx in self.model_idx:
-                    with open(path, 'rb')as f:
+                    with open(path, 'rb') as f:
                         op_list, estimator, _ = pkl.load(f)
                     _node = data.copy_()
                     _node = construct_node(_node, op_list)
@@ -308,12 +309,12 @@ class EnsembleSelection(BaseEnsembleModel):
 
                     # _node = self.node.copy_()
                     # _node = construct_node(_node, op_list)
-                    
+
                     if op_list == {}:
                         _node = self.node.copy_()
                     else:
-                        _node, op_list = parse_config(self.data_node.copy_(), config, record=True,
-                                        if_imbal=self.if_imbal)
+                        _node, op_list = parse_config(self.node.copy_(), config, record=True,
+                                                      if_imbal=self.if_imbal)
 
                     estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
                                                         _node.data[0], _node.data[1],

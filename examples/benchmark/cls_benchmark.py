@@ -8,8 +8,8 @@ from mindware.utils.data_manager import DataManager
 from mindware.components.utils.constants import *
 from mindware import CASH, CASHFE
 
-# datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
-datasets_dir = '/root/automl_data/sub_automl_data/'
+datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
+# datasets_dir = '/root/automl_data/sub_automl_data/'
 
 # 读取 Excel 文件中的特定 sheet
 datasets_info = pd.read_excel(os.path.join(datasets_dir, '数据集.xlsx'), sheet_name='CLS')
@@ -23,21 +23,22 @@ candidate_datasets = [
     "a9a", "mnist_784", "higgs", "covertype"
 ]
 can_datasets_info = datasets_info[datasets_info['Datasets'].isin(candidate_datasets)].set_index('Datasets')
-
-chosen_datasets = ['kc1', 'ailerons', 'higgs', 'sick', 'mv', 'covertype']
+chosen_datasets = ['kc1', 'spambase', 'cpu_act', 'ailerons', 'higgs', 'sick', 'mv', 'covertype']
 chosen_datasets_info = can_datasets_info.loc[chosen_datasets]
 chosen_datasets_info['label_col'] = -1
 chosen_datasets_info.loc['higgs', 'label_col'] = 0
+breakpoint()
 """
            Instances  Classes  Continuous  Nominal  label_col
 Datasets                                                     
 kc1             2109        2          21        0         -1
+spambase        4600        2          57        0         -1
+cpu_act         8192        2          21        0         -1
 ailerons       13750        2          40        0         -1
 higgs          98050        2          28        0          0
 sick            3772        2           7       22         -1
 mv             40768        2           7        3         -1
 covertype     110393        7          14       40         -1
-
 """
 
 include_algorithms = [
@@ -76,8 +77,8 @@ if '__main__' == __name__:
     for dataset in chosen_datasets:
         dataset_path = os.path.join(datasets_dir, 'cls_datasets', dataset + '.csv')
         dm = DataManager()
-
-        df = dm.load_csv(dataset_path)
+        header = None if dataset == 'spambase' else 'infer'
+        df = dm.load_csv(dataset_path, header=header)
         train_df, test_df = dm.split_data(df, label_col=chosen_datasets_info.loc[dataset, 'label_col'],
                                           test_size=0.2, random_state=args.train_test_split_seed, task_type=task_type)
         train_data_node = dm.from_train_df(train_df, label_col=chosen_datasets_info.loc[dataset, 'label_col'])

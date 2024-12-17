@@ -8,8 +8,8 @@ from mindware.utils.data_manager import DataManager
 from mindware.components.utils.constants import *
 from mindware import CASH, CASHFE
 
-# datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
-datasets_dir = '/root/automl_data/sub_automl_data/'
+datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
+# datasets_dir = '/root/automl_data/sub_automl_data/'
 # 读取 Excel 文件中的特定 sheet
 datasets_info = pd.read_excel(os.path.join(datasets_dir, '数据集.xlsx'), sheet_name='REG_SORT')
 candidate_datasets = [
@@ -20,16 +20,20 @@ candidate_datasets = [
 
 can_datasets_info = datasets_info[datasets_info['Datasets'].isin(candidate_datasets)].set_index('Datasets')
 
-chosen_datasets = ['debutanizer', 'cpu_act', 'Moneyball', 'black_friday']
+chosen_datasets = ['debutanizer', 'puma8NH', 'cpu_act', 'bank32nh', 'Moneyball', 'black_friday']
 chosen_datasets_info = can_datasets_info.loc[chosen_datasets]
 chosen_datasets_info['label_col'] = -1
+
 """
               Instances  Continuous  Nominal  label_col
 Datasets                                               
 debutanizer        2394           7        0         -1
+puma8NH            8192           8        0         -1
 cpu_act            8192          21        0         -1
+bank32nh           8192          32        0         -1
 Moneyball          1232           8        6         -1
 black_friday     166821           5        4         -1
+
 
 """
 
