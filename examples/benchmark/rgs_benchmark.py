@@ -91,8 +91,11 @@ if '__main__' == __name__:
         test_data_node = dm.from_test_df(test_df, has_label=True)
         test_data_node = dm.preprocess_transform(test_data_node)
 
+        inc_alg = include_algorithms
+        if dataset in ['black_friday']:
+            inc_alg = [alg for alg in include_algorithms if alg not in ['adaboost']]
         opt = OPT(
-            include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
+            include_algorithms=inc_alg, sub_optimizer='smac', task_type=task_type,
             metric=metric,
             data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
             optimizer='mab', inner_iter_num_per_iter=10,
