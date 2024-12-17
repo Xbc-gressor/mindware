@@ -40,7 +40,7 @@ class LightGBM(BaseClassificationModel):
     def fit(self, X, y):
         from lightgbm import LGBMClassifier
 
-        print(f"Initial shape of X: {X.shape}, y: {len(y)}")
+        # print(f"Initial shape of X: {X.shape}, y: {len(y)}")
 
         if self.augment_data == 1:
             print("Augmenting data...")
@@ -49,7 +49,7 @@ class LightGBM(BaseClassificationModel):
             X, y = self.augment_data_func(X, y)
             print(f"Shape after augment_data_func - X: {X.shape}, y: {len(y)}")
 
-        print(f"Training LightGBM model with {X.shape[1]} features")
+        # print(f"Training LightGBM model with {X.shape[1]} features")
 
         self.estimator = LGBMClassifier(num_leaves=self.num_leaves,
                                         max_depth=self.max_depth,
