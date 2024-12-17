@@ -75,7 +75,7 @@ if '__main__' == __name__:
         test_data_node = dm.from_test_df(test_df, has_label=True)
         test_data_node = dm.preprocess_transform(test_data_node)
 
-        opt = CASH(
+        opt = OPT(
             include_algorithms=None, sub_optimizer='smac', task_type=task_type,
             metric=metric,
             data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,

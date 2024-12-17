@@ -83,14 +83,14 @@ if '__main__' == __name__:
         test_data_node = dm.from_test_df(test_df, has_label=True)
         test_data_node = dm.preprocess_transform(test_data_node)
 
-        opt = CASH(
+        opt = OPT(
             include_algorithms=None, sub_optimizer='smac', task_type=task_type,
             metric=metric,
             data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
             optimizer='mab', inner_iter_num_per_iter=10,
             time_limit=args.time_limit, amount_of_resource=100, per_run_time_limit=300,
             output_dir='./data', seed=1, n_jobs=1,
-            ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id = dataset
+            ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
         )
 
         print(opt.run())
