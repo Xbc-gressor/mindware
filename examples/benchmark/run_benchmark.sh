@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 最大并发数
-MAX_JOBS=6
+MAX_JOBS=2
 
 # 当前运行的作业数
 CURRENT_JOBS=0
@@ -32,6 +32,12 @@ for i in 0 1 2 3 4; do
     TASKS+=("python rgs_benchmark.py --Opt cashfe --time_limit 3600 --job_idx $i")
     TASKS+=("python rgs_benchmark.py --Opt cash --time_limit 1800 --job_idx $i")
 done
+
+# # 遍历任务列表并执行
+# for TASK in "${TASKS[@]}"; do
+#     # 启动后台
+#     eval "$TASK "
+# done
 
 
 # 遍历任务列表并执行
