@@ -24,7 +24,7 @@ class LightGBM(BaseClassificationModel):
         # self.subsample = 0.85
         # self.min_child_samples = 1000
         # self.colsample_bytree = 1.0
-        # self.augment_data = 1
+        # self.augment_data = 0
         
         
         self.random_state = random_state
@@ -89,8 +89,6 @@ class LightGBM(BaseClassificationModel):
             y_pred = self.predict_for_each_feature(X, mode="predict_proba")
         else:
             y_pred = self.estimator.predict_proba(X)
-        print("predict_proba y_pred.shape: ")
-        print(y_pred.shape)
         return y_pred
 
     def predict_for_each_feature(self, X, mode="predict_proba"):

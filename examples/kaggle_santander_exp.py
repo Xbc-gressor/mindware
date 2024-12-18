@@ -9,6 +9,7 @@ from mindware.utils.data_manager import DataManager
 from mindware import CASHFE
 from mindware import CASH
 from mindware import HPO
+from mindware import FE
 from mindware import EnsembleBuilder
 from mindware import CLASSIFICATION
 import numpy as np
@@ -44,7 +45,7 @@ if __name__ == '__main__':
     x_encode = args.x_encode
     ensemble_method = args.ensemble_method
     ensemble_size = args.ensemble_size
-    metric = 'auc'
+    metric = 'acc'
     evaluation = args.evaluation
     time_limit = args.time_limit
     per_time_limit = args.per_time_limit
@@ -52,17 +53,17 @@ if __name__ == '__main__':
 
     # Load data
     # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
-    data_dir = '/root/automl_data/kaggle/santander'
-    # data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/santander-customer-transaction-prediction'
+    # data_dir = '/root/automl_data/kaggle/santander'
+    data_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/automl_data/kaggle/santander-customer-transaction-prediction'
 
     dm = DataManager()
 
-    _train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), ignore_columns=['ID_code'],
-                                         label_name='target')
+    _train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), drop_index=0,
+                                         label_col=1)
     train_data_node = dm.preprocess_fit(_train_data_node, task_type, x_encode=x_encode)
-    # train_data_node.data = (train_data_node.data[0][:20000], train_data_node.data[1][:20000])
+    train_data_node.data = (train_data_node.data[0][:20000], train_data_node.data[1][:20000])
 
-    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['ID_code'])
+    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'))
     test_data_node = dm.preprocess_transform(test_data_node)
 
     # Initialize CASHFE
@@ -82,14 +83,15 @@ if __name__ == '__main__':
     x_encode_str = '' if x_encode is None else ('_' + x_encode)
     passenger_id = pd.read_csv(os.path.join(data_dir, 'test.csv'))['ID_code']
 
-    opt_hpo = HPO(
+    opt_hpo = FE(
         estimator_id=estimator_id, task_type=task_type,
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params={'test_size': 0.2},
         optimizer=optimizer,
-        time_limit=time_limit, amount_of_resource=50, per_run_time_limit=1200,
+        time_limit=time_limit, amount_of_resource=5, per_run_time_limit=1200,
         output_dir='./data', seed=1, n_jobs=1,
-        ensemble_method=None, ensemble_size=ensemble_size
+        ensemble_method=ensemble_method, ensemble_size=ensemble_size,
+        include_preprocessors=['extra_trees_based_selector']
     )
     
     print(opt_hpo.run(refit=False))
@@ -97,7 +99,7 @@ if __name__ == '__main__':
     
     result_hpo = pd.DataFrame({'Id_code': passenger_id, 'target': pred_hpo})
     result_hpo.to_csv(os.path.join(data_dir,
-                               f'hpo111{estimator_id}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
+                               f'sklearn{estimator_id}{x_encode_str}_{evaluation}_{optimizer}{time_limit}_{ensemble_method}{ensemble_size}_result.csv'),
                   index=False)
     print('Result has been saved to result_hpo.csv.')
 
