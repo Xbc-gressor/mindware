@@ -13,37 +13,17 @@ from mindware.utils.constant import MAX_INT
 
 
 class MabOptimizer(BaseOptimizer):
-    def __init__(
-            self, evaluator, config_space, name, eval_type,
-            time_limit=None, evaluation_limit=None,
-            per_run_time_limit=300, per_run_mem_limit=1024,
-            output_dir='./', timestamp=None,
-            inner_iter_num_per_iter=10, seed=1, n_jobs=1,
-            sub_optimizer='smac', fe_config_space=None,
-    ):
-
-        super(MabOptimizer, self).__init__(
-            evaluator,
-            config_space,
-            name,
-            eval_type=eval_type,
-            timestamp=timestamp,
-            output_dir=output_dir,
-            seed=seed
-        )
-
-        self.time_limit = time_limit
-        self.trial_num = evaluation_limit
-        self.inner_iter_num_per_iter = inner_iter_num_per_iter
-
-        self.per_run_time_limit = per_run_time_limit
-        self.per_run_mem_limit = per_run_mem_limit
-
-        self.configs = list()
-        self.perfs = list()
-        self.incumbent_perf = float("-INF")
-        self.incumbent_config = self.config_space.get_default_configuration()
-        self.eval_dict = dict()
+    def __init__(self, evaluator, config_space, name, eval_type,
+                 time_limit=None, evaluation_limit=None,
+                 per_run_time_limit=300, per_run_mem_limit=1024, 
+                 inner_iter_num_per_iter=10, timestamp=None,
+                 output_dir='./', seed=1, n_jobs=1,
+                 sub_optimizer='smac', fe_config_space=None):
+        super(MabOptimizer, self).__init__(evaluator=evaluator, config_space=config_space, name=name, eval_type=eval_type,
+                                           time_limit=time_limit, evaluation_limit=evaluation_limit, 
+                                           per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
+                                           inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp, 
+                                           output_dir=output_dir, seed=seed)
 
         # Bandit settings.
         self.alpha = 4
@@ -128,10 +108,10 @@ class MabOptimizer(BaseOptimizer):
         self.best_lower_bounds = np.zeros(arm_num)
 
         if self.time_limit is None:
-            if arm_num * self.alpha > self.trial_num:
+            if arm_num * self.alpha > self.evaluation_num_limit:
                 raise ValueError('Trial number should be larger than %d.' % (arm_num * self.alpha))
         else:
-            self.trial_num = MAX_INT
+            self.evaluation_num_limit = MAX_INT
 
         self.timeout_flag = False
 
@@ -207,7 +187,7 @@ class MabOptimizer(BaseOptimizer):
                     rewards = self.rewards[_arm]
                     slope = (rewards[-1] - rewards[-self.alpha]) / self.alpha
                     if self.time_limit is None:
-                        steps = self.trial_num - self.pull_cnt
+                        steps = self.evaluation_num_limit - self.pull_cnt
                     upper_bound = np.min([1.0, rewards[-1] + slope * steps])
                     upper_bounds.append(upper_bound)
                     lower_bounds.append(rewards[-1])
@@ -248,7 +228,7 @@ class MabOptimizer(BaseOptimizer):
         if self.early_stopped_flag:
             self.logger.info(
                 "Maximum configuration number met for each arm candidate!")
-        if time.time() - self.timestamp > self.time_limit or self.pull_cnt >= self.trial_num:
+        if time.time() - self.timestamp > self.time_limit or self.pull_cnt >= self.evaluation_num_limit:
             self.timeout_flag = True
             self.logger.info('Time elapsed!')
 

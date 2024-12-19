@@ -40,8 +40,8 @@ class BaseEvaluator(_BaseEvaluator):
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
         self.continue_training = False
 
-        self.train_node = data_node.copy_()
-        self.val_node = data_node.copy_()
+        self.train_node = None
+        self.val_node = None
 
         self.timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
@@ -69,6 +69,9 @@ class BaseEvaluator(_BaseEvaluator):
 
     def __call__(self, config, **kwargs):
         
+        self.train_node = data_node.copy_(no_data=True)
+        self.val_node = data_node.copy_(no_data=True)
+
         start_time = time.time()
         return_dict = dict()
         self.seed = 1

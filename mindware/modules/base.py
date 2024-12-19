@@ -130,13 +130,11 @@ class BaseAutoML(object):
                 raise ValueError("Invalid optimizer %s" % self.optimizer_name)
 
         optimizer = optimizer_class(
-            evaluator=self.evaluator, config_space=self.cs, name=name,
-            eval_type=self.evaluation,
+            evaluator=self.evaluator, config_space=self.cs, name=name, eval_type=self.evaluation,
             time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
             per_run_time_limit=self.per_run_time_limit,
-            output_dir=self.output_dir, timestamp=self.timestamp,
-            inner_iter_num_per_iter=self.inner_iter_num_per_iter,
-            seed=self.seed, n_jobs=self.n_jobs,
+            inner_iter_num_per_iter=self.inner_iter_num_per_iter,timestamp=self.timestamp,
+            output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs,
             **opt_paras
         )
 

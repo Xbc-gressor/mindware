@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from copy import deepcopy
+from copy import copy
 
 from mindware.components.optimizers.base_optimizer import BaseOptimizer
 from ConfigSpace import ConfigurationSpace, Constant
@@ -13,106 +13,77 @@ from mindware.utils.constant import MAX_INT
 
 
 class AlternativeOptimizer(BaseOptimizer):
-    def __init__(
-            self, evaluator, config_space, name, eval_type,
-            time_limit=None, evaluation_limit=None,
-            per_run_time_limit=300, per_run_mem_limit=1024,
-            output_dir='./', timestamp=None,
-            inner_iter_num_per_iter=10, seed=1, n_jobs=1,
-            sub_optimizer='smac', fe_config_space=None,
-    ):
+    def __init__(self, node_list, node_index,
+                 evaluator, cash_config_space, name, eval_type,
+                 time_limit=None, evaluation_limit=None,
+                 per_run_time_limit=300, per_run_mem_limit=1024,
+                 inner_iter_num_per_iter=10, timestamp=None,
+                 sub_optimizer='smac', fe_config_space=None,
+                 output_dir='./', seed=1, n_jobs=1):
 
-        super(AlternativeOptimizer, self).__init__(
-            evaluator,
-            config_space,
-            name,
-            eval_type=eval_type,
-            timestamp=timestamp,
-            output_dir=output_dir,
-            seed=seed
-        )
+        super(AlternativeOptimizer, self).__init__(evaluator=evaluator, config_space=(cash_config_space, fe_config_space), name=name, eval_type=eval_type, 
+                                                   time_limit=time_limit, evaluation_limit=evaluation_limit, 
+                                                   per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
+                                                   inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp, 
+                                                   output_dir=output_dir, seed=seed)
+        
+        assert cash_config_space is not None
+        assert fe_config_space is not None
 
-        self.time_limit = time_limit
-        self.trial_num = evaluation_limit
-        self.inner_iter_num_per_iter = inner_iter_num_per_iter
-
-        self.per_run_time_limit = per_run_time_limit
-        self.per_run_mem_limit = per_run_mem_limit
-
-        self.configs = list()
-        self.perfs = list()
-        self.incumbent_perf = float("-INF")
-        self.incumbent_config = self.config_space.get_default_configuration()
+        # Global incumbent.
+        self.init_config = {'fe': fe_config_space.get_default_configuration().get_dictionary().copy(),
+                            'hpo': cash_config_space.get_default_configuration().get_dictionary().copy()}
+        self.inc = {'fe': fe_config_space.get_default_configuration().get_dictionary().copy(),
+                    'hpo': cash_config_space.get_default_configuration().get_dictionary().copy()}
+        self.local_inc = {'fe': fe_config_space.get_default_configuration().get_dictionary().copy(),
+                          'hpo': cash_config_space.get_default_configuration().get_dictionary().copy()}
+        self.local_hist = {'fe': [], 'hpo': []}
+        self.inc_record = {'fe': list(), 'hpo': list()}
+        self.exp_output = dict()
         self.eval_dict = dict()
-
-        # Bandit settings.
-        self.alpha = 4
-        self.arms = list(config_space.get_hyperparameter('algorithm').choices)
-        self.rewards = dict()
-        self.sub_bandits = dict()
-        self.evaluation_cost = dict()
-
-        self.arm_cost_stats = dict()
-        for _arm in self.arms:
-            self.arm_cost_stats[_arm] = list()
-
-        # TODO: Support asynchronous BO
-        if sub_optimizer == 'random_search':
-            optimizer_class = RandomSearchOptimizer
-        elif sub_optimizer == 'tpe':
-            optimizer_class = TPEOptimizer
-        elif sub_optimizer == 'smac':
-            optimizer_class = SMACOptimizer
-        elif sub_optimizer == 'bohb':
-            optimizer_class = BohbOptimizer
-        elif sub_optimizer == 'mfse':
-            optimizer_class = MfseOptimizer
-        else:
-            raise ValueError("Invalid optimizer %s" % sub_optimizer)
+        self.arm_eval_dict = {'fe': dict(), 'hpo': dict()}
+        for arm in self.arms:
+            self.rewards[arm] = list()
+            self.update_flag[arm] = False
+            self.evaluation_cost[arm] = list()
+            self.exp_output[arm] = dict()
+        self.pull_cnt = 0
+        self.action_sequence = list()
+        self.final_rewards = list()
 
         for arm in self.arms:
 
-            self.rewards[arm] = list()
-            self.evaluation_cost[arm] = list()
+            if arm == 'hpo':
+                evaluator = copy(self.evaluator)
+                evaluator.fixed_config = self.init_config['fe']
 
-            cs = ConfigurationSpace()
-            cs.add_hyperparameter(Constant('algorithm', arm))
-            # Add active hyperparameters
-            hps = config_space.get_hyperparameters()
-            for hp in hps:
-                if hp.name.split(':')[0] == arm:
-                    cs.add_hyperparameter(hp)
-            # Add active conditions
-            conds = config_space.get_conditions()
-            for cond in conds:
-                try:
-                    cs.add_condition(cond)
-                except:
-                    pass
-            # Add active forbidden clauses
-            forbids = config_space.get_forbiddens()
-            for forbid in forbids:
-                try:
-                    cs.add_forbidden_clause(forbid)
-                except:
-                    pass
+                from mindware.components.optimizers.block_optimizers.block_opt_utils import get_opt_node_type
+                child_type = get_opt_node_type(node_list, node_index + 2)
+                self.sub_bandits[arm] = child_type(
+                    node_list=node_list, node_index=node_index + 2,
+                    evaluator=self.evaluator, cash_config_space=cash_config_space, name='hpo', eval_type=self.eval_type, 
+                    time_limit=time_limit, evaluation_limit=None,
+                    per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
+                    inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp, 
+                    sub_optimizer=sub_optimizer, fe_config_space=None,
+                    output_dir=self.output_dir,seed=self.seed, n_jobs=n_jobs,
+                )
+            else:
+                evaluator = copy(self.evaluator)
+                evaluator.fixed_config = self.init_config['hpo']
 
-            if fe_config_space is not None:
-                cs.add_hyperparameters(
-                    deepcopy(fe_config_space.get_hyperparameters()))
-                cs.add_conditions(
-                    deepcopy(fe_config_space.get_conditions()))
-                cs.add_forbidden_clauses(
-                    deepcopy(fe_config_space.get_forbiddens()))
+                from mindware.components.optimizers.block_optimizers.block_opt_utils import get_opt_node_type
+                child_type = get_opt_node_type(node_list, node_index + 1)
+                self.sub_bandits[arm] = child_type(
+                    node_list=node_list, node_index=node_index + 1,
+                    evaluator=self.evaluator, cash_config_space=None, name='fe', eval_type=self.eval_type, 
+                    time_limit=time_limit, evaluation_limit=None,
+                    per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
+                    inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp, 
+                    sub_optimizer=sub_optimizer, fe_config_space=fe_config_space,
+                    output_dir=self.output_dir,seed=self.seed, n_jobs=n_jobs,
+                )
 
-            self.sub_bandits[arm] = optimizer_class(
-                self.evaluator, cs, 'hpo',
-                eval_type=self.eval_type, output_dir=self.output_dir,
-                time_limit=time_limit, evaluation_limit=None,
-                per_run_time_limit=per_run_time_limit,
-                inner_iter_num_per_iter=self.inner_iter_num_per_iter,
-                timestamp=self.timestamp, seed=self.seed, n_jobs=n_jobs
-            )
 
         self.action_sequence = list()
         self.final_rewards = list()
@@ -128,10 +99,10 @@ class AlternativeOptimizer(BaseOptimizer):
         self.best_lower_bounds = np.zeros(arm_num)
 
         if self.time_limit is None:
-            if arm_num * self.alpha > self.trial_num:
+            if arm_num * self.alpha > self.evaluation_num_limit:
                 raise ValueError('Trial number should be larger than %d.' % (arm_num * self.alpha))
         else:
-            self.trial_num = MAX_INT
+            self.evaluation_num_limit = MAX_INT
 
         self.timeout_flag = False
 
@@ -207,7 +178,7 @@ class AlternativeOptimizer(BaseOptimizer):
                     rewards = self.rewards[_arm]
                     slope = (rewards[-1] - rewards[-self.alpha]) / self.alpha
                     if self.time_limit is None:
-                        steps = self.trial_num - self.pull_cnt
+                        steps = self.evaluation_num_limit - self.pull_cnt
                     upper_bound = np.min([1.0, rewards[-1] + slope * steps])
                     upper_bounds.append(upper_bound)
                     lower_bounds.append(rewards[-1])
@@ -248,7 +219,7 @@ class AlternativeOptimizer(BaseOptimizer):
         if self.early_stopped_flag:
             self.logger.info(
                 "Maximum configuration number met for each arm candidate!")
-        if time.time() - self.timestamp > self.time_limit or self.pull_cnt >= self.trial_num:
+        if time.time() - self.timestamp > self.time_limit or self.pull_cnt >= self.evaluation_num_limit:
             self.timeout_flag = True
             self.logger.info('Time elapsed!')
 

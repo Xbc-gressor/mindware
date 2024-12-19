@@ -13,35 +13,17 @@ from mindware.utils.constant import MAX_INT
 
 
 class JointOptimizer(BaseOptimizer):
-    def __init__(
-            self, evaluator, cash_config_space, name, eval_type,
-            time_limit=None, evaluation_limit=None,
-            per_run_time_limit=300, per_run_mem_limit=1024,
-            output_dir='./', timestamp=None,
-            inner_iter_num_per_iter=10, seed=1, n_jobs=1,
-            sub_optimizer='smac', fe_config_space=None,
-    ):
-        super(JointOptimizer, self).__init__(
-            evaluator=evaluator,
-            config_space=(cash_config_space, fe_config_space),
-            name=name,
-            eval_type=eval_type,
-            timestamp=timestamp,
-            output_dir=output_dir,
-            seed=seed
-        )
-
-        self.time_limit = time_limit
-        self.trial_num = evaluation_limit
-        self.inner_iter_num_per_iter = inner_iter_num_per_iter
-
-        self.per_run_time_limit = per_run_time_limit
-        self.per_run_mem_limit = per_run_mem_limit
-
-        self.configs = list()
-        self.perfs = list()
-        self.incumbent_perf = float("-INF")
-        self.incumbent_config = self.config_space.get_default_configuration()
+    def __init__(self, evaluator, cash_config_space, name, eval_type,
+                 time_limit=None, evaluation_limit=None,
+                 per_run_time_limit=300, per_run_mem_limit=1024,
+                 inner_iter_num_per_iter=10, timestamp=None,
+                 sub_optimizer='smac', fe_config_space=None,
+                 output_dir='./', seed=1, n_jobs=1):
+        super(JointOptimizer, self).__init__(evaluator=evaluator, config_space=(cash_config_space, fe_config_space), name=name, eval_type=eval_type, 
+                                             time_limit=time_limit, evaluation_limit=evaluation_limit, 
+                                             per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
+                                             inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp, 
+                                             output_dir=output_dir, seed=seed)
         self.eval_dict = dict()
 
         # TODO: Support asynchronous BO
@@ -57,6 +39,8 @@ class JointOptimizer(BaseOptimizer):
             optimizer_class = MfseOptimizer
         else:
             raise ValueError("Invalid optimizer %s" % sub_optimizer)
+
+        assert cash_config_space is not None or fe_config_space is not None
 
         cs = ConfigurationSpace()
         if cash_config_space is not None:
@@ -84,7 +68,7 @@ class JointOptimizer(BaseOptimizer):
         )
 
         if self.time_limit is not None:
-            self.trial_num = MAX_INT
+            self.evaluation_num_limit = MAX_INT
 
         self.timeout_flag = False
 
@@ -99,8 +83,7 @@ class JointOptimizer(BaseOptimizer):
         _start_time = time.time()
 
         self.sub_bandit.inner_iter_num_per_iter = self.inner_iter_num_per_iter
-        reward, _, incumbent = self.sub_bandit.iterate(
-            budget=self.time_limit + self.timestamp - time.time())
+        self.sub_bandit.iterate(budget=self.time_limit + self.timestamp - time.time())
 
         self.incumbent_perf = self.sub_bandit.incumbent_perf
         self.incumbent_config = self.sub_bandit.incumbent_config
@@ -109,12 +92,10 @@ class JointOptimizer(BaseOptimizer):
 
         # Update stop flag
         self.early_stopped_flag = self.sub_bandit.early_stopped_flag
+        self.timeout_flag = self.sub_bandit.timeout_flag
         if self.early_stopped_flag:
-            self.logger.info(
-                "Maximum configuration number met for each arm candidate!")
-        if self.time_limit is not None and time.time() - self.timestamp > self.time_limit or \
-                self.trial_num is not None and len(self.perfs) >= self.trial_num:
-            self.timeout_flag = True
+            self.logger.info("Maximum configuration number met for each arm candidate!")
+        if self.timeout_flag:
             self.logger.info('Time elapsed!')
 
         iteration_cost = time.time() - _start_time
