@@ -67,7 +67,8 @@ class CombinedTopKModelSaver(BaseTopKModelSaver):
 
         # Update existed configs
         for sorted_element in sorted_list:
-            if config == sorted_element[0]:
+            # if config == sorted_element[0]:
+            if config == sorted_element[0] or model_path_id == sorted_element[2]:  # 用path判断是否相同，因为hash的时候取了5位近似（会出现conf不同但hash相同的情况）
                 if perf > sorted_element[1]:
                     sorted_list.remove(sorted_element)
                     for idx, item in enumerate(sorted_list):

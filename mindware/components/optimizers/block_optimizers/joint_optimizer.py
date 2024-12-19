@@ -1,0 +1,126 @@
+import time
+import numpy as np
+from copy import deepcopy
+
+from mindware.components.optimizers.base_optimizer import BaseOptimizer
+from ConfigSpace import ConfigurationSpace, Constant
+from mindware.components.optimizers.smac_optimizer import SMACOptimizer
+from mindware.components.optimizers.random_search_optimizer import RandomSearchOptimizer
+from mindware.components.optimizers.tpe_optimizer import TPEOptimizer
+from mindware.components.optimizers.bohb_optimizer import BohbOptimizer
+from mindware.components.optimizers.mfse_optimizer import MfseOptimizer
+from mindware.utils.constant import MAX_INT
+
+
+class JointOptimizer(BaseOptimizer):
+    def __init__(
+            self, evaluator, cash_config_space, name, eval_type,
+            time_limit=None, evaluation_limit=None,
+            per_run_time_limit=300, per_run_mem_limit=1024,
+            output_dir='./', timestamp=None,
+            inner_iter_num_per_iter=10, seed=1, n_jobs=1,
+            sub_optimizer='smac', fe_config_space=None,
+    ):
+        super(JointOptimizer, self).__init__(
+            evaluator=evaluator,
+            config_space=(cash_config_space, fe_config_space),
+            name=name,
+            eval_type=eval_type,
+            timestamp=timestamp,
+            output_dir=output_dir,
+            seed=seed
+        )
+
+        self.time_limit = time_limit
+        self.trial_num = evaluation_limit
+        self.inner_iter_num_per_iter = inner_iter_num_per_iter
+
+        self.per_run_time_limit = per_run_time_limit
+        self.per_run_mem_limit = per_run_mem_limit
+
+        self.configs = list()
+        self.perfs = list()
+        self.incumbent_perf = float("-INF")
+        self.incumbent_config = self.config_space.get_default_configuration()
+        self.eval_dict = dict()
+
+        # TODO: Support asynchronous BO
+        if sub_optimizer == 'random_search':
+            optimizer_class = RandomSearchOptimizer
+        elif sub_optimizer == 'tpe':
+            optimizer_class = TPEOptimizer
+        elif sub_optimizer == 'smac':
+            optimizer_class = SMACOptimizer
+        elif sub_optimizer == 'bohb':
+            optimizer_class = BohbOptimizer
+        elif sub_optimizer == 'mfse':
+            optimizer_class = MfseOptimizer
+        else:
+            raise ValueError("Invalid optimizer %s" % sub_optimizer)
+
+        cs = ConfigurationSpace()
+        if cash_config_space is not None:
+            cs.add_hyperparameters(
+                deepcopy(cash_config_space.get_hyperparameters()))
+            cs.add_conditions(
+                deepcopy(cash_config_space.get_conditions()))
+            cs.add_forbidden_clauses(
+                deepcopy(cash_config_space.get_forbiddens()))
+        if fe_config_space is not None:
+            cs.add_hyperparameters(
+                deepcopy(fe_config_space.get_hyperparameters()))
+            cs.add_conditions(
+                deepcopy(fe_config_space.get_conditions()))
+            cs.add_forbidden_clauses(
+                deepcopy(fe_config_space.get_forbiddens()))
+
+        self.sub_bandit = optimizer_class(
+            evaluator=self.evaluator, config_space=cs, name='hpofe',
+            eval_type=self.eval_type, output_dir=self.output_dir,
+            time_limit=time_limit, evaluation_limit=None,
+            per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit,
+            inner_iter_num_per_iter=inner_iter_num_per_iter,
+            timestamp=self.timestamp, seed=self.seed, n_jobs=n_jobs
+        )
+
+        if self.time_limit is not None:
+            self.trial_num = MAX_INT
+
+        self.timeout_flag = False
+
+    def run(self):
+        while True:
+            if self.early_stopped_flag or self.timeout_flag:
+                break
+            self.iterate()
+        return self.incumbent_perf
+
+    def iterate(self, budget=MAX_INT):
+        _start_time = time.time()
+
+        self.sub_bandit.inner_iter_num_per_iter = self.inner_iter_num_per_iter
+        reward, _, incumbent = self.sub_bandit.iterate(
+            budget=self.time_limit + self.timestamp - time.time())
+
+        self.incumbent_perf = self.sub_bandit.incumbent_perf
+        self.incumbent_config = self.sub_bandit.incumbent_config
+        self.perfs = self.sub_bandit.perfs
+        self.configs = self.sub_bandit.configs
+
+        # Update stop flag
+        self.early_stopped_flag = self.sub_bandit.early_stopped_flag
+        if self.early_stopped_flag:
+            self.logger.info(
+                "Maximum configuration number met for each arm candidate!")
+        if self.time_limit is not None and time.time() - self.timestamp > self.time_limit or \
+                self.trial_num is not None and len(self.perfs) >= self.trial_num:
+            self.timeout_flag = True
+            self.logger.info('Time elapsed!')
+
+        iteration_cost = time.time() - _start_time
+
+        return self.incumbent_perf, iteration_cost, self.incumbent_config
+
+    def get_opt_trajectory(self):
+
+        return None

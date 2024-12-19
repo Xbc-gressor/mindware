@@ -50,7 +50,7 @@ class BohbOptimizer(BaseOptimizer, BohbBase):
         if len(self.full_eval_perfs) > 0:
             inc_idx = np.argmin(np.array(self.full_eval_perfs))
             for idx in range(len(self.full_eval_perfs)):
-                if self.name in ['hpo', 'cash', 'cashfe']:
+                if self.name in ['hpofe', 'cash', 'cashfe']:
                     if hasattr(self.evaluator, 'fe_config'):
                         fe_config = self.evaluator.fe_config
                     else:
