@@ -119,5 +119,5 @@ if '__main__' == __name__:
         ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
 
         with open(args.output_file, 'a+') as f:
-            f.write(f'RGS: {args.Opt}, {dataset}: {perf}, {ens_perf}\n')
+            f.write(f'CLS: {args.Opt}, {dataset}: {perf}, {ens_perf}\n')
 
