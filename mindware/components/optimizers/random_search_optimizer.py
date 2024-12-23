@@ -114,7 +114,8 @@ class RandomSearchOptimizer(BaseOptimizer):
             self.eval_dict = {(fe_config, hpo_config): [-run_history.perfs[i], time.time(), run_history.trial_states[i]]
                               for i, fe_config in enumerate(run_history.configurations)}
         if len(run_history.get_incumbents()) > 0:
-            self.incumbent_config, self.incumbent_perf = run_history.get_incumbents()[0]
+            incumbent = run_history.get_incumbents()[0]
+            self.incumbent_config, self.incumbent_perf = incumbent.config.get_dictionary().copy(), incumbent.objectives[0]
             self.incumbent_perf = -self.incumbent_perf
         iteration_cost = time.time() - _start_time
         

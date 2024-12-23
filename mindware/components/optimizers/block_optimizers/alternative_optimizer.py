@@ -1,6 +1,7 @@
 import time
 import numpy as np
 from copy import copy
+from ConfigSpace import Configuration
 
 from mindware.components.optimizers.base_optimizer import BaseOptimizer
 from openbox.utils.constants import SUCCESS, TIMEOUT, FAILED
@@ -16,12 +17,15 @@ class AlternativeOptimizer(BaseOptimizer):
                  sub_optimizer='smac', fe_config_space=None,
                  output_dir='./', seed=1, n_jobs=1):
 
-        super(AlternativeOptimizer, self).__init__(evaluator=evaluator, config_space=(cash_config_space, fe_config_space), name=name, eval_type=eval_type, 
-                                                   time_limit=time_limit, evaluation_limit=evaluation_limit, 
-                                                   per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
-                                                   inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp, 
+        super(AlternativeOptimizer, self).__init__(evaluator=evaluator,
+                                                   config_space=(cash_config_space, fe_config_space), name=name,
+                                                   eval_type=eval_type,
+                                                   time_limit=time_limit, evaluation_limit=evaluation_limit,
+                                                   per_run_time_limit=per_run_time_limit,
+                                                   per_run_mem_limit=per_run_mem_limit,
+                                                   inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp,
                                                    output_dir=output_dir, seed=seed)
-        
+
         assert cash_config_space is not None
         assert fe_config_space is not None
 
@@ -69,12 +73,12 @@ class AlternativeOptimizer(BaseOptimizer):
                 child_type = get_opt_node_type(node_list, node_index + 2)
                 self.sub_bandits[arm] = child_type(
                     node_list=node_list, node_index=node_index + 2,
-                    evaluator=evaluator, cash_config_space=cash_config_space, name='hpo', eval_type=self.eval_type, 
+                    evaluator=evaluator, cash_config_space=cash_config_space, name='hpo', eval_type=self.eval_type,
                     time_limit=time_limit, evaluation_limit=None,
-                    per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
-                    inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp, 
+                    per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit,
+                    inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp,
                     sub_optimizer=sub_optimizer, fe_config_space=None,
-                    output_dir=self.output_dir,seed=self.seed, n_jobs=n_jobs,
+                    output_dir=self.output_dir, seed=self.seed, n_jobs=n_jobs,
                 )
             elif arm == 'fe':
                 evaluator = copy(self.evaluator)
@@ -84,16 +88,15 @@ class AlternativeOptimizer(BaseOptimizer):
                 child_type = get_opt_node_type(node_list, node_index + 1)
                 self.sub_bandits[arm] = child_type(
                     node_list=node_list, node_index=node_index + 1,
-                    evaluator=evaluator, cash_config_space=None, name='fe', eval_type=self.eval_type, 
+                    evaluator=evaluator, cash_config_space=None, name='fe', eval_type=self.eval_type,
                     time_limit=time_limit, evaluation_limit=None,
-                    per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
-                    inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp, 
+                    per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit,
+                    inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp,
                     sub_optimizer=sub_optimizer, fe_config_space=fe_config_space,
-                    output_dir=self.output_dir,seed=self.seed, n_jobs=n_jobs,
+                    output_dir=self.output_dir, seed=self.seed, n_jobs=n_jobs,
                 )
             else:
                 raise ValueError("Wrong arm name %s." % arm)
-
 
         self.action_sequence = list()
         self.final_rewards = list()
@@ -121,8 +124,16 @@ class AlternativeOptimizer(BaseOptimizer):
             self.sub_bandits[_arm].inner_iter_num_per_iter = self.inner_iter_num_per_iter
 
         arm_to_pull = self.arms[self.pull_cnt % 2]
-        if self.sub_bandits[arm_to_pull].early_stop_flag:
+        if self.sub_bandits[arm_to_pull].early_stopped_flag:
             arm_to_pull = self.arms[(self.pull_cnt + 1) % 2]
+
+        # if self.first_start and arm_to_pull == 'hpo':
+        #     self.sub_bandits['hpo'].inner_iter_num_per_iter = self.inner_iter_num_per_iter * 2
+        #     self.first_start = False
+        # if self.first_start and arm_to_pull == 'fe':
+        #     self.sub_bandits['fe'].inner_iter_num_per_iter = self.inner_iter_num_per_iter * 5
+        #     self.first_start = False
+
         _start_time = time.time()
 
         reward, _, _ = self.sub_bandits[arm_to_pull].iterate(budget=budget)
@@ -220,7 +231,6 @@ class AlternativeOptimizer(BaseOptimizer):
 
         return trajectory
 
-
     def reinitialize(self, arm_id):
         if arm_id == 'hpo':
             # Build the Feature Engineering component.
@@ -231,12 +241,12 @@ class AlternativeOptimizer(BaseOptimizer):
             child_type = get_opt_node_type(self.node_list, self.node_index + 2)
             self.sub_bandits[arm_id] = child_type(
                 node_list=self.node_list, node_index=self.node_index + 2,
-                evaluator=evaluator, cash_config_space=self.config_space[0], name='hpo', eval_type=self.eval_type, 
+                evaluator=evaluator, cash_config_space=self.config_space[0], name='hpo', eval_type=self.eval_type,
                 time_limit=self.time_limit, evaluation_limit=None,
-                per_run_time_limit=self.per_run_time_limit, per_run_mem_limit=self.per_run_mem_limit, 
-                inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp, 
+                per_run_time_limit=self.per_run_time_limit, per_run_mem_limit=self.per_run_mem_limit,
+                inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp,
                 sub_optimizer=self.sub_optimizer, fe_config_space=None,
-                output_dir=self.output_dir,seed=self.seed, n_jobs=self.n_jobs)
+                output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs)
         elif arm_id == 'fe':
             evaluator = copy(self.evaluator)
             evaluator.fixed_config = self.inc['hpo'].copy()
@@ -245,20 +255,19 @@ class AlternativeOptimizer(BaseOptimizer):
             child_type = get_opt_node_type(self.node_list, self.node_index + 1)
             self.sub_bandits[arm_id] = child_type(
                 node_list=self.node_list, node_index=self.node_index + 1,
-                evaluator=evaluator, cash_config_space=None, name='fe', eval_type=self.eval_type, 
+                evaluator=evaluator, cash_config_space=None, name='fe', eval_type=self.eval_type,
                 time_limit=self.time_limit, evaluation_limit=None,
-                per_run_time_limit=self.per_run_time_limit, per_run_mem_limit=self.per_run_mem_limit, 
-                inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp, 
+                per_run_time_limit=self.per_run_time_limit, per_run_mem_limit=self.per_run_mem_limit,
+                inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp,
                 sub_optimizer=self.sub_optimizer, fe_config_space=self.config_space[1],
-                output_dir=self.output_dir,seed=self.seed, n_jobs=self.n_jobs)
-            
+                output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs)
+
         else:
             raise ValueError("Wrong arm name %s." % arm_id)
 
-        self.logger.debug('=' * 30)
-        self.logger.debug('UPDATE OPTIMIZER: %s' % arm_id)
-        self.logger.debug('=' * 30)
-
+        self.logger.info('=' * 30)
+        self.logger.info('UPDATE OPTIMIZER: %s' % arm_id)
+        self.logger.info('=' * 30)
 
     # TODO: Need refactoring
     def evaluate_joint_perf(self):
@@ -267,21 +276,23 @@ class AlternativeOptimizer(BaseOptimizer):
         evaluator.fixed_config = self.local_inc['fe'].copy()
         _perf = - evaluator(self.local_inc['hpo'].copy())['objectives'][0]
 
+        loc_inc_fe = Configuration(self.config_space[1], self.local_inc['fe'].copy())
+        loc_inc_hpo = Configuration(self.config_space[0], self.local_inc['hpo'].copy())
+
         if _perf is not None and np.isfinite(_perf):
             _config = self.local_inc['fe'].copy()
             _config.update(self.local_inc['hpo'].copy())
 
             # -perf: The larger, the better.
             self.update_saver([_config], [-_perf])
-            
-            self.eval_dict[(self.local_inc['fe'].copy(), self.local_inc['hpo'].copy())] = [_perf,
-                                                                                           time.time(),
-                                                                                           SUCCESS]
+
+            self.eval_dict[(loc_inc_fe, loc_inc_hpo)] = [_perf,
+                                                         time.time(),
+                                                         SUCCESS]
         else:
-            self.eval_dict[(self.local_inc['fe'].copy(), self.local_inc['hpo'].copy())] = [_perf,
-                                                                                           time.time(),
-                                                                                           FAILED]
-    
+            self.eval_dict[(loc_inc_fe, loc_inc_hpo)] = [_perf,
+                                                         time.time(),
+                                                         FAILED]
         # Update INC.
         if _perf is not None and np.isfinite(_perf) and _perf > self.incumbent_perf:
             self.inc['hpo'] = self.local_inc['hpo']
@@ -292,7 +303,6 @@ class AlternativeOptimizer(BaseOptimizer):
             _incumbent.update(self.inc['hpo'])
             self.incumbent_config = _incumbent.copy()
 
-    
     def get_opt_trajectory(self):
 
         trajectory = {

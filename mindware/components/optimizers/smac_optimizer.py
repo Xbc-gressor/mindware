@@ -130,7 +130,7 @@ class SMACOptimizer(BaseOptimizer):
 
         if len(run_history.get_incumbents()) > 0:
             incumbent = run_history.get_incumbents()[0]
-            self.incumbent_config, self.incumbent_perf = incumbent.config, incumbent.objectives[0]
+            self.incumbent_config, self.incumbent_perf = incumbent.config.get_dictionary().copy(), incumbent.objectives[0]
             self.incumbent_perf = -self.incumbent_perf
         iteration_cost = time.time() - _start_time
 

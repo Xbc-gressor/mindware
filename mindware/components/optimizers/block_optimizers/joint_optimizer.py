@@ -13,7 +13,8 @@ from mindware.utils.constant import MAX_INT
 
 
 class JointOptimizer(BaseOptimizer):
-    def __init__(self, evaluator, cash_config_space, name, eval_type,
+    def __init__(self, node_list, node_index,
+                 evaluator, cash_config_space, name, eval_type,
                  time_limit=None, evaluation_limit=None,
                  per_run_time_limit=300, per_run_mem_limit=1024,
                  inner_iter_num_per_iter=10, timestamp=None,
@@ -101,7 +102,6 @@ class JointOptimizer(BaseOptimizer):
         iteration_cost = time.time() - _start_time
 
         return self.incumbent_perf, iteration_cost, self.incumbent_config
-
 
     def get_opt_trajectory(self):
 

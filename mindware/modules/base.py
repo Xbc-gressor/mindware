@@ -118,6 +118,7 @@ class BaseAutoML(object):
             fe_config_space = kwargs.get('fe_config_space', None)
 
             optimizer = get_opt_node_type(tree, 0)(
+                node_list=tree, node_index=0,
                 evaluator=self.evaluator, cash_config_space=self.cs, name=name, eval_type=self.evaluation,
                 time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
                 per_run_time_limit=self.per_run_time_limit,
@@ -178,7 +179,7 @@ class BaseAutoML(object):
         self.early_stop_flag = self.optimizer.early_stopped_flag
 
         self.incumbent_perf = self.optimizer.incumbent_perf
-        self.incumbent = self.optimizer.incumbent_config.get_dictionary().copy()
+        self.incumbent = self.optimizer.incumbent_config
         self.eval_dict = self.optimizer.eval_dict
         return self.incumbent_perf
 

@@ -56,7 +56,7 @@ class BaseCASHFE(BaseAutoML):
         self.cs = get_cash_cs(include_algorithms, self.task_type, **cs_args)
         fe_config_space = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal)
 
-        if self.optimizer_name != 'mab' or not self.optimizer_name.startswith('block'):
+        if self.optimizer_name != 'mab' and not self.optimizer_name.startswith('block'):
             tmp_cs = deepcopy(fe_config_space)
             self.cs.add_hyperparameters(tmp_cs.get_hyperparameters())
             self.cs.add_conditions(tmp_cs.get_conditions())

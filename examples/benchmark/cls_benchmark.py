@@ -65,7 +65,9 @@ if '__main__' == __name__:
     parser.add_argument('--evaluation', type=str, default='holdout', help='evaluation')
     parser.add_argument('--time_limit', type=int, default=3600, help='time limit')
     parser.add_argument('--per_time_limit', type=int, default=600, help='time limit')
+    parser.add_argument('--inner_iter_num_per_iter', type=int, default=10)
     parser.add_argument('--job_idx', type=int, nargs='*', help='job index')
+    parser.add_argument('--output_file', type=str, default='results.txt')
     args = parser.parse_args()
 
     task_type = CLASSIFICATION
@@ -100,7 +102,7 @@ if '__main__' == __name__:
             include_algorithms=inc_alg, sub_optimizer='smac', task_type=task_type,
             metric=metric,
             data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
-            optimizer='mab', inner_iter_num_per_iter=10,
+            optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
             time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
             output_dir='./data', seed=1, n_jobs=1,
             ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
@@ -116,7 +118,6 @@ if '__main__' == __name__:
         ens_pred = opt.predict(test_data_node, ens=True)
         ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
 
-        with open('results.txt', 'a+') as f:
-            f.write(f'CLS: {args.Opt}, {dataset}: {perf}, {ens_perf}\n')
+        with open(args.output_file, 'a+') as f:
+            f.write(f'RGS: {args.Opt}, {dataset}: {perf}, {ens_perf}\n')
 
-        breakpoint()
