@@ -286,12 +286,12 @@ class EnsembleSelection(BaseEnsembleModel):
         for algo_id in self.stats:
             model_to_eval = self.stats[algo_id]
             for idx, (config, _, model_path) in enumerate(model_to_eval):
-                if not hasattr(self, 'base_model_mask') or self.base_model_mask[model_cnt] == 1:
+                if self.weights_[model_cnt] != 0:
                     ens_config.append((algo_id, config, model_path))
                 model_cnt += 1
         ens_info['ensemble_method'] = 'ensemble_selection'
         ens_info['config'] = ens_config
-        ens_info['ensemble_weights'] = list(self.weights_)
+        ens_info['ensemble_weights'] = [w for w in self.weights_ if w > 0]
         return ens_info
 
     def refit(self):

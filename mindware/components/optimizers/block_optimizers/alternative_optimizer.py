@@ -30,6 +30,14 @@ class AlternativeOptimizer(BaseOptimizer):
         assert cash_config_space is not None
         assert fe_config_space is not None
 
+        self.arms = ['hpo', 'fe']
+        self.optimal_algo_id = None
+        self.first_start = True
+        self.sub_bandits = dict()
+        self.rewards = dict()
+        self.evaluation_cost = dict()
+        self.update_flag = dict()
+
         # Global incumbent.
         self.init_config = {'fe': fe_config_space.get_default_configuration().get_dictionary().copy(),
                             'hpo': cash_config_space.get_default_configuration().get_dictionary().copy()}
