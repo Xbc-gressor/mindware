@@ -12,6 +12,8 @@ class XGBoostClassifier(BaseClassificationModel):
 
     def __init__(self, n_estimators, learning_rate, max_depth, min_child_weight,
                  subsample, colsample_bytree, gamma, reg_alpha, reg_lambda, random_state=None):
+        # 用父类初始化
+        super().__init__()
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.max_depth = max_depth
@@ -48,7 +50,7 @@ class XGBoostClassifier(BaseClassificationModel):
         self.gamma = float(self.gamma)
         self.reg_alpha = float(self.reg_alpha)
         self.reg_lambda = float(self.reg_lambda)
-
+        
         estimator = xgb.XGBClassifier(
             n_estimators=self.n_estimators,
             learning_rate=self.learning_rate,
@@ -61,7 +63,8 @@ class XGBoostClassifier(BaseClassificationModel):
             reg_lambda=self.reg_lambda,
             random_state=self.random_state
         )
-
+        # self.classes_ = np.unique(y)
+        self.classes_ = np.array([[1,0],[0,1]])
         estimator.fit(X, Y, sample_weight=sample_weight)
 
         self.estimator = estimator

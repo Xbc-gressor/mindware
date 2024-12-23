@@ -118,4 +118,5 @@ def validation(estimator, scorer, X_train, y_train, X_val, y_val, fit_params=Non
         estimator.fit(X_train, y_train, **_fit_params)
         if onehot is not None:
             y_val = get_onehot_y(onehot, y_val)
+        
         return scorer(estimator, X_val, y_val)

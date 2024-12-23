@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
     # Load data
     # data_dir = 'D:\\xbc\\Fighting\\AutoML\\datas\\kaggle\\santander'
-    data_dir = '/root/automl_data/kaggle/santander'
+    data_dir = '/home/liuwei/mindware_data/santander-customer-transaction-prediction'
     # data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/santander-customer-transaction-prediction'
 
     dm = DataManager()
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     train_data_node = dm.preprocess_fit(_train_data_node, task_type, x_encode=x_encode)
     # train_data_node.data = (train_data_node.data[0][:20000], train_data_node.data[1][:20000])
 
-    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'), ignore_columns=['ID_code'])
+    test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'))
     test_data_node = dm.preprocess_transform(test_data_node)
 
     # Initialize CASHFE

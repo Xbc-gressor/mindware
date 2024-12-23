@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     # Initialize CASHFE
 
-    metric = 'acc'
+    metric = 'auc'
     evaluation = 'holdout'
     ensemble_method = "blending"
 

@@ -131,7 +131,10 @@ class BaseEvaluator(_BaseEvaluator):
                                onehot=self.onehot_encoder if isinstance(self.scorer,
                                                                         _ThresholdScorer) else None,
                                fit_params=fit_params)
-
+            # score = validation(estimator, self.scorer, _x_train, _y_train, _x_val, _y_val,
+            #                    random_state=self.seed,
+            #                    onehot=None,
+            #                    fit_params=fit_params)
         elif 'cv' in self.resampling_strategy:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")

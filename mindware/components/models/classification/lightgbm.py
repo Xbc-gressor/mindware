@@ -8,6 +8,7 @@ from ConfigSpace.hyperparameters import UniformFloatHyperparameter, UniformInteg
 class LightGBM(BaseClassificationModel):
     def __init__(self, n_estimators, learning_rate, num_leaves, max_depth, min_child_samples,
                  subsample, colsample_bytree, augment_data=0, random_state=None, verbose=0):
+        super().__init__()
         self.n_estimators = int(n_estimators)
         self.learning_rate = learning_rate
         self.num_leaves = int(num_leaves)
@@ -39,7 +40,8 @@ class LightGBM(BaseClassificationModel):
 
     def fit(self, X, y):
         from lightgbm import LGBMClassifier
-
+        # self.classes_ = np.unique(y)
+        self.classes_ = np.array([[1,0],[0,1]])
         print(f"Initial shape of X: {X.shape}, y: {len(y)}")
 
         if self.augment_data == 1:
