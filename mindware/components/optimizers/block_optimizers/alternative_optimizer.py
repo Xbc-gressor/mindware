@@ -3,12 +3,7 @@ import numpy as np
 from copy import copy
 
 from mindware.components.optimizers.base_optimizer import BaseOptimizer
-from ConfigSpace import ConfigurationSpace, Constant
-from mindware.components.optimizers.smac_optimizer import SMACOptimizer
-from mindware.components.optimizers.random_search_optimizer import RandomSearchOptimizer
-from mindware.components.optimizers.tpe_optimizer import TPEOptimizer
-from mindware.components.optimizers.bohb_optimizer import BohbOptimizer
-from mindware.components.optimizers.mfse_optimizer import MfseOptimizer
+from openbox.utils.constants import SUCCESS, TIMEOUT, FAILED
 from mindware.utils.constant import MAX_INT
 
 
@@ -29,6 +24,11 @@ class AlternativeOptimizer(BaseOptimizer):
         
         assert cash_config_space is not None
         assert fe_config_space is not None
+
+        self.node_list = node_list
+        self.node_index = node_index
+        self.sub_optimizer = sub_optimizer
+        self.n_jobs = n_jobs
 
         self.arms = ['hpo', 'fe']
         self.optimal_algo_id = None
@@ -69,14 +69,14 @@ class AlternativeOptimizer(BaseOptimizer):
                 child_type = get_opt_node_type(node_list, node_index + 2)
                 self.sub_bandits[arm] = child_type(
                     node_list=node_list, node_index=node_index + 2,
-                    evaluator=self.evaluator, cash_config_space=cash_config_space, name='hpo', eval_type=self.eval_type, 
+                    evaluator=evaluator, cash_config_space=cash_config_space, name='hpo', eval_type=self.eval_type, 
                     time_limit=time_limit, evaluation_limit=None,
                     per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
                     inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp, 
                     sub_optimizer=sub_optimizer, fe_config_space=None,
                     output_dir=self.output_dir,seed=self.seed, n_jobs=n_jobs,
                 )
-            else:
+            elif arm == 'fe':
                 evaluator = copy(self.evaluator)
                 evaluator.fixed_config = self.init_config['hpo']
 
@@ -84,13 +84,15 @@ class AlternativeOptimizer(BaseOptimizer):
                 child_type = get_opt_node_type(node_list, node_index + 1)
                 self.sub_bandits[arm] = child_type(
                     node_list=node_list, node_index=node_index + 1,
-                    evaluator=self.evaluator, cash_config_space=None, name='fe', eval_type=self.eval_type, 
+                    evaluator=evaluator, cash_config_space=None, name='fe', eval_type=self.eval_type, 
                     time_limit=time_limit, evaluation_limit=None,
                     per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
                     inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp, 
                     sub_optimizer=sub_optimizer, fe_config_space=fe_config_space,
                     output_dir=self.output_dir,seed=self.seed, n_jobs=n_jobs,
                 )
+            else:
+                raise ValueError("Wrong arm name %s." % arm)
 
 
         self.action_sequence = list()
@@ -106,14 +108,6 @@ class AlternativeOptimizer(BaseOptimizer):
         self.arm_candidate = self.arms.copy()
         self.best_lower_bounds = np.zeros(arm_num)
 
-        if self.time_limit is None:
-            if arm_num * self.alpha > self.evaluation_num_limit:
-                raise ValueError('Trial number should be larger than %d.' % (arm_num * self.alpha))
-        else:
-            self.evaluation_num_limit = MAX_INT
-
-        self.timeout_flag = False
-
     def run(self):
         while True:
             if self.early_stopped_flag or self.timeout_flag:
@@ -126,97 +120,77 @@ class AlternativeOptimizer(BaseOptimizer):
         for _arm in self.arms:
             self.sub_bandits[_arm].inner_iter_num_per_iter = self.inner_iter_num_per_iter
 
+        arm_to_pull = self.arms[self.pull_cnt % 2]
+        if self.sub_bandits[arm_to_pull].early_stop_flag:
+            arm_to_pull = self.arms[(self.pull_cnt + 1) % 2]
         _start_time = time.time()
-        # Search for an arm that is not early-stopped.
-        while self.sub_bandits[self.arm_candidate[self.pick_id]].early_stopped_flag and \
-                self.pick_id < len(self.arm_candidate):
-            self.pick_id += 1
 
-        if self.pick_id < len(self.arm_candidate):
-            # Pull the arm.
-            arm_to_pull = self.arm_candidate[self.pick_id]
-            self.logger.info('Optimize %s in the %d-th iteration' % (arm_to_pull, self.pull_cnt))
-            _start_time = time.time()
-            self.sub_bandits[arm_to_pull].inner_iter_num_per_iter = self.inner_iter_num_per_iter
-            reward, _, incumbent = self.sub_bandits[arm_to_pull].iterate(budget=self.time_limit + self.timestamp - time.time())
+        reward, _, _ = self.sub_bandits[arm_to_pull].iterate(budget=budget)
+        iter_cost = time.time() - _start_time
+        self.action_sequence.append(arm_to_pull)
+        self.pull_cnt += 1
 
-            self.perfs.extend(self.sub_bandits[arm_to_pull].perfs[-self.inner_iter_num_per_iter:])
-            self.configs.extend(self.sub_bandits[arm_to_pull].configs[-self.inner_iter_num_per_iter:])
+        # Update results after each iteration
+        pre_inc_perf = self.incumbent_perf
+        for arm_id in self.arms:
+            self.update_flag[arm_id] = False
+        self.arm_eval_dict[arm_to_pull].update(self.sub_bandits[arm_to_pull].eval_dict)
+        self.eval_dict.update(self.sub_bandits[arm_to_pull].eval_dict)
+        self.rewards[arm_to_pull].append(reward)
+        self.evaluation_cost[arm_to_pull].append(iter_cost)
+        self.local_inc[arm_to_pull] = self.sub_bandits[arm_to_pull].incumbent_config
 
-            # Update results after each iteration
-            self.arm_cost_stats[arm_to_pull].append(time.time() - _start_time)
-            if reward > self.incumbent_perf:
-                self.optimal_algo_id = arm_to_pull
-                self.incumbent_perf = reward
-                self.incumbent_config = incumbent
-            self.eval_dict.update(self.sub_bandits[arm_to_pull].eval_dict)
-            self.rewards[arm_to_pull].append(reward)
-            self.action_sequence.append(arm_to_pull)
-            self.final_rewards.append(reward)
-            self.time_records.append(time.time() - self.timestamp)
-            # self.logger.info('The best performance found for %s is %.4f' % (arm_to_pull, reward))
-            self.pull_cnt += 1
-            self.pick_id += 1
+        # Update global incumbent from FE and HPO.
+        if np.isfinite(reward) and reward > self.incumbent_perf:
+            cur_inc = self.sub_bandits[arm_to_pull].incumbent_config
+            self.inc[arm_to_pull] = cur_inc
+            self.local_hist[arm_to_pull].append(cur_inc)
+            self.optimal_algo_id = arm_to_pull
+            self.incumbent_perf = reward
 
-            # Logger output
-            scores = list()
-            for _arm in self.arms:
-                scores.append(self.sub_bandits[_arm].incumbent_perf)
-            scores = np.array(scores)
-            self.logger.info('=' * 50)
-            self.logger.info('Best_algo_perf:  %s' % str(self.incumbent_perf))
-            self.logger.info('Best_algo_id:    %s' % str(self.optimal_algo_id))
-            self.logger.info('Arm candidates:  %s' % str(self.arms))
-            self.logger.info('Best val scores: %s' % str(list(scores)))
-            self.logger.info('=' * 50)
+            # Alter-HPO strategy: HPO changes if FE changes, FE keeps though HPO changes
+            if arm_to_pull == 'fe':
+                self.inc['hpo'] = self.init_config['hpo']
+            _incumbent = dict()
+            _incumbent.update(self.inc['fe'])
+            _incumbent.update(self.inc['hpo'])
+            self.incumbent_config = _incumbent.copy()
 
-        # Eliminate arms after pulling each arm a few times.
-        if self.pick_id == len(self.arm_candidate):
-            self.update_cnt += 1
-            self.pick_id = 0
-            # Update the arms until pulling each arm for at least alpha times.
-            if self.update_cnt >= self.alpha:
-                # Update the upper/lower bound estimation.
-                budget_left = max(self.time_limit - time.time() + self.timestamp, 0)
-                avg_cost = np.array([np.mean(self.arm_cost_stats[_arm]) for _arm in self.arm_candidate]).mean()
-                steps = int(budget_left / avg_cost)
-                upper_bounds, lower_bounds = list(), list()
+            arm_id = 'fe' if arm_to_pull == 'hpo' else 'hpo'
+            if arm_to_pull == 'fe':
+                self.reinitialize(arm_id)
+            else:
+                # Only reinitialize fe blocks once.
+                if len(self.rewards[arm_to_pull]) == 1:
+                    self.reinitialize(arm_id)
+                    if cur_inc != self.init_config['hpo']:
+                        self.logger.info('Initial hp_config for FE has changed!')
+                    self.init_config['hpo'] = cur_inc
 
-                for _arm in self.arm_candidate:
-                    rewards = self.rewards[_arm]
-                    slope = (rewards[-1] - rewards[-self.alpha]) / self.alpha
-                    if self.time_limit is None:
-                        steps = self.evaluation_num_limit - self.pull_cnt
-                    upper_bound = np.min([1.0, rewards[-1] + slope * steps])
-                    upper_bounds.append(upper_bound)
-                    lower_bounds.append(rewards[-1])
-                    self.best_lower_bounds[self.arms.index(_arm)] = rewards[-1]
+            # Evaluate joint result here
+            # Alter-HPO specific
+            if arm_to_pull == 'fe' and self.sub_bandits['fe'].evaluator.fixed_config != self.local_inc['hpo']:
+                self.logger.info("Evaluate joint performance in node %s" % self.node_index)
+                self.evaluate_joint_perf()
 
-                # Reject the sub-optimal arms.
-                n = len(self.arm_candidate)
-                flags = [False] * n
-                for i in range(n):
-                    for j in range(n):
-                        if i != j:
-                            if upper_bounds[i] < lower_bounds[j]:
-                                flags[i] = True
-                for i in range(n):
-                    if np.isnan(upper_bounds[i]) or not np.isfinite(lower_bounds[i]):
-                        flags[i] = True
+        # Logger output
+        scores = list()
+        for _arm in self.arms:
+            scores.append(self.sub_bandits[_arm].incumbent_perf)
+        scores = np.array(scores)
+        self.logger.info('=' * 50)
+        self.logger.info('Node index: %s' % str(self.node_index))
+        self.logger.info('Best_part_perf: %s' % str(self.incumbent_perf))
+        self.logger.info('Best_part: %s' % str(self.optimal_algo_id))
+        self.logger.info('Best val scores: %s' % str(list(scores)))
+        self.logger.info('=' * 50)
 
-                if np.sum(flags) == n:
-                    self.logger.error('Removing all the arms simultaneously!')
-
-                self.logger.info('=' * 50)
-                self.logger.info('Candidates  : %s' % ','.join(self.arm_candidate))
-                self.logger.info('Upper bound : %s' % ','.join(['%.4f' % val for val in upper_bounds]))
-                self.logger.info('Lower bound : %s' % ','.join(['%.4f' % val for val in lower_bounds]))
-                self.logger.info(
-                    'Arms removed: %s' % [item for idx, item in enumerate(self.arm_candidate) if flags[idx]])
-                self.logger.info('=' * 50)
-
-                # Update arm_candidates.
-                self.arm_candidate = [item for index, item in enumerate(self.arm_candidate) if not flags[index]]
+        self.final_rewards.append(self.incumbent_perf)
+        post_inc_perf = self.incumbent_perf
+        if np.isfinite(pre_inc_perf) and np.isfinite(post_inc_perf):
+            self.inc_record[arm_to_pull].append(post_inc_perf - pre_inc_perf)
+        else:
+            self.inc_record[arm_to_pull].append(0.)
 
         # Update stop flag
         self.early_stopped_flag = True
@@ -224,11 +198,11 @@ class AlternativeOptimizer(BaseOptimizer):
         for _arm in self.arm_candidate:
             if not self.sub_bandits[_arm].early_stopped_flag:
                 self.early_stopped_flag = False
+            if self.sub_bandits[_arm].timeout_flag:
+                self.timeout_flag = True
         if self.early_stopped_flag:
-            self.logger.info(
-                "Maximum configuration number met for each arm candidate!")
-        if time.time() - self.timestamp > self.time_limit or self.pull_cnt >= self.evaluation_num_limit:
-            self.timeout_flag = True
+            self.logger.info("Maximum configuration number met for each arm candidate!")
+        if self.timeout_flag:
             self.logger.info('Time elapsed!')
 
         iteration_cost = time.time() - _start_time
@@ -247,3 +221,85 @@ class AlternativeOptimizer(BaseOptimizer):
         return trajectory
 
 
+    def reinitialize(self, arm_id):
+        if arm_id == 'hpo':
+            # Build the Feature Engineering component.
+            evaluator = copy(self.evaluator)
+            evaluator.fixed_config = self.inc['fe'].copy()
+
+            from mindware.components.optimizers.block_optimizers.block_opt_utils import get_opt_node_type
+            child_type = get_opt_node_type(self.node_list, self.node_index + 2)
+            self.sub_bandits[arm_id] = child_type(
+                node_list=self.node_list, node_index=self.node_index + 2,
+                evaluator=evaluator, cash_config_space=self.config_space[0], name='hpo', eval_type=self.eval_type, 
+                time_limit=self.time_limit, evaluation_limit=None,
+                per_run_time_limit=self.per_run_time_limit, per_run_mem_limit=self.per_run_mem_limit, 
+                inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp, 
+                sub_optimizer=self.sub_optimizer, fe_config_space=None,
+                output_dir=self.output_dir,seed=self.seed, n_jobs=self.n_jobs)
+        elif arm_id == 'fe':
+            evaluator = copy(self.evaluator)
+            evaluator.fixed_config = self.inc['hpo'].copy()
+
+            from mindware.components.optimizers.block_optimizers.block_opt_utils import get_opt_node_type
+            child_type = get_opt_node_type(self.node_list, self.node_index + 1)
+            self.sub_bandits[arm_id] = child_type(
+                node_list=self.node_list, node_index=self.node_index + 1,
+                evaluator=evaluator, cash_config_space=None, name='fe', eval_type=self.eval_type, 
+                time_limit=self.time_limit, evaluation_limit=None,
+                per_run_time_limit=self.per_run_time_limit, per_run_mem_limit=self.per_run_mem_limit, 
+                inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp, 
+                sub_optimizer=self.sub_optimizer, fe_config_space=self.config_space[1],
+                output_dir=self.output_dir,seed=self.seed, n_jobs=self.n_jobs)
+            
+        else:
+            raise ValueError("Wrong arm name %s." % arm_id)
+
+        self.logger.debug('=' * 30)
+        self.logger.debug('UPDATE OPTIMIZER: %s' % arm_id)
+        self.logger.debug('=' * 30)
+
+
+    # TODO: Need refactoring
+    def evaluate_joint_perf(self):
+
+        evaluator = copy(self.evaluator)
+        evaluator.fixed_config = self.local_inc['fe'].copy()
+        _perf = - evaluator(self.local_inc['hpo'].copy())['objectives'][0]
+
+        if _perf is not None and np.isfinite(_perf):
+            _config = self.local_inc['fe'].copy()
+            _config.update(self.local_inc['hpo'].copy())
+
+            # -perf: The larger, the better.
+            self.update_saver([_config], [-_perf])
+            
+            self.eval_dict[(self.local_inc['fe'].copy(), self.local_inc['hpo'].copy())] = [_perf,
+                                                                                           time.time(),
+                                                                                           SUCCESS]
+        else:
+            self.eval_dict[(self.local_inc['fe'].copy(), self.local_inc['hpo'].copy())] = [_perf,
+                                                                                           time.time(),
+                                                                                           FAILED]
+    
+        # Update INC.
+        if _perf is not None and np.isfinite(_perf) and _perf > self.incumbent_perf:
+            self.inc['hpo'] = self.local_inc['hpo']
+            self.inc['fe'] = self.local_inc['fe']
+            self.incumbent_perf = _perf
+            _incumbent = dict()
+            _incumbent.update(self.inc['fe'])
+            _incumbent.update(self.inc['hpo'])
+            self.incumbent_config = _incumbent.copy()
+
+    
+    def get_opt_trajectory(self):
+
+        trajectory = {
+            'action_sequence': self.action_sequence,
+            'rewards_of_bandits': self.rewards,
+            'final_rewards': self.final_rewards,
+            'detail_perfs': ",".join([str(p) for p in self.perfs])
+        }
+
+        return trajectory

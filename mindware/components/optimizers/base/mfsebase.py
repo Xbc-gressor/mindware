@@ -20,10 +20,6 @@ class MfseBase(object):
         self.per_run_time_limit = per_run_time_limit
 
         self.trial_cnt = 0
-        self.configs = list()
-        self.perfs = list()
-        self.incumbent_perf = float("-INF")
-        self.incumbent_config = self.config_space.get_default_configuration()
         self.full_eval_configs = list()
         self.full_eval_perfs = list()
         self.evaluation_stats = dict()
@@ -55,7 +51,6 @@ class MfseBase(object):
             # self.target_y[r] = list()
 
         self.mf_advisor = MFBatchAdvisor(config_space, output_dir=output_dir)
-        self.eval_dict = dict()
 
     def _iterate(self, s, budget=MAX_INT, skip_last=0):
         # Set initial number of configurations

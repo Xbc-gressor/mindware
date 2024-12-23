@@ -103,6 +103,32 @@ class BaseAutoML(object):
 
     def build_optimizer(self, name='hpo', **kwargs):
 
+        if self.optimizer_name.startswith("block"):
+            tree_id = int(self.optimizer_name.split('_')[1])
+            from mindware.components.optimizers.block_optimizers.block_opt_utils import get_opt_execution_tree, get_opt_node_type
+            tree = get_opt_execution_tree(tree_id)
+            
+            if self.evaluation == 'partial':
+                sub_optimizer = 'mfse'
+            elif self.evaluation == 'partial_bohb':
+                sub_optimizer = 'bohb'
+            else:
+                sub_optimizer = kwargs.get('sub_optimizer', 'smac')
+
+            fe_config_space = kwargs.get('fe_config_space', None)
+
+            optimizer = get_opt_node_type(tree, 0)(
+                evaluator=self.evaluator, cash_config_space=self.cs, name=name, eval_type=self.evaluation,
+                time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
+                per_run_time_limit=self.per_run_time_limit,
+                inner_iter_num_per_iter=self.inner_iter_num_per_iter,timestamp=self.timestamp,
+                sub_optimizer=sub_optimizer, fe_config_space=fe_config_space,
+                output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs,
+            )
+
+            return optimizer
+
+
         opt_paras = {}
         if self.optimizer_name == 'mab':
             optimizer_class = MabOptimizer

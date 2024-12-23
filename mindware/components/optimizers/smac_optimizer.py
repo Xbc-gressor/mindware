@@ -108,25 +108,25 @@ class SMACOptimizer(BaseOptimizer):
                 self.update_saver(_config_list, _perf_list)
 
         run_history = self.optimizer.get_history()
-        # if self.name in ['hpofe', 'cash', 'cashfe']:
-        #     if hasattr(self.evaluator, 'fe_config'):
-        #         fe_config = self.evaluator.fe_config
-        #     else:
-        #         fe_config = None
-        #
-        #     self.eval_dict = {
-        #         (fe_config, hpo_config): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
-        #         for i, hpo_config in enumerate(run_history.configurations)
-        #     }
-        # else:
-        #     if hasattr(self.evaluator, 'hpo_config'):
-        #         hpo_config = self.evaluator.hpo_config
-        #     else:
-        #         hpo_config = None
-        #     self.eval_dict = {
-        #         (fe_config, hpo_config): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
-        #         for i, fe_config in enumerate(run_history.configurations)
-        #     }
+        if self.name in ['hpofe', 'cash', 'cashfe']:
+            if hasattr(self.evaluator, 'fe_config'):
+                fe_config = self.evaluator.fe_config
+            else:
+                fe_config = None
+        
+            self.eval_dict.update({
+                (fe_config, run_history.configurations[i]): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
+                for i in range(-self.inner_iter_num_per_iter, 0)
+            })
+        else:
+            if hasattr(self.evaluator, 'hpo_config'):
+                hpo_config = self.evaluator.hpo_config
+            else:
+                hpo_config = None
+            self.eval_dict.update({
+                (run_history.configurations[i], hpo_config): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
+                for i in range(-self.inner_iter_num_per_iter, 0)
+            })
 
         if len(run_history.get_incumbents()) > 0:
             incumbent = run_history.get_incumbents()[0]

@@ -83,7 +83,7 @@ class JointOptimizer(BaseOptimizer):
         _start_time = time.time()
 
         self.sub_bandit.inner_iter_num_per_iter = self.inner_iter_num_per_iter
-        self.sub_bandit.iterate(budget=self.time_limit + self.timestamp - time.time())
+        self.sub_bandit.iterate(budget=budget)
 
         self.incumbent_perf = self.sub_bandit.incumbent_perf
         self.incumbent_config = self.sub_bandit.incumbent_config
@@ -102,6 +102,11 @@ class JointOptimizer(BaseOptimizer):
 
         return self.incumbent_perf, iteration_cost, self.incumbent_config
 
+
     def get_opt_trajectory(self):
 
-        return None
+        trajectory = {
+            'detail_perfs': ",".join([str(p) for p in self.perfs])
+        }
+
+        return trajectory

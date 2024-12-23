@@ -33,7 +33,7 @@ class BaseCASHFE(BaseAutoML):
             ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
         )
 
-        if optimizer not in ['smac', 'tpe', 'random_search', 'mab']:
+        if optimizer not in ['smac', 'tpe', 'random_search', 'mab', 'block_0', 'block_1', 'block_2', 'block_3', 'block_4']:
             raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
         if sub_optimizer not in ['smac', 'tpe', 'random_search']:
             raise ValueError('Invalid sub_optimizer: %s for CASH!' % sub_optimizer)
@@ -56,7 +56,7 @@ class BaseCASHFE(BaseAutoML):
         self.cs = get_cash_cs(include_algorithms, self.task_type, **cs_args)
         fe_config_space = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal)
 
-        if self.optimizer_name != 'mab':
+        if self.optimizer_name != 'mab' or not self.optimizer_name.startswith('block'):
             tmp_cs = deepcopy(fe_config_space)
             self.cs.add_hyperparameters(tmp_cs.get_hyperparameters())
             self.cs.add_conditions(tmp_cs.get_conditions())
@@ -88,7 +88,7 @@ class BaseCASHFE(BaseAutoML):
                 output_dir=self.output_dir,
                 seed=self.seed)
 
-        self.optimizer = self.build_optimizer('cashfe', sub_optimizer=sub_optimizer, fe_config_space=fe_config_space)
+        self.optimizer = self.build_optimizer(name='cashfe', sub_optimizer=sub_optimizer, fe_config_space=fe_config_space)
 
         pass
 

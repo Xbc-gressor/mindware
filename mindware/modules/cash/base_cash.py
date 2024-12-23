@@ -31,7 +31,7 @@ class BaseCASH(BaseAutoML):
             ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
         )
 
-        if optimizer not in ['smac', 'tpe', 'random_search', 'mab']:
+        if optimizer not in ['smac', 'tpe', 'random_search', 'mab', 'block_0', 'block_1']:
             raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
         if sub_optimizer not in ['smac', 'tpe', 'random_search']:
             raise ValueError('Invalid sub_optimizer: %s for CASH!' % sub_optimizer)
@@ -79,7 +79,7 @@ class BaseCASH(BaseAutoML):
                 output_dir=self.output_dir,
                 seed=self.seed)
 
-        self.optimizer = self.build_optimizer('cash', sub_optimizer=sub_optimizer)
+        self.optimizer = self.build_optimizer(name='cash', sub_optimizer=sub_optimizer)
 
     def _get_logger(self, optimizer_name):
         logger_name = 'MindWare-CASH-task_type%d-%s(%d)' % (self.task_type, optimizer_name, self.seed)

@@ -4,7 +4,7 @@ from mindware.components.optimizers.block_optimizers.conditional_optimizer impor
 
 
 # Define different execution plans
-def get_execution_tree(execution_id):
+def get_opt_execution_tree(execution_id):
     # Each node represents (parent_id, node_type)
     trees = {0: [('joint', [])],
              1: [('condition', [1]), ('joint', [])],  # Default strategy

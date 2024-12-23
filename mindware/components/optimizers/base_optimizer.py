@@ -42,7 +42,6 @@ class BaseOptimizer(object):
         self.seed = np.random.random_integers(MAX_INT) if seed is None else seed
         self.start_time = time.time()
         self.timing_list = list()
-        self.incumbent = None
         self.eval_type = eval_type
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
         self.init_hpo_iter_num = None

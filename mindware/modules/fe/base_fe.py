@@ -38,7 +38,7 @@ class BaseFE(BaseAutoML):
             ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
         )
 
-        if optimizer not in ['smac', 'tpe', 'random_search']:
+        if optimizer not in ['smac', 'tpe', 'random_search', 'block_0']:
             raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
         if evaluation not in ['holdout', 'cv', 'partial', 'partial_bohb']:
             raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
@@ -106,7 +106,7 @@ class BaseFE(BaseAutoML):
                 output_dir=self.output_dir,
                 seed=self.seed)
 
-        self.optimizer = self.build_optimizer('fe')
+        self.optimizer = self.build_optimizer(name='fe')
 
     def _get_logger(self, optimizer_name):
         logger_name = 'MindWare-FE-%s-%s(%d)' % (self.estimator_id, optimizer_name, self.seed)

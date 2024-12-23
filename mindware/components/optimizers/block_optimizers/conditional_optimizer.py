@@ -22,6 +22,8 @@ class ConditionalOptimizer(BaseOptimizer):
                                                    inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp, 
                                                    output_dir=output_dir, seed=seed)
 
+        self.node_index = node_index
+
         # Bandit settings.
         self.alpha = 4
         self.arms = list(cash_config_space.get_hyperparameter('algorithm').choices)
@@ -117,7 +119,7 @@ class ConditionalOptimizer(BaseOptimizer):
             self.logger.info('Optimize %s in the %d-th iteration' % (arm_to_pull, self.pull_cnt))
             _start_time = time.time()
             self.sub_bandits[arm_to_pull].inner_iter_num_per_iter = self.inner_iter_num_per_iter
-            reward, _, incumbent = self.sub_bandits[arm_to_pull].iterate(budget=self.time_limit + self.timestamp - time.time())
+            reward, _, incumbent = self.sub_bandits[arm_to_pull].iterate(budget=budget)
 
             self.perfs.extend(self.sub_bandits[arm_to_pull].perfs[-self.inner_iter_num_per_iter:])
             self.configs.extend(self.sub_bandits[arm_to_pull].configs[-self.inner_iter_num_per_iter:])
@@ -143,6 +145,7 @@ class ConditionalOptimizer(BaseOptimizer):
                 scores.append(self.sub_bandits[_arm].incumbent_perf)
             scores = np.array(scores)
             self.logger.info('=' * 50)
+            self.logger.info('Node index: %s' % str(self.node_index))
             self.logger.info('Best_algo_perf:  %s' % str(self.incumbent_perf))
             self.logger.info('Best_algo_id:    %s' % str(self.optimal_algo_id))
             self.logger.info('Arm candidates:  %s' % str(self.arms))
