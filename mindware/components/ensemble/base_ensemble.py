@@ -11,6 +11,7 @@ from mindware.components.ensemble.unnamed_ensemble import choose_base_models_cla
 from mindware.components.feature_engineering.parse import construct_node
 from mindware.utils.logging_utils import get_logger
 from mindware.utils.functions import is_imbalanced_dataset
+from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 
 
 class BaseEnsembleModel(object):
@@ -44,8 +45,7 @@ class BaseEnsembleModel(object):
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
             for idx, (_, _, path) in enumerate(model_to_eval):
-                with open(path, 'rb') as f:
-                    op_list, model, _ = pkl.load(f)
+                op_list, model, _ = CombinedTopKModelSaver._load(path)
                 _node = self.node.copy_()
                 _node = construct_node(_node, op_list)
 

@@ -210,8 +210,7 @@ class EnsembleSelection(BaseEnsembleModel):
             model_to_eval = self.stats[algo_id]
             for idx, (_, _, path) in enumerate(model_to_eval):
                 if cur_idx in self.model_idx:
-                    with open(path, 'rb') as f:
-                        op_list, estimator, _ = pkl.load(f)
+                    op_list, estimator, _ = CombinedTopKModelSaver._load(path)
                     _node = data.copy_()
                     _node = construct_node(_node, op_list)
 
@@ -305,8 +304,7 @@ class EnsembleSelection(BaseEnsembleModel):
                 # X, y = self.node.data
                 if self.weights_[model_cnt] != 0:
                     self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], model_path))
-                    with open(model_path, 'rb') as f:
-                        op_list, estimator, perf = pkl.load(f)
+                    op_list, estimator, perf = CombinedTopKModelSaver._load(model_path)
 
                     # _node = self.node.copy_()
                     # _node = construct_node(_node, op_list)
@@ -321,6 +319,6 @@ class EnsembleSelection(BaseEnsembleModel):
                                                         _node.data[0], _node.data[1],
                                                         weight_balance=_node.enable_balance,
                                                         data_balance=_node.data_balance)
-                    
+
                     CombinedTopKModelSaver._save((op_list, estimator, perf), model_path)
                 model_cnt += 1

@@ -351,9 +351,7 @@ class BaseAutoML(object):
 
             if best_path is None:
                 raise AttributeError("No stats found!")
-
-            with open(best_path, 'rb') as f:
-                best_op_list, estimator, _ = pkl.load(f)
+            best_op_list, estimator, _  = CombinedTopKModelSaver._load(best_path)
             test_data_node = test_data.copy_()
             test_data_node = construct_node(test_data_node, best_op_list)
 

@@ -32,7 +32,7 @@ class BaseHPO(BaseAutoML):
             ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
         )
 
-        if optimizer not in ['smac', 'tpe', 'random_search', 'block_0']:
+        if optimizer not in ['smac', 'tpe', 'random_search']:
             raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
         if evaluation not in ['holdout', 'cv', 'partial', 'partial_bohb']:
             raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)

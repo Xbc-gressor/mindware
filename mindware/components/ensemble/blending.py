@@ -59,6 +59,15 @@ class Blending(BaseEnsembleModel):
                 from lightgbm import LGBMRegressor
                 self.meta_learner = LGBMRegressor(max_depth=4, learning_rate=0.05, n_estimators=70, n_jobs=1)
 
+    def get_path(self, algo_id, model_cnt):
+
+        if algo_id in ['extra_trees']:
+            _path = os.path.join(self.output_dir, '%s-blending-model%d.joblib' % (self.timestamp, model_cnt))
+        else:
+            _path = os.path.join(self.output_dir, '%s-blending-model%d.pkl' % (self.timestamp, model_cnt))
+
+        return _path
+
     def fit(self, data):
         # Split training data for phase 1 and phase 2
         test_size = 0.2
@@ -73,9 +82,8 @@ class Blending(BaseEnsembleModel):
             for idx, (config, _, path) in enumerate(model_to_eval):
 
                 if self.base_model_mask[model_cnt] == 1:
+                    op_list, model, _ = CombinedTopKModelSaver._load(path)
 
-                    with open(path, 'rb') as f:
-                        op_list, model, _ = pkl.load(f)
                     _node = data.copy_()
 
                     _node = construct_node(_node, op_list, mode='train')
@@ -91,11 +99,7 @@ class Blending(BaseEnsembleModel):
                     estimator = fetch_predict_estimator(self.task_type, algo_id, config, x_p1, y_p1,
                                                         weight_balance=_node.enable_balance,
                                                         data_balance=_node.data_balance)
-
-                    if algo_id in ['extra_trees']:
-                        _path = os.path.join(self.output_dir, '%s-blending-model%d.joblib' % (self.timestamp, model_cnt))
-                    else:
-                        _path = os.path.join(self.output_dir, '%s-blending-model%d.pkl' % (self.timestamp, model_cnt))
+                    _path = self.get_path(algo_id, model_cnt)
                     CombinedTopKModelSaver._save(items=estimator, save_path=_path)
 
                     if self.task_type in CLS_TASKS:
@@ -137,15 +141,12 @@ class Blending(BaseEnsembleModel):
             model_to_eval = self.stats[algo_id]
             for idx, (config, _, path) in enumerate(model_to_eval):
                 if self.base_model_mask[model_cnt] == 1:
-                    with open(path, 'rb') as f:
-                        op_list, model, _ = pkl.load(f)
+                    op_list, model, _ = CombinedTopKModelSaver._load(path)
                     _node = data.copy_()
 
                     _node = construct_node(_node, op_list)
-
-                    with open(os.path.join(self.output_dir, '%s-blending-model%d' % (self.timestamp, model_cnt)),
-                              'rb') as f:
-                        estimator = pkl.load(f)
+                    _path = self.get_path(algo_id, model_cnt)
+                    estimator = CombinedTopKModelSaver._load(_path)
                     if self.task_type in CLS_TASKS:
                         pred = estimator.predict_proba(_node.data[0])
                         n_dim = np.array(pred).shape[1]
@@ -191,7 +192,7 @@ class Blending(BaseEnsembleModel):
             model_to_eval = self.stats[algo_id]
             for idx, (config, _, _) in enumerate(model_to_eval):
                 if not hasattr(self, 'base_model_mask') or self.base_model_mask[model_cnt] == 1:
-                    model_path = os.path.join(self.output_dir, '%s-blending-model%d' % (self.timestamp, model_cnt))
+                    model_path = self.get_path(algo_id, model_cnt)
                     ens_config.append((algo_id, config, model_path))
                 model_cnt += 1
         ens_info['ensemble_method'] = 'blending'

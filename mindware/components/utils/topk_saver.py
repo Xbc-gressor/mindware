@@ -5,9 +5,8 @@ import hashlib
 
 
 def load_combined_transformer_estimator(model_dir, config, timestamp):
-    model_path = os.path.join(model_dir, '%s_%s.pkl' % (timestamp, CombinedTopKModelSaver.get_configuration_id(config)))
-    with open(model_path, 'rb') as f:
-        op_list, model, _ = pkl.load(f)
+    model_path = CombinedTopKModelSaver.get_path_by_config(model_dir, config, timestamp)
+    op_list, model, _ = CombinedTopKModelSaver._load(model_path)
     return op_list, model
 
 
