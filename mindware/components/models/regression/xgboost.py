@@ -1,5 +1,4 @@
 import numpy as np
-import xgboost as xgb
 from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
     UniformIntegerHyperparameter
@@ -25,6 +24,7 @@ class XGBoostRegressor(BaseRegressionModel):
         self.estimator = None
 
     def fit(self, X, Y, sample_weight=None):
+        import xgboost as xgb
         self.n_estimators = int(self.n_estimators)
         self.learning_rate = float(self.learning_rate)
         self.max_depth = int(self.max_depth)

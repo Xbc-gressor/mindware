@@ -37,9 +37,12 @@ class DataNode(object):
         y = np.vstack((y1, y2))
         return DataNode(data=[X, y], feature_type=feat_types)
 
-    def copy_(self):
-        new_data = list([self.data[0].copy()])
-        new_data.append(None if self.data[1] is None else self.data[1].copy())
+    def copy_(self, no_data=False):
+        if no_data:
+            new_data = [None, None]
+        else:
+            new_data = list([self.data[0].copy()])
+            new_data.append(None if self.data[1] is None else self.data[1].copy())
         new_node = DataNode(new_data, self.feature_types.copy() if self.feature_types is not None else None, self.task_type,
                             self.feature_names.copy() if self.feature_names is not None else None)
         new_node.trans_hist = self.trans_hist.copy()

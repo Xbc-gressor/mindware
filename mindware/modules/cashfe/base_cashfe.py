@@ -1,6 +1,5 @@
 import os
-import time
-import numpy as np
+import json
 from typing import List, Union, Callable
 from copy import deepcopy
 
@@ -22,7 +21,7 @@ class BaseCASHFE(BaseAutoML):
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1,
                  ensemble_method=None, ensemble_size=5,
-                 include_preprocessors=None):
+                 include_preprocessors=None, task_id='test'):
 
         super(BaseCASHFE, self).__init__(
             name='cashfe', task_type=task_type,
@@ -31,10 +30,10 @@ class BaseCASHFE(BaseAutoML):
             optimizer=optimizer, inner_iter_num_per_iter=inner_iter_num_per_iter,
             time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=per_run_time_limit,
             output_dir=output_dir, seed=seed, n_jobs=n_jobs,
-            ensemble_method=ensemble_method, ensemble_size=ensemble_size
+            ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
         )
 
-        if optimizer not in ['smac', 'tpe', 'random_search', 'mab']:
+        if optimizer not in ['smac', 'tpe', 'random_search', 'mab', 'block_0', 'block_1', 'block_2', 'block_3', 'block_4']:
             raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
         if sub_optimizer not in ['smac', 'tpe', 'random_search']:
             raise ValueError('Invalid sub_optimizer: %s for CASH!' % sub_optimizer)
@@ -42,8 +41,8 @@ class BaseCASHFE(BaseAutoML):
             raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
 
         self.include_algorithms = include_algorithms
-        path = 'CASHFE-%s(%d)-%s_%s' % (
-            optimizer, self.seed, self.evaluation, self.datetime
+        path = 'CASHFE-%s(%d)-%s_%s_%s' % (
+            optimizer, self.seed, self.evaluation, self.task_id, self.datetime
         )
         self.output_dir = os.path.join(output_dir, path)
         if not os.path.exists(self.output_dir):
@@ -57,7 +56,7 @@ class BaseCASHFE(BaseAutoML):
         self.cs = get_cash_cs(include_algorithms, self.task_type, **cs_args)
         fe_config_space = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal)
 
-        if self.optimizer_name != 'mab':
+        if self.optimizer_name != 'mab' and not self.optimizer_name.startswith('block'):
             tmp_cs = deepcopy(fe_config_space)
             self.cs.add_hyperparameters(tmp_cs.get_hyperparameters())
             self.cs.add_conditions(tmp_cs.get_conditions())
@@ -89,7 +88,7 @@ class BaseCASHFE(BaseAutoML):
                 output_dir=self.output_dir,
                 seed=self.seed)
 
-        self.optimizer = self.build_optimizer('cashfe', sub_optimizer=sub_optimizer, fe_config_space=fe_config_space)
+        self.optimizer = self.build_optimizer(name='cashfe', sub_optimizer=sub_optimizer, fe_config_space=fe_config_space)
 
         pass
 
@@ -97,3 +96,14 @@ class BaseCASHFE(BaseAutoML):
         logger_name = 'MindWare-CASHFE-task_type%d-%s(%d)' % (self.task_type, optimizer_name, self.seed)
         setup_logger(os.path.join(self.output_dir, '%s.log' % str(logger_name)))
         return get_logger(logger_name)
+
+    def get_conf(self, save=False):
+
+        conf = super(BaseCASHFE, self).get_conf()
+        conf['include_algorithms'] = self.cs['algorithm'].choices
+
+        if save:
+            with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:
+                json.dump(conf, f, indent=4)
+
+        return conf

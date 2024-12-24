@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import datetime
 import numpy as np
 import pickle as pkl
@@ -40,7 +41,7 @@ class BaseAutoML(object):
                  optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=None, n_jobs=1,
-                 ensemble_method=None, ensemble_size=5):
+                 ensemble_method=None, ensemble_size=5, task_id='test'):
 
         self.name = name
 
@@ -95,11 +96,39 @@ class BaseAutoML(object):
         self.already_refit = False
 
         self.logger = None
+        self.task_id = task_id
 
     def _get_logger(self, name):
         raise NotImplementedError()
 
     def build_optimizer(self, name='hpo', **kwargs):
+
+        if self.optimizer_name.startswith("block"):
+            tree_id = int(self.optimizer_name.split('_')[1])
+            from mindware.components.optimizers.block_optimizers.block_opt_utils import get_opt_execution_tree, get_opt_node_type
+            tree = get_opt_execution_tree(tree_id)
+            
+            if self.evaluation == 'partial':
+                sub_optimizer = 'mfse'
+            elif self.evaluation == 'partial_bohb':
+                sub_optimizer = 'bohb'
+            else:
+                sub_optimizer = kwargs.get('sub_optimizer', 'smac')
+
+            fe_config_space = kwargs.get('fe_config_space', None)
+
+            optimizer = get_opt_node_type(tree, 0)(
+                node_list=tree, node_index=0,
+                evaluator=self.evaluator, cash_config_space=self.cs, name=name, eval_type=self.evaluation,
+                time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
+                per_run_time_limit=self.per_run_time_limit,
+                inner_iter_num_per_iter=self.inner_iter_num_per_iter,timestamp=self.timestamp,
+                sub_optimizer=sub_optimizer, fe_config_space=fe_config_space,
+                output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs,
+            )
+
+            return optimizer
+
 
         opt_paras = {}
         if self.optimizer_name == 'mab':
@@ -128,13 +157,11 @@ class BaseAutoML(object):
                 raise ValueError("Invalid optimizer %s" % self.optimizer_name)
 
         optimizer = optimizer_class(
-            evaluator=self.evaluator, config_space=self.cs, name=name,
-            eval_type=self.evaluation,
+            evaluator=self.evaluator, config_space=self.cs, name=name, eval_type=self.evaluation,
             time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
             per_run_time_limit=self.per_run_time_limit,
-            output_dir=self.output_dir, timestamp=self.timestamp,
-            inner_iter_num_per_iter=self.inner_iter_num_per_iter,
-            seed=self.seed, n_jobs=self.n_jobs,
+            inner_iter_num_per_iter=self.inner_iter_num_per_iter,timestamp=self.timestamp,
+            output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs,
             **opt_paras
         )
 
@@ -152,7 +179,7 @@ class BaseAutoML(object):
         self.early_stop_flag = self.optimizer.early_stopped_flag
 
         self.incumbent_perf = self.optimizer.incumbent_perf
-        self.incumbent = self.optimizer.incumbent_config.get_dictionary().copy()
+        self.incumbent = self.optimizer.incumbent_config
         self.eval_dict = self.optimizer.eval_dict
         return self.incumbent_perf
 
@@ -370,11 +397,36 @@ class BaseAutoML(object):
             raise AttributeError("predict_proba is not supported in regression")
         return self._predict(test_data)
 
-    def get_model_info(self):
+    def get_model_info(self, save=False):
         model_info = dict()
         if self.es is not None:
             model_info['ensemble'] = self.es.get_ens_model_info()
         path = os.path.join(self.output_dir, '%s_%s.pkl' % (self.datetime, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
         model_info['best'] = (self.incumbent['algorithm'], self.incumbent, path)
 
+        opt_trajectory = self.optimizer.get_opt_trajectory()
+        if opt_trajectory is not None:
+            model_info['opt_trajectory'] = opt_trajectory
+
+        if save:
+            with open(os.path.join(self.output_dir, 'best_model_info.json'), 'w') as f:
+                json.dump(model_info, f, indent=4)
+
         return model_info
+
+    def get_conf(self):
+        # 获取对象的配置信息
+        conf = {
+            'name': self.name,
+            'task_type': self.task_type,
+            'task_id': self.task_id,
+            'metric': str(self.metric),
+            'optimizer': self.optimizer_name,
+            'time_limit': self.time_limit,
+            'per_run_time_limit': self.per_run_time_limit,
+            'evaluation': self.evaluation,
+            'seed': self.seed,
+            'if_imbal': self.if_imbal
+        }
+
+        return conf

@@ -10,6 +10,7 @@ from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
 
 from mindware.components.config_space.cs_builder import get_hpo_cs
+import json
 
 
 class BaseHPO(BaseAutoML):
@@ -19,7 +20,7 @@ class BaseHPO(BaseAutoML):
                  optimizer='smac',
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1,
-                 ensemble_method=None, ensemble_size=5):
+                 ensemble_method=None, ensemble_size=5, task_id='test'):
 
         super(BaseHPO, self).__init__(
             name='hpo', task_type=task_type,
@@ -28,18 +29,18 @@ class BaseHPO(BaseAutoML):
             optimizer=optimizer, inner_iter_num_per_iter=1,
             time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=per_run_time_limit,
             output_dir=output_dir, seed=seed, n_jobs=n_jobs,
-            ensemble_method=ensemble_method, ensemble_size=ensemble_size
+            ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
         )
 
-        if optimizer not in ['smac', 'tpe', 'random_search']:
+        if optimizer not in ['smac', 'tpe', 'random_search', 'block_0']:
             raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
         if evaluation not in ['holdout', 'cv', 'partial', 'partial_bohb']:
             raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
 
         self.estimator_id = estimator_id
 
-        path = 'HPO(%s)-%s(%d)-%s_%s' % (
-            self.estimator_id, optimizer, self.seed, self.evaluation, self.datetime
+        path = 'HPO(%s)-%s(%d)-%s_%s_%s' % (
+            self.estimator_id, optimizer, self.seed, self.evaluation, self.task_id, self.datetime
         )
         self.output_dir = os.path.join(output_dir, path)
         if not os.path.exists(self.output_dir):
@@ -79,9 +80,20 @@ class BaseHPO(BaseAutoML):
                 output_dir=self.output_dir,
                 seed=self.seed)
 
-        self.optimizer = self.build_optimizer('hpo')
+        self.optimizer = self.build_optimizer(name='hpo')
 
     def _get_logger(self, optimizer_name):
         logger_name = 'MindWare-HPO-%s-%s(%d)' % (self.estimator_id, optimizer_name, self.seed)
         setup_logger(os.path.join(self.output_dir, '%s.log' % str(logger_name)))
         return get_logger(logger_name)
+
+    def get_conf(self, save=False):
+
+        conf = super(BaseHPO, self).get_conf()
+        conf['estimator_id'] = self.estimator_id
+
+        if save:
+            with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:
+                json.dump(conf, f, indent=4)
+
+        return conf

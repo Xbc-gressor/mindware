@@ -7,24 +7,49 @@ from mindware.utils.constant import MAX_INT
 from mindware.utils.logging_utils import get_logger
 from mindware.components.evaluators.base_evaluator import _BaseEvaluator
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
+from ConfigSpace.configuration_space import ConfigurationSpace
 
 
 class BaseOptimizer(object):
-    def __init__(self, evaluator: _BaseEvaluator, config_space, name, timestamp, eval_type, output_dir=None, seed=None):
+    def __init__(self, evaluator: _BaseEvaluator, config_space, name, eval_type, 
+                 time_limit=None, evaluation_limit=None,
+                 per_run_time_limit=300, per_run_mem_limit=1024, 
+                 inner_iter_num_per_iter=1, timestamp=None, 
+                 output_dir='./', seed=None):
         self.evaluator = evaluator
         self.config_space = config_space
 
-        assert name in ['hpo', 'fe', 'cash', 'cashfe']
+        self.time_limit = time_limit
+        self.evaluation_num_limit = evaluation_limit
+        self.inner_iter_num_per_iter = inner_iter_num_per_iter
+        self.per_run_time_limit = per_run_time_limit
+        self.per_run_mem_limit = per_run_mem_limit
+
+        self.configs = list()
+        self.perfs = list()
+        self.incumbent_perf = float("-INF")
+        if isinstance(self.config_space, ConfigurationSpace):
+            self.incumbent_config = self.config_space.get_default_configuration()
+        elif isinstance(self.config_space, tuple):
+            tmp = {}
+            for cs in self.config_space:
+                if isinstance(cs, ConfigurationSpace):
+                    tmp.update(cs.get_default_configuration().get_dictionary().copy())
+        self.eval_dict = dict()
+        
+        assert name in ['hpo', 'hpofe', 'fe', 'cash', 'cashfe']
         self.name = name
         self.seed = np.random.random_integers(MAX_INT) if seed is None else seed
         self.start_time = time.time()
         self.timing_list = list()
-        self.incumbent = None
         self.eval_type = eval_type
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
         self.init_hpo_iter_num = None
         self.early_stopped_flag = False
+        self.timeout_flag = False
         self.timestamp = timestamp
+        if self.timestamp is None:
+            self.timestamp = time.time()
         self.output_dir = output_dir
         self.topk_saver = CombinedTopKModelSaver(
             k=50, model_dir=self.output_dir,
@@ -91,3 +116,6 @@ class BaseOptimizer(object):
 
     def gc(self):
         return
+
+    def get_opt_trajectory(self):
+        return None

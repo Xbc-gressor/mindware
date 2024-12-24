@@ -41,7 +41,7 @@ class CASHFERGSEvaluator(BaseRGSEvaluator):
         )
 
     def _get_parse_data_node(self, config, record=True):
-        data_node, op_list = parse_config(self.train_node, config, record=record, if_imbal=self.if_imbal)
+        data_node, op_list = parse_config(self.train_node, config, record=record)
         _val_node = self.val_node.copy_()
         _val_node = construct_node(_val_node, op_list)
 

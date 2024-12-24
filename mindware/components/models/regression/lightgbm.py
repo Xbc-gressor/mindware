@@ -30,7 +30,7 @@ class LightGBM(BaseRegressionModel):
     def fit(self, X, y):
         from lightgbm import LGBMRegressor
 
-        print(f"Initial shape of X: {X.shape}, y: {len(y)}")
+        # print(f"Initial shape of X: {X.shape}, y: {len(y)}")
 
         if self.augment_data == 1:
             print("Augmenting data...")
@@ -39,7 +39,7 @@ class LightGBM(BaseRegressionModel):
             print(f"Data types after augmentation: {pd.DataFrame(X).dtypes}")
 
         self.features = X.shape[1]  # 保存特征数量
-        print(f"Training LightGBM Regressor model with {self.features} features")
+        # print(f"Training LightGBM Regressor model with {self.features} features")
 
         self.estimator = LGBMRegressor(num_leaves=self.num_leaves,
                                        learning_rate=self.learning_rate,

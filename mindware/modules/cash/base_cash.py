@@ -1,5 +1,5 @@
 import os
-import time
+import json
 from typing import List, Union, Callable
 from sklearn.metrics._scorer import _BaseScorer
 import numpy as np
@@ -19,7 +19,7 @@ class BaseCASH(BaseAutoML):
                  optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1,
-                 ensemble_method=None, ensemble_size=5):
+                 ensemble_method=None, ensemble_size=5, task_id='test'):
 
         super(BaseCASH, self).__init__(
             name='cash', task_type=task_type,
@@ -28,10 +28,10 @@ class BaseCASH(BaseAutoML):
             optimizer=optimizer, inner_iter_num_per_iter=inner_iter_num_per_iter,
             time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=per_run_time_limit,
             output_dir=output_dir, seed=seed, n_jobs=n_jobs,
-            ensemble_method=ensemble_method, ensemble_size=ensemble_size
+            ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
         )
 
-        if optimizer not in ['smac', 'tpe', 'random_search', 'mab']:
+        if optimizer not in ['smac', 'tpe', 'random_search', 'mab', 'block_0', 'block_1']:
             raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
         if sub_optimizer not in ['smac', 'tpe', 'random_search']:
             raise ValueError('Invalid sub_optimizer: %s for CASH!' % sub_optimizer)
@@ -39,8 +39,8 @@ class BaseCASH(BaseAutoML):
             raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
 
         self.include_algorithms = include_algorithms
-        path = 'CASH-%s(%d)-%s_%s' % (
-            optimizer, self.seed, self.evaluation, self.datetime
+        path = 'CASH-%s(%d)-%s_%s_%s' % (
+            optimizer, self.seed, self.evaluation, self.task_id, self.datetime
         )
         self.output_dir = os.path.join(output_dir, path)
         if not os.path.exists(self.output_dir):
@@ -79,11 +79,20 @@ class BaseCASH(BaseAutoML):
                 output_dir=self.output_dir,
                 seed=self.seed)
 
-        self.optimizer = self.build_optimizer('cash', sub_optimizer=sub_optimizer)
-
-        pass
+        self.optimizer = self.build_optimizer(name='cash', sub_optimizer=sub_optimizer)
 
     def _get_logger(self, optimizer_name):
         logger_name = 'MindWare-CASH-task_type%d-%s(%d)' % (self.task_type, optimizer_name, self.seed)
         setup_logger(os.path.join(self.output_dir, '%s.log' % str(logger_name)))
         return get_logger(logger_name)
+
+    def get_conf(self, save=False):
+
+        conf = super(BaseCASH, self).get_conf()
+        conf['include_algorithms'] = self.cs['algorithm'].choices
+
+        if save:
+            with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:
+                json.dump(conf, f, indent=4)
+
+        return conf

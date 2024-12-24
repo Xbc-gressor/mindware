@@ -25,7 +25,7 @@ class LightGBM(BaseClassificationModel):
         # self.subsample = 0.85
         # self.min_child_samples = 1000
         # self.colsample_bytree = 1.0
-        # self.augment_data = 1
+        # self.augment_data = 0
         
         
         self.random_state = random_state
@@ -51,7 +51,7 @@ class LightGBM(BaseClassificationModel):
             X, y = self.augment_data_func(X, y)
             print(f"Shape after augment_data_func - X: {X.shape}, y: {len(y)}")
 
-        print(f"Training LightGBM model with {X.shape[1]} features")
+        # print(f"Training LightGBM model with {X.shape[1]} features")
 
         self.estimator = LGBMClassifier(num_leaves=self.num_leaves,
                                         max_depth=self.max_depth,
@@ -80,8 +80,7 @@ class LightGBM(BaseClassificationModel):
             y_pred = self.predict_for_each_feature(X, mode="predict")
         else:
             y_pred = self.estimator.predict(X)
-        print("predict y_pred.shape: ")
-        print(y_pred.shape)
+
         return y_pred
 
     def predict_proba(self, X):
@@ -92,8 +91,6 @@ class LightGBM(BaseClassificationModel):
             y_pred = self.predict_for_each_feature(X, mode="predict_proba")
         else:
             y_pred = self.estimator.predict_proba(X)
-        print("predict_proba y_pred.shape: ")
-        print(y_pred.shape)
         return y_pred
 
     def predict_for_each_feature(self, X, mode="predict_proba"):
