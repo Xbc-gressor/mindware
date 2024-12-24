@@ -9,6 +9,7 @@ from mindware.components.ensemble.base_ensemble import BaseEnsembleModel
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
 from mindware.components.feature_engineering.parse import construct_node
+from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 
 
 class Stacking(BaseEnsembleModel):
@@ -90,9 +91,12 @@ class Stacking(BaseEnsembleModel):
                         estimator = fetch_predict_estimator(self.task_type, algo_id, config, x_p1, y_p1,
                                                             weight_balance=data.enable_balance,
                                                             data_balance=data.data_balance)
-                        with open(os.path.join(self.output_dir, '%s-model%d_part%d' % (self.timestamp, model_cnt, j)),
-                                  'wb') as f:
-                            pkl.dump(estimator, f)
+                        if algo_id in ['extra_trees']:
+                            _path = os.path.join(self.output_dir, '%s-stacking-model%d_part%d.joblib' % (self.timestamp, model_cnt, j))
+                        else:
+                            _path = os.path.join(self.output_dir, '%s-stacking-model%d_part%d.pkl' % (self.timestamp, model_cnt, j))
+                        CombinedTopKModelSaver._save(items=estimator, save_path=_path)
+
                         if self.task_type in CLS_TASKS:
                             pred = estimator.predict_proba(x_p2)
                             n_dim = np.array(pred).shape[1]

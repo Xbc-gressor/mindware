@@ -10,6 +10,7 @@ from mindware.components.feature_engineering.parse import construct_node
 
 from mindware.components.feature_engineering.parse import parse_config
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
+from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 
 
 class EnsembleSelection(BaseEnsembleModel):
@@ -320,6 +321,6 @@ class EnsembleSelection(BaseEnsembleModel):
                                                         _node.data[0], _node.data[1],
                                                         weight_balance=_node.enable_balance,
                                                         data_balance=_node.data_balance)
-                    with open(model_path, 'wb') as f:
-                        pkl.dump((op_list, estimator, perf), f)
+                    
+                    CombinedTopKModelSaver._save((op_list, estimator, perf), model_path)
                 model_cnt += 1

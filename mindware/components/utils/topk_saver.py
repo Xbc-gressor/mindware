@@ -1,5 +1,6 @@
 import os
 import pickle as pkl
+import joblib
 import hashlib
 
 
@@ -47,7 +48,41 @@ class CombinedTopKModelSaver(BaseTopKModelSaver):
 
     @staticmethod
     def get_path_by_config(output_dir, config, identifier):
-        return os.path.join(output_dir, '%s_%s.pkl' % (identifier, CombinedTopKModelSaver.get_configuration_id(config)))
+        if config['algorithm'] in ['extra_trees']:
+            return os.path.join(output_dir, '%s_%s.joblib' % (identifier, CombinedTopKModelSaver.get_configuration_id(config)))
+        else:
+            return os.path.join(output_dir, '%s_%s.pkl' % (identifier, CombinedTopKModelSaver.get_configuration_id(config)))
+    
+    @staticmethod
+    def _save(items, save_path: str):
+        if save_path.endswith('joblib'):
+            with open(save_path, 'wb') as f:
+                joblib.dump(items, f, compress=True)
+        elif save_path.endswith('pkl'):
+            with open(save_path, 'wb') as f:
+                pkl.dump(items, f)
+        else:
+            raise ValueError("Invalid config path: %s", save_path)
+
+    @staticmethod
+    def _load(load_path: str):
+        if load_path.endswith('joblib'):
+            with open(load_path, 'rb') as f:
+                return joblib.load(f)
+        elif load_path.endswith('pkl'):
+            with open(load_path, 'rb') as f:
+                return pkl.load(f)
+        else:
+            raise ValueError("Invalid config path: %s", load_path)
+
+    @staticmethod
+    def save_config(items, save_path):
+        if not os.path.exists(save_path):
+            CombinedTopKModelSaver._save(items=items, save_path=save_path)
+        else:
+            _, _, perf = CombinedTopKModelSaver._load(load_path=save_path)
+            if items[2] > perf:
+                CombinedTopKModelSaver._save(items=items, save_path=save_path)
 
     def add(self, config, perf, estimator_id):
         """

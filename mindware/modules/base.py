@@ -224,10 +224,8 @@ class BaseAutoML(object):
                                                 weight_balance=data_node.enable_balance,
                                                 data_balance=data_node.data_balance)
 
-            model_path = os.path.join(self.output_dir, '%s_%s.pkl' % (
-                self.datetime, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
-            with open(model_path, 'wb') as f:
-                pkl.dump([op_list, estimator, -self.incumbent_perf], f)
+            model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, self.incumbent, self.datetime)
+            CombinedTopKModelSaver._save([op_list, estimator, self.incumbent_perf], model_path)
 
     # train with whole data
     def refit(self):
@@ -264,8 +262,7 @@ class BaseAutoML(object):
                                                         data_node.data[0], data_node.data[1],
                                                         weight_balance=data_node.enable_balance,
                                                         data_balance=data_node.data_balance)
-                    with open(path, 'wb') as f:
-                        pkl.dump([op_list, estimator, perf], f)
+                    CombinedTopKModelSaver._save([op_list, estimator, perf], path)
                 except:
                     self.logger.error("Failed to refit for %s !" % path)
 

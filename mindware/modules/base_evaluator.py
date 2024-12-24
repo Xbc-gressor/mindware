@@ -12,7 +12,6 @@ from mindware.utils.logging_utils import get_logger
 from mindware.components.evaluators.base_evaluator import _BaseEvaluator
 from mindware.components.evaluators.evaluate_func import validation
 
-from mindware.components.feature_engineering.parse import parse_config, construct_node
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 
 from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
@@ -43,7 +42,7 @@ class BaseEvaluator(_BaseEvaluator):
         self.train_node = None
         self.val_node = None
 
-        self.timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
+        self.datetime = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
     def get_fit_params(self, y, estimator):
         from mindware.components.utils.balancing import get_weights
@@ -247,17 +246,8 @@ class BaseEvaluator(_BaseEvaluator):
         if 'holdout' in self.resampling_strategy or 'partial' in self.resampling_strategy:
 
             if np.isfinite(score) and downsample_ratio == 1:
-                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.timestamp)
-
-                if not os.path.exists(model_path):
-                    with open(model_path, 'wb') as f:
-                        pkl.dump([op_list, estimator, score], f)
-                else:
-                    with open(model_path, 'rb') as f:
-                        _, _, perf = pkl.load(f)
-                    if score > perf:
-                        with open(model_path, 'wb') as f:
-                            pkl.dump([op_list, estimator, score], f)
+                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
+                CombinedTopKModelSaver.save_config([op_list, estimator, score], model_path)
 
                 self.logger.info("Model saved to %s" % model_path)
 

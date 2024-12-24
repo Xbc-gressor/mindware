@@ -8,6 +8,7 @@ from mindware.components.ensemble.base_ensemble import BaseEnsembleModel
 from mindware.components.feature_engineering.parse import construct_node
 
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
+from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from functools import reduce
 
 
@@ -92,6 +93,6 @@ class Bagging(BaseEnsembleModel):
                                                         _node.data[0], _node.data[1],
                                                         weight_balance=_node.enable_balance,
                                                         data_balance=_node.data_balance)
-                    with open(model_path, 'wb') as f:
-                        pkl.dump((op_list, estimator, perf), f)
+                    CombinedTopKModelSaver._save(items=[op_list, estimator, perf], save_path=model_path)
+                    
                 model_cnt += 1
