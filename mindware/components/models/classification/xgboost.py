@@ -63,8 +63,7 @@ class XGBoostClassifier(BaseClassificationModel):
             reg_lambda=self.reg_lambda,
             random_state=self.random_state
         )
-        # self.classes_ = np.unique(y)
-        self.classes_ = np.array([[1,0],[0,1]])
+        self.classes_ = np.unique(Y)
         estimator.fit(X, Y, sample_weight=sample_weight)
 
         self.estimator = estimator

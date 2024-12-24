@@ -53,8 +53,7 @@ if __name__ == '__main__':
 
     dm = DataManager()
 
-    _train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), ignore_columns=['ID'],
-                                         label_name='TARGET')
+    _train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train.csv'), drop_index=[0])
     train_data_node = dm.preprocess_fit(_train_data_node, task_type, x_encode=x_encode)
 
     test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'))

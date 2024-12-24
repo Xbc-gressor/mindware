@@ -40,8 +40,7 @@ class LightGBM(BaseClassificationModel):
 
     def fit(self, X, y):
         from lightgbm import LGBMClassifier
-        # self.classes_ = np.unique(y)
-        self.classes_ = np.array([[1,0],[0,1]])
+        self.classes_ = np.unique(y)
         print(f"Initial shape of X: {X.shape}, y: {len(y)}")
 
         if self.augment_data == 1:
