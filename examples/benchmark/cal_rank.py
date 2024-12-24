@@ -35,8 +35,30 @@ def parse_data(file_path):
             datas = results[task_type][dataset]
             # Sort algorithms based on scores, higher scores get higher ranks
             sorted_scores = sorted(datas.items(), key=lambda x: x[1], reverse=True)
+            rankings = {}
+            current_rank = 1
+            items_at_rank = 0  # 追踪当前排名的项数
+
+            # 处理第一个元素
+            previous_value = sorted_scores[0][1]
+            rankings[sorted_scores[0][0]] = current_rank
+            items_at_rank += 1
+
+            # 遍历排序后的元素，从第二个开始
+            for name, value in sorted_scores[1:]:
+                if value == previous_value:
+                    # 如果当前值与前一个值相同，则使用相同的排名
+                    rankings[name] = current_rank
+                    items_at_rank += 1
+                else:
+                    # 如果当前值不同，则更新排名，排名应该是当前排名加上当前排名项的数量
+                    current_rank += items_at_rank
+                    rankings[name] = current_rank
+                    previous_value = value
+                    items_at_rank = 1  # 重置当前排名的项数
+        
             # Assign ranks
-            ranks[task_type][dataset] = {alg: rank + 1 for rank, (alg, score) in enumerate(sorted_scores)}
+            ranks[task_type][dataset] = rankings
 
     return results, ranks
 
