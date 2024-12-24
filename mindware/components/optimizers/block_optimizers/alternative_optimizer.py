@@ -29,6 +29,8 @@ class AlternativeOptimizer(BaseOptimizer):
         assert cash_config_space is not None
         assert fe_config_space is not None
 
+        self.mode = 0
+
         self.node_list = node_list
         self.node_index = node_index
         self.sub_optimizer = sub_optimizer
@@ -149,6 +151,7 @@ class AlternativeOptimizer(BaseOptimizer):
         self.eval_dict.update(self.sub_bandits[arm_to_pull].eval_dict)
         self.rewards[arm_to_pull].append(reward)
         self.evaluation_cost[arm_to_pull].append(iter_cost)
+        pre_local_inc = self.local_inc[arm_to_pull].copy()
         self.local_inc[arm_to_pull] = self.sub_bandits[arm_to_pull].incumbent_config
 
         # Update global incumbent from FE and HPO.
@@ -178,9 +181,17 @@ class AlternativeOptimizer(BaseOptimizer):
                         self.logger.info('Initial hp_config for FE has changed!')
                     self.init_config['hpo'] = cur_inc
 
+            if self.mode == 0:
+                # Evaluate joint result here
+                # Alter-HPO specific
+                if arm_to_pull == 'fe' and self.sub_bandits['fe'].evaluator.fixed_config != self.local_inc['hpo']:
+                    self.logger.info("Evaluate joint performance in node %s" % self.node_index)
+                    self.evaluate_joint_perf()
+
+        if self.mode == 1:
             # Evaluate joint result here
             # Alter-HPO specific
-            if arm_to_pull == 'fe' and self.sub_bandits['fe'].evaluator.fixed_config != self.local_inc['hpo']:
+            if arm_to_pull == 'fe' and self.local_inc[arm_to_pull] != pre_local_inc and self.sub_bandits['fe'].evaluator.fixed_config != self.local_inc['hpo']:
                 self.logger.info("Evaluate joint performance in node %s" % self.node_index)
                 self.evaluate_joint_perf()
 

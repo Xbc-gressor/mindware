@@ -47,34 +47,37 @@ def get_cash_cs(include_algorithms=None, task_type=CLASSIFICATION, **cs_args):
 
 def get_hpo_cs(estimator_id, task_type, **cs_args):
 
-    _cs_args = get_cs_args(**cs_args)
-
     if task_type in CLS_TASKS:
         _candidates = get_combined_candidtates(_classifiers, _cls_addons)
     else:
         _candidates = get_combined_candidtates(_regressors, _rgs_addons)
 
-    if estimator_id in _candidates:
-        rgs_class = _candidates[estimator_id]
-    else:
+    if estimator_id not in _candidates:
         raise ValueError("Algorithm %s not supported!" % estimator_id)
+    
+    cash_cs = get_cash_cs(include_algorithms=[estimator_id], task_type=task_type, **cs_args)
 
     cs = ConfigurationSpace()
-    algo = CategoricalHyperparameter('algorithm', [estimator_id])
-    cs.add_hyperparameter(algo)
-
-    tmp_cs = rgs_class.get_hyperparameter_search_space(**_cs_args)
-    parent_hyperparameter = {'parent': algo, 'value': estimator_id}
-    cs.add_configuration_space(estimator_id, tmp_cs, parent_hyperparameter=parent_hyperparameter)
-    
-    # tmp_cs = rgs_class.get_hyperparameter_search_space()
-    # cs = ConfigurationSpace()
-    # cs.add_hyperparameter(Constant('algorithm', estimator_id))
-
-    # for hyper in tmp_cs.get_hyperparameters():
-    #     hyper.name = '%s:%s' % (estimator_id, hyper.name)
-    #     cs.add_hyperparameter(hyper)
-
+    cs.add_hyperparameter(Constant('algorithm', estimator_id))
+    # Add active hyperparameters
+    hps = cash_cs.get_hyperparameters()
+    for hp in hps:
+        if hp.name.split(':')[0] == estimator_id:
+            cs.add_hyperparameter(hp)
+    # Add active conditions
+    conds = cash_cs.get_conditions()
+    for cond in conds:
+        try:
+            cs.add_condition(cond)
+        except:
+            pass
+    # Add active forbidden clauses
+    forbids = cash_cs.get_forbiddens()
+    for forbid in forbids:
+        try:
+            cs.add_forbidden_clause(forbid)
+        except:
+            pass
 
     return cs
 
