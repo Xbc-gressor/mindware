@@ -3,6 +3,10 @@ import numpy as np
 from rgs_benchmark import chosen_datasets_info as rgs_info
 from cls_benchmark import chosen_datasets_info as cls_info
 
+
+# rank_fields = ['cashfe_best', 'cashfe_ens', 'cashfe-block_1_best', 'cashfe-block_1_ens']  # 比较mab和block_1
+rank_fields = ['cashfe-block_1_ens', 'autogluon_ens']  # 比较mab和block_1
+
 def parse_data(file_path):
     results = {
         "CLS": {},
@@ -15,7 +19,7 @@ def parse_data(file_path):
             if '---------------' in line:
                 break
         for line in file:  # Continue reading after the '---------------'
-            match = re.match(r"(CLS|RGS): (cashfe|cash), (\w+): (-?\d+\.\d+), (-?\d+\.\d+)", line)
+            match = re.match(r"(CLS|RGS): (cashfe|cash|cashfe-block_0|cashfe-block_1|cashfe-block_2|autogluon), (\w+): (-?\d+\.\d+), (-?\d+\.\d+)", line)
             if match:
                 task_type, algorithm, dataset, best, ens = match.groups()
                 if dataset not in results[task_type]:
@@ -32,7 +36,10 @@ def parse_data(file_path):
             if dataset not in ranks[task_type]:
                 ranks[task_type][dataset] = {}
                 
-            datas = results[task_type][dataset]
+            datas = {key: value for key, value in results[task_type][dataset].items() if key in rank_fields}
+            if len(datas) < len(rank_fields):
+                print(f"Missing data for {task_type} {dataset}", datas)
+                continue
             # Sort algorithms based on scores, higher scores get higher ranks
             sorted_scores = sorted(datas.items(), key=lambda x: x[1], reverse=True)
             rankings = {}
@@ -71,17 +78,18 @@ def calculate_averages(results):
             print(f"{task_type} {algorithm} average ens: {avg_ens}")
 
 # Replace 'path_to_your_file.txt' with the actual path to your data file
-file_path = '/root/mindware/examples/benchmark/results.txt'
+file_path = './results.txt'
 results, ranks = parse_data(file_path)
 
 from prettytable import PrettyTable
 table = PrettyTable()
-headers = ["Task Type", "Dataset", "cashfe_best", "cashfe_ens", "cash_best", "cash_ens"]
+headers = ["Task Type", "Dataset"] + rank_fields
 avgs = {
     "CLS": {t:[] for t in headers[2:]},
     "RGS": {t:[] for t in headers[2:]},
     "ALL": {t:[] for t in headers[2:]}
 }
+
 for task_type, datasets in ranks.items():
     
     table.field_names = headers
@@ -91,18 +99,19 @@ for task_type, datasets in ranks.items():
         dataset_names = [n for n in cls_info.index if n in datasets]
     else:
         dataset_names = [n for n in rgs_info.index if n in datasets]
-        
     
     # 填充表格行数据
     for dataset in dataset_names:
         algorithms = datasets[dataset]
+        if algorithms == {}:
+            continue
         row = [task_type, dataset] + [algorithms[t] for t in headers[2:]]
         table.add_row(row)
         
         for t in algorithms:
             avgs[task_type][t].append(algorithms[t])
             avgs["ALL"][t].append(algorithms[t])
-    table.add_row(["-"*9, "-"*12, "-"*11, "-"*11, "-"*11, "-"*11])
+    table.add_row(["-"*9, "-"*12] + ["-"*11] * len(headers[2:]))
 
 for task_type, algorithms in avgs.items():
     for algorithm in algorithms:
