@@ -35,7 +35,7 @@ class NeuralNetworkClassifier(BaseClassificationModel):
                  sgd_learning_rate=None, sgd_momentum=None, weight_decay=None, nesterov=None,
                  adam_learning_rate=None, beta1=None,
                  random_state=None, device='cuda', **kwargs):
-        super(NeuralNetworkClassifier, self).__init__()
+        BaseClassificationModel.__init__(self)
 
         self.optimizer = optimizer
         self.batch_size = batch_size
@@ -93,6 +93,8 @@ class NeuralNetworkClassifier(BaseClassificationModel):
 
     def fit(self, X, Y, X_val=None, Y_val=None):
 
+        from sklearn.utils.multiclass import unique_labels
+        self.classes_ = unique_labels(Y)
         if self.model is None:
             self.model = self.build_model(X.shape[1], len(np.unique(Y)))
 

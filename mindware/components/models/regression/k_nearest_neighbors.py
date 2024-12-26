@@ -9,6 +9,7 @@ from mindware.components.utils.constants import DENSE, SPARSE, UNSIGNED_DATA, PR
 class KNearestNeighborsRegressor(BaseRegressionModel):
 
     def __init__(self, n_neighbors, weights, p, random_state=None):
+        BaseRegressionModel.__init__(self)
         self.n_neighbors = n_neighbors
         self.weights = weights
         self.p = p

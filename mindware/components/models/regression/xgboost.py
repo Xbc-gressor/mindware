@@ -11,29 +11,22 @@ class XGBoostRegressor(BaseRegressionModel):
 
     def __init__(self, n_estimators, learning_rate, max_depth, min_child_weight,
                  subsample, colsample_bytree, gamma, reg_alpha, reg_lambda, random_state=None):
-        self.n_estimators = n_estimators
-        self.learning_rate = learning_rate
-        self.max_depth = max_depth
-        self.min_child_weight = min_child_weight
-        self.subsample = subsample
-        self.colsample_bytree = colsample_bytree
-        self.gamma = gamma
-        self.reg_alpha = reg_alpha
-        self.reg_lambda = reg_lambda
+        BaseRegressionModel.__init__(self)
+        self.n_estimators = int(n_estimators)
+        self.learning_rate = float(learning_rate)
+        self.max_depth = int(max_depth)
+        self.min_child_weight = float(min_child_weight)  # Changed to float for regression
+        self.subsample = float(subsample)
+        self.colsample_bytree = float(colsample_bytree)
+        self.gamma = float(gamma)
+        self.reg_alpha = float(reg_alpha)
+        self.reg_lambda = float(reg_lambda)
         self.random_state = random_state
+
         self.estimator = None
 
     def fit(self, X, Y, sample_weight=None):
         import xgboost as xgb
-        self.n_estimators = int(self.n_estimators)
-        self.learning_rate = float(self.learning_rate)
-        self.max_depth = int(self.max_depth)
-        self.min_child_weight = float(self.min_child_weight)  # Changed to float for regression
-        self.subsample = float(self.subsample)
-        self.colsample_bytree = float(self.colsample_bytree)
-        self.gamma = float(self.gamma)
-        self.reg_alpha = float(self.reg_alpha)
-        self.reg_lambda = float(self.reg_lambda)
 
         estimator = xgb.XGBRegressor(
             n_estimators=self.n_estimators,

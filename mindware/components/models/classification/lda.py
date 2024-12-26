@@ -12,6 +12,7 @@ from mindware.components.utils.configspace_utils import check_none
 
 class LDA(BaseClassificationModel):
     def __init__(self, shrinkage, n_components, tol, shrinkage_factor=0.5, random_state=None):
+        BaseClassificationModel.__init__(self)
         self.shrinkage = shrinkage
         self.n_components = n_components
         self.tol = tol
@@ -23,6 +24,8 @@ class LDA(BaseClassificationModel):
     def fit(self, X, Y):
         import sklearn.multiclass
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+        from sklearn.utils.multiclass import unique_labels
+        self.classes_ = unique_labels(Y)
 
         # In case of nested shrinkage
         if isinstance(self.shrinkage, tuple):

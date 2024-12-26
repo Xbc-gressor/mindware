@@ -16,6 +16,7 @@ class LibLinear_SVC(BaseClassificationModel):
     def __init__(self, penalty, loss, dual, tol, C, multi_class,
                  fit_intercept, intercept_scaling, class_weight=None,
                  random_state=None):
+        BaseClassificationModel.__init__(self)
         self.penalty = penalty
         self.loss = loss
         self.dual = dual
@@ -32,6 +33,8 @@ class LibLinear_SVC(BaseClassificationModel):
     def fit(self, X, Y):
         import sklearn.svm
         import sklearn.multiclass
+        from sklearn.utils.multiclass import unique_labels
+        self.classes_ = unique_labels(Y)
 
         # In case of nested penalty
         if isinstance(self.penalty, dict):

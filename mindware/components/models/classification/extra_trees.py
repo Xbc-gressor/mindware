@@ -17,6 +17,7 @@ class ExtraTreesClassifier(IterativeComponentWithSampleWeight, BaseClassificatio
                  max_depth, min_weight_fraction_leaf, min_impurity_decrease,
                  oob_score=False, n_jobs=1, random_state=None, verbose=0,
                  class_weight=None):
+        BaseClassificationModel.__init__(self)
 
         self.n_estimators = self.get_max_iter()
         # if criterion not in ("gini", "entropy"):
@@ -53,7 +54,7 @@ class ExtraTreesClassifier(IterativeComponentWithSampleWeight, BaseClassificatio
     def get_current_iter(self):
         return self.estimator.n_estimators
 
-    def iterative_fit(self, X, y, sample_weight=None, n_iter=1, refit=False):
+    def iterative_fit(self, X, Y, sample_weight=None, n_iter=1, refit=False):
         from sklearn.ensemble import ExtraTreesClassifier as ETC
 
         if refit:
@@ -83,7 +84,7 @@ class ExtraTreesClassifier(IterativeComponentWithSampleWeight, BaseClassificatio
             self.estimator.n_estimators = min(self.estimator.n_estimators,
                                               self.n_estimators)
 
-        self.estimator.fit(X, y, sample_weight=sample_weight)
+        self.estimator.fit(X, Y, sample_weight=sample_weight)
         return self
 
     def configuration_fully_fitted(self):

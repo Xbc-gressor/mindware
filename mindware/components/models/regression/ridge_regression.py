@@ -8,6 +8,7 @@ from mindware.components.utils.constants import DENSE, SPARSE, UNSIGNED_DATA, PR
 
 class RidgeRegressor(BaseRegressionModel):
     def __init__(self, alpha, solver, tol, max_iter, random_state=None):
+        BaseRegressionModel.__init__(self)
         self.alpha = alpha
         self.solver = solver
         self.tol = tol

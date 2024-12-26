@@ -171,8 +171,8 @@ class BaseEvaluator(_BaseEvaluator):
 
                     _, estimator = self._get_estimator_getter()(config_dict, estimator_id)
 
-                    if self.onehot_encoder is None:
-                        self.onehot_encoder = self._get_onehot_encoder(_y_train)
+                    # if self.onehot_encoder is None:
+                    #     self.onehot_encoder = self._get_onehot_encoder(_y_train)
 
                     _score = validation(estimator, self.scorer, _x_train, _y_train, _x_val, _y_val,
                                         random_state=self.seed,

@@ -13,6 +13,7 @@ from mindware.components.models.base_model import BaseRegressionModel
 class LibSVM_SVR(BaseRegressionModel):
     def __init__(self, epsilon, C, kernel, gamma, shrinking, tol, max_iter,
                  degree=3, coef0=0, random_state=None):
+        BaseRegressionModel.__init__(self)
         self.epsilon = epsilon
         self.C = C
         self.kernel = kernel

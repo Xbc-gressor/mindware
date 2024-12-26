@@ -15,6 +15,7 @@ class LibLinear_SVR(BaseRegressionModel):
     def __init__(self, epsilon, loss, dual, tol, C,
                  fit_intercept, intercept_scaling,
                  random_state=None):
+        BaseRegressionModel.__init__(self)
         self.epsilon = epsilon
         self.loss = loss
         self.dual = dual

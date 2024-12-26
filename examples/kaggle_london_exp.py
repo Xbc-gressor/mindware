@@ -12,7 +12,7 @@ from mindware import CLASSIFICATION
 if __name__ == '__main__':
 
     # Load data
-    # data_dir = '/Users/xubeideng/Documents/Scientific Research/AutoML/automl_data/kaggle/london'
+    # data_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/automl_data/kaggle/london'
     data_dir = '/root/automl_data/kaggle/london'
 
     # 读取train和test表格，原来没有表头，添加表头。将trainLabels.csv中的数据合并到train.csv中，形成一个完整的训练集
@@ -28,11 +28,12 @@ if __name__ == '__main__':
 
     dm = DataManager()
 
-    train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train_new.csv'), label_name='label')
+    train_data_node = dm.load_train_csv(os.path.join(data_dir, 'train_new.csv'), label_col=-1)
     train_data_node = dm.preprocess_fit(train_data_node, CLASSIFICATION)
 
     test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test_new.csv'))
     test_data_node = dm.preprocess_transform(test_data_node)
+    breakpoint()
 
     # Initialize CASHFE
 
