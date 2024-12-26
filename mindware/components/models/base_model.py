@@ -55,6 +55,7 @@ class BaseClassificationModel(BaseModel):
     def __init__(self):
         self.estimator = None
         self.properties = None
+        self._estimator_type = "classifier" # 兼容scikit-learn
 
     def predict(self, X):
         """
@@ -85,6 +86,7 @@ class BaseRegressionModel(BaseModel):
     def __init__(self):
         self.estimator = None
         self.properties = None
+        self._estimator_type = "regressor" # 兼容scikit-learn
 
     def predict(self, X):
         """
