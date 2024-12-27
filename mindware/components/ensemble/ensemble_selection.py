@@ -19,7 +19,8 @@ class EnsembleSelection(BaseEnsembleModel):
             ensemble_size: int,
             task_type: int,
             metric: _BaseScorer,
-            output_dir=None,
+            resampling_params=None,
+            output_dir=None, seed=None,
             sorted_initialization: bool = False,
             mode: str = 'fast'
     ):
@@ -29,7 +30,8 @@ class EnsembleSelection(BaseEnsembleModel):
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
-                         output_dir=output_dir)
+                         resampling_params=resampling_params,
+                         output_dir=output_dir, seed=seed)
         self.model_idx = list()
         self.sorted_initialization = sorted_initialization
         self.mode = mode

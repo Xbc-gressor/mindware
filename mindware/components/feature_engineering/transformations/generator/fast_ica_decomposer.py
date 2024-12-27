@@ -3,7 +3,7 @@ from mindware.components.feature_engineering.transformations.base_transformer im
 from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import CategoricalHyperparameter, \
     UniformIntegerHyperparameter
-from ConfigSpace.conditions import EqualsCondition
+from ConfigSpace.conditions import EqualsCondition, NotEqualsCondition
 from mindware.components.utils.configspace_utils import check_for_bool, check_none
 import sklearn
 
@@ -74,7 +74,7 @@ class FastIcaDecomposer(Transformer):
         return X_new
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='samc'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
         if optimizer == 'smac':
             cs = ConfigurationSpace()
             n_components = UniformIntegerHyperparameter(
@@ -91,7 +91,7 @@ class FastIcaDecomposer(Transformer):
             fun = CategoricalHyperparameter(
                 'fun', ['logcosh', 'exp', 'cube'], 'logcosh')
             cs.add_hyperparameters([n_components, algorithm, whiten, fun])
-            cs.add_condition(EqualsCondition(n_components, whiten, "True"))
+            cs.add_condition(NotEqualsCondition(n_components, whiten, "False"))
             return cs
         elif optimizer == 'tpe':
             from hyperopt import hp

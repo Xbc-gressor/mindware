@@ -10,6 +10,7 @@ from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
 from mindware.components.feature_engineering.parse import construct_node
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
+from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
 
 
 class Stacking(BaseEnsembleModel):
@@ -17,7 +18,8 @@ class Stacking(BaseEnsembleModel):
                  ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
-                 output_dir=None,
+                 resampling_params=None,
+                 output_dir=None, seed=None,
                  meta_learner='lightgbm',
                  kfold=5):
         super().__init__(stats=stats,
@@ -26,7 +28,8 @@ class Stacking(BaseEnsembleModel):
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
-                         output_dir=output_dir)
+                         resampling_params=resampling_params,
+                         output_dir=output_dir, seed=seed)
 
         self.kfold = kfold
         try:
@@ -73,10 +76,11 @@ class Stacking(BaseEnsembleModel):
 
     def fit(self, data):
         # Split training data for phase 1 and phase 2
+                            
         if self.task_type in CLS_TASKS:
-            kf = StratifiedKFold(n_splits=self.kfold)
+            kf = BaseCLSEvaluator._get_spliter(resampling_strategy='cv', n_splits=self.kfold)
         else:
-            kf = KFold(n_splits=self.kfold)
+            kf = BaseRGSEvaluator._get_spliter(resampling_strategy='cv', n_splits=self.kfold)
 
         # Train basic models using a part of training data
         model_cnt = 0

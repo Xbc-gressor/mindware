@@ -84,8 +84,13 @@ CLS: autogluon, cpu_act: 0.0, 0.9341061622940817
 CLS: autogluon, ailerons: 0.0, 0.893090909090909
 CLS: autogluon, sick: 0.0, 0.9880794701986755
 CLS: autogluon, mv: 0.0, 0.9996320824135394
+CLS: autogluon, higgs: 0.0, 0.7394696583375828
 RGS: autogluon, black_friday: 0.0, -11822400.005625758
 RGS: autogluon, debutanizer: 0.0, -0.002430865289614281
 RGS: autogluon, puma8NH: 0.0, -9.74182877560484
 RGS: autogluon, cpu_act: 0.0, -6.6705308114704085
 RGS: autogluon, Moneyball: 0.0, -445.083942668931
+RGS: autogluon, bank32nh: 0.0, -0.005614897572473634RGS: cashfe-smac, debutanizer: -0.0045537278812647535, -0.00413501942112474
+CLS: cashfe-smac, kc1: 0.8791469194312796, 0.8720379146919431
+RGS: cashfe-smac, debutanizer: -0.007628203787975505, -0.007537972955474804
+RGS: cashfe-smac, debutanizer: -0.007628203787975505, -0.007628203787975505

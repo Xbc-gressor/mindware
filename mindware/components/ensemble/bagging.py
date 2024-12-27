@@ -18,14 +18,16 @@ class Bagging(BaseEnsembleModel):
                  ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
-                 output_dir=None):
+                 resampling_params=None,
+                 output_dir=None, seed=None):
         super().__init__(stats=stats,
                          data_node=data_node,
                          ensemble_method='bagging',
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
-                         output_dir=output_dir)
+                         resampling_params=resampling_params,
+                         output_dir=output_dir, seed=seed)
 
     def fit(self, datanode):
         return self

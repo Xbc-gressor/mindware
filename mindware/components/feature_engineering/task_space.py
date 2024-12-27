@@ -132,7 +132,8 @@ def _get_configuration_space(builtin_transformers, trans_type=None, optimizer='s
                 sub_configuration_space = builtin_transformers[tran_key].get_hyperparameter_search_space(
                     optimizer=optimizer)
                 config_dict[tran_key] = sub_configuration_space
-            except:
+            except Exception as e:
+                print("Error while build cs for %s" % tran_key, e)
                 if optimizer == 'smac':
                     config_dict[tran_key] = ConfigurationSpace()
                 elif optimizer == 'tpe':

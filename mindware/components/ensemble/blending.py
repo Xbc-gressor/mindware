@@ -10,6 +10,7 @@ from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
 from mindware.components.feature_engineering.parse import construct_node
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
+from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
 
 
 class Blending(BaseEnsembleModel):
@@ -17,7 +18,8 @@ class Blending(BaseEnsembleModel):
                  ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
-                 output_dir=None,
+                 output_dir=None, seed=None,
+                 resampling_params=None,
                  meta_learner='lightgbm'):
         super().__init__(stats=stats,
                          data_node=data_node,
@@ -25,7 +27,8 @@ class Blending(BaseEnsembleModel):
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
-                         output_dir=output_dir)
+                         resampling_params=resampling_params,
+                         output_dir=output_dir, seed=seed)
         try:
             from lightgbm import LGBMClassifier
         except:
@@ -89,12 +92,16 @@ class Blending(BaseEnsembleModel):
                     _node = construct_node(_node, op_list, mode='train')
 
                     X, y = _node.data
+                    
                     if self.task_type in CLS_TASKS:
-                        x_p1, x_p2, y_p1, y_p2 = train_test_split(X, y, test_size=test_size,
-                                                                  stratify=data.data[1], random_state=1)
+                        ss = BaseCLSEvaluator._get_spliter(resampling_strategy='holdout', test_size=test_size, random_state=self.seed)
                     else:
-                        x_p1, x_p2, y_p1, y_p2 = train_test_split(X, y, test_size=test_size,
-                                                                  random_state=1)
+                        ss = BaseRGSEvaluator._get_spliter(resampling_strategy='holdout', test_size=test_size, random_state=self.seed)
+
+                    x_p1, x_p2, y_p1, y_p2 = None, None, None, None
+                    for train_index, val_index in ss.split(X, y):
+                        x_p1, y_p1 = X[train_index], y[train_index]
+                        x_p2, y_p2 = X[val_index], y[val_index]
 
                     estimator = fetch_predict_estimator(self.task_type, algo_id, config, x_p1, y_p1,
                                                         weight_balance=_node.enable_balance,

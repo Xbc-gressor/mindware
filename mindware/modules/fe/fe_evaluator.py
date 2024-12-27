@@ -119,9 +119,8 @@ class FEClassificationEvaluator(_BaseEvaluator):
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
 
-                if self.resampling_params is None or 'test_size' not in self.resampling_params:
-                    test_size = 0.33
-                else:
+                test_size = 0.33
+                if self.resampling_params is not None and 'test_size' in self.resampling_params:
                     test_size = self.resampling_params['test_size']
 
                 from sklearn.model_selection import StratifiedShuffleSplit
@@ -189,9 +188,8 @@ class FEClassificationEvaluator(_BaseEvaluator):
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
 
-                if self.resampling_params is None or 'test_size' not in self.resampling_params:
-                    test_size = 0.33
-                else:
+                test_size = 0.33
+                if self.resampling_params is not None and 'test_size' in self.resampling_params:
                     test_size = self.resampling_params['test_size']
 
                 from sklearn.model_selection import StratifiedShuffleSplit
@@ -310,9 +308,8 @@ class FERegressionEvaluator(_BaseEvaluator):
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
 
-                if self.resampling_params is None or 'test_size' not in self.resampling_params:
-                    test_size = 0.33
-                else:
+                test_size = 0.33
+                if self.resampling_params is not None and 'test_size' in self.resampling_params:
                     test_size = self.resampling_params['test_size']
 
                 from sklearn.model_selection import ShuffleSplit
@@ -370,9 +367,8 @@ class FERegressionEvaluator(_BaseEvaluator):
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
 
-                if self.resampling_params is None or 'test_size' not in self.resampling_params:
-                    test_size = 0.33
-                else:
+                test_size = 0.33
+                if self.resampling_params is not None and 'test_size' in self.resampling_params:
                     test_size = self.resampling_params['test_size']
 
                 from sklearn.model_selection import ShuffleSplit

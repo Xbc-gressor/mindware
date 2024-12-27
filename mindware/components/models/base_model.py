@@ -107,8 +107,9 @@ class BaseRegressionModel(BaseModel):
 
 class IterativeComponentWithSampleWeight(BaseModel):
     def fit(self, X, y, sample_weight=None):
-        from sklearn.utils.multiclass import unique_labels
-        self.classes_ = unique_labels(y)
+        if hasattr(self, '_estimator_type') and self._estimator_type == 'classifier':
+            from sklearn.utils.multiclass import unique_labels
+            self.classes_ = unique_labels(y)
 
         self.iterative_fit(
             X, y, n_iter=2, refit=True, sample_weight=sample_weight
@@ -146,8 +147,9 @@ class IterativeComponentWithSampleWeight(BaseModel):
 class IterativeComponent(BaseModel):
     def fit(self, X, Y, sample_weight=None):
 
-        from sklearn.utils.multiclass import unique_labels
-        self.classes_ = unique_labels(Y)
+        if hasattr(self, '_estimator_type') and self._estimator_type == 'classifier':
+            from sklearn.utils.multiclass import unique_labels
+            self.classes_ = unique_labels(Y)
 
         self.iterative_fit(X, Y, n_iter=2, refit=True)
         iteration = 2
