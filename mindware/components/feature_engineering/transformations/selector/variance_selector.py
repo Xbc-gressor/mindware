@@ -7,7 +7,7 @@ class VarianceSelector(Transformer):
 
     def __init__(self, threshold=1e-7):
         super().__init__("variance_selector")
-        self.input_type = [NUMERICAL, DISCRETE, CATEGORICAL]
+        self.input_type = [NUMERICAL, DISCRETE]
         self.compound_mode = 'only_new'
         self.threshold = threshold
 
@@ -18,7 +18,7 @@ class VarianceSelector(Transformer):
         X, y = input_datanode.data
         if target_fields is None:
             target_fields = collect_fields(feature_types, self.input_type)
-            X_new = X.copy()
+            X_new = X[:, target_fields]
         else:
             X_new = X[:, target_fields]
 
@@ -36,7 +36,7 @@ class VarianceSelector(Transformer):
             is_selected[idx] = True if var > self.threshold else False
 
         irrevalent_types = [feature_types[idx] for idx in irrevalent_fields]
-        selected_types = [feature_types[idx] for idx in target_fields if is_selected[idx]]
+        selected_types = [feature_types[idx] for i,idx in enumerate(target_fields) if is_selected[i]]
         selected_types.extend(irrevalent_types)
 
         _X = self.model.transform(X_new)

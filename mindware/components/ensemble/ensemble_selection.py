@@ -319,7 +319,9 @@ class EnsembleSelection(BaseEnsembleModel):
                     estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
                                                         _node.data[0], _node.data[1],
                                                         weight_balance=_node.enable_balance,
-                                                        data_balance=_node.data_balance)
+                                                        data_balance=_node.data_balance,
+                                                        ind_number_map =_node.count_cat_number())
+
                     with open(model_path, 'wb') as f:
                         pkl.dump((op_list, estimator, perf), f)
                 model_cnt += 1

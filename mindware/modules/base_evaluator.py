@@ -69,8 +69,8 @@ class BaseEvaluator(_BaseEvaluator):
 
     def __call__(self, config, **kwargs):
         
-        self.train_node = data_node.copy_(no_data=True)
-        self.val_node = data_node.copy_(no_data=True)
+        self.train_node = self.data_node.copy_(no_data=True)
+        self.val_node = self.data_node.copy_(no_data=True)
 
         start_time = time.time()
         return_dict = dict()
@@ -126,6 +126,8 @@ class BaseEvaluator(_BaseEvaluator):
 
             _, estimator = self._get_estimator_getter()(config_dict, estimator_id)
 
+            estimator.get_data_info(self.data_node.count_cat_number())
+
             if self.onehot_encoder is None:
                 self.onehot_encoder = self._get_onehot_encoder(_y_train)
 
@@ -171,6 +173,8 @@ class BaseEvaluator(_BaseEvaluator):
                             fit_params['data_balance'] = True
 
                     _, estimator = self._get_estimator_getter()(config_dict, estimator_id)
+
+                    estimator.get_data_info(self.data_node.count_cat_number())
 
                     if self.onehot_encoder is None:
                         self.onehot_encoder = self._get_onehot_encoder(_y_train)
@@ -231,6 +235,8 @@ class BaseEvaluator(_BaseEvaluator):
                     fit_params['data_balance'] = True
 
             _, estimator = self._get_estimator_getter()(config_dict, estimator_id)
+
+            estimator.get_data_info(self.data_node.count_cat_number())
 
             if self.onehot_encoder is None:
                 self.onehot_encoder = self._get_onehot_encoder(_y_train)

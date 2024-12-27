@@ -3,7 +3,8 @@ from mindware.components.metrics.metric import get_metric
 from mindware.components.utils.constants import *
 
 
-def fetch_predict_estimator(task_type, estimator_id, config, X_train, y_train, weight_balance=0, data_balance=0):
+def fetch_predict_estimator(task_type, estimator_id, config, X_train, y_train, weight_balance=0, data_balance=0,
+                            ind_number_map=None):
     # Build the ML estimator.
     from mindware.components.utils.balancing import get_weights, smote
     _fit_params = {}
@@ -20,6 +21,7 @@ def fetch_predict_estimator(task_type, estimator_id, config, X_train, y_train, w
     elif task_type in RGS_TASKS:
         from mindware.components.evaluators.rgs_evaluator import get_estimator
     _, estimator = get_estimator(config_dict, estimator_id)
+    estimator.get_data_info(ind_number_map)
 
     estimator.fit(X_train, y_train, **_fit_params)
     return estimator

@@ -7,6 +7,10 @@ from mindware.components.feature_engineering.transformation_graph import DataNod
 from mindware.components.feature_engineering.transformations.preprocessor.imputer import ImputationTransformation
 from mindware.components.feature_engineering.transformations.preprocessor.onehot_encoder import \
     OneHotTransformation
+
+from mindware.components.feature_engineering.transformations.preprocessor.ordinal_encoder import \
+    Ordinal_encoder
+
 from mindware.components.feature_engineering.transformations.selector.variance_selector import VarianceSelector
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder
@@ -23,7 +27,8 @@ class DataManager(object):
     """
 
     # X,y should be None if using DataManager().load_csv(...)
-    def __init__(self, X=None, y=None, na_values=default_missing_values, feature_types=None, feature_names=None):
+    def __init__(self, X=None, y=None, na_values=default_missing_values, feature_types=None, feature_names=None,
+                 encoder=None):
         self.na_values = na_values
         self.feature_types = feature_types
         self.feature_names = feature_names
@@ -34,7 +39,9 @@ class DataManager(object):
 
         self.task_type = None
         self.variance_selector = None
-        self.onehot_encoder = None
+        self.encoder = encoder
+        self.encoder_model = None
+
         self.x_encode_method = None
         self.x_encoder = None
         self.label_encode_method = None
@@ -238,7 +245,7 @@ class DataManager(object):
         self.x_encode_method = x_encode
         self.label_encode_method = label_encode
         self.variance_selector = None
-        self.onehot_encoder = None
+        
         self.x_encoder = None
         self.label_encoder = None
         preprocessed_node = self.preprocess(input_node.copy_(), train_phase=True)
@@ -333,9 +340,12 @@ class DataManager(object):
         # One-hot encoding TO categorical features.
         categorical_fields = [idx for idx, type in enumerate(input_node.feature_types) if type == CATEGORICAL]
         if len(categorical_fields) > 0:
-            if self.onehot_encoder is None:
-                self.onehot_encoder = OneHotTransformation()
-            input_node = self.onehot_encoder.operate(input_node, categorical_fields)
+            if self.encoder_model is None:
+                if self.encoder is None:
+                    self.encoder_model = OneHotTransformation()
+                elif self.encoder == 'ord':
+                    self.encoder_model = Ordinal_encoder()
+            input_node = self.encoder_model.operate(input_node, categorical_fields)
         return input_node
 
     def remove_cols_with_same_values(self, input_node: DataNode):

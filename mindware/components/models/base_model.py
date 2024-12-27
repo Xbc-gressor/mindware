@@ -19,6 +19,12 @@ class BaseModel(object):
         """
         raise NotImplementedError()
 
+    def get_data_info(self, ind_number_map):
+        """
+        Get the data's information, inclued feature_types ,ie.
+        """
+        self.ind_number_map = ind_number_map
+
     def fit(self, X, y):
         """
         The fit function calls the fit function of the underlying model and returns `self`.
@@ -55,6 +61,7 @@ class BaseClassificationModel(BaseModel):
     def __init__(self):
         self.estimator = None
         self.properties = None
+
 
     def predict(self, X):
         """

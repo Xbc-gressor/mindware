@@ -1,8 +1,6 @@
-cv
-CLS: cash, kc1: 0.8601895734597157, 0.8720379146919431
-CLS: cashfe, kc1: 0.8720379146919431, 0.8720379146919431
-CLS: cash, higgs: 0.7310555838857725, 0.7219275879653239
-CLS: cash, covertype: 0.0, 0.0
-CLS: cashfe, covertype: 0.0, 0.0
-CLS: cashfe, higgs: 0.7294747577766446, 0.7203977562468129
----------------
+CLS: Autogluon_neural_network, ord, sick: 0.9602649006622517, 0.9668874172185431
+CLS: Autogluon_neural_network, one_hot, kc1: 0.8720379146919431, 0.8625592417061612
+CLS: Autogluon_neural_network, one_hot, spambase: 0.9326818675352877, 0.9294245385450597
+CLS: Autogluon_neural_network, ord, kc1: 0.8412322274881516, 0.8530805687203792
+CLS: Autogluon_neural_network, ord, spambase: 0.9272529858849077, 0.9391965255157437
+CLS: neural_network, one_hot, sick: 0.9668874172185431, 0.9655629139072848

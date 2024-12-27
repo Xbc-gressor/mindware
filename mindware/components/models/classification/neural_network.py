@@ -77,7 +77,6 @@ class NeuralNetworkClassifier(BaseClassificationModel):
             nn.ReLU(), 
             *layer_list,
             nn.Linear(DIMS[0], output_shape),
-            nn.Softmax(dim=1)
         )
         return model.to(self.device)
 
@@ -99,7 +98,10 @@ class NeuralNetworkClassifier(BaseClassificationModel):
         self._init_model(self.model)
 
         train_loader = DataLoader(dataset=MyDataset(X, Y), batch_size=self.batch_size, shuffle=True)
-        val_loader = DataLoader(dataset=MyDataset(X_val, Y_val), batch_size=self.batch_size, shuffle=False)
+        if X_val is not None:
+            val_loader = DataLoader(dataset=MyDataset(X_val, Y_val), batch_size=self.batch_size, shuffle=False)
+        else:
+            val_loader = None
 
         self.model.to(self.device)
         self._init_model(self.model)
@@ -122,6 +124,7 @@ class NeuralNetworkClassifier(BaseClassificationModel):
                                 gamma=self.lr_decay)
         loss_func = nn.CrossEntropyLoss()
         early_stop = EarlyStop(patience=10, mode='min')
+        self.best_model_stats = None
 
         for epoch in range(self.epoch_num):
             self.model.train()
@@ -134,7 +137,7 @@ class NeuralNetworkClassifier(BaseClassificationModel):
                 batch_x, batch_y = data
                 num_train_samples += len(data)
                 logits = self.model(batch_x.float().to(self.device))
-                loss = loss_func(logits, batch_y.to(self.device))
+                loss = loss_func(logits, batch_y.long().to(self.device))
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -153,7 +156,7 @@ class NeuralNetworkClassifier(BaseClassificationModel):
                         batch_x, batch_y = data
                         num_val_samples += len(data)
                         logits = self.model(batch_x.float().to(self.device))
-                        val_loss = loss_func(logits, batch_y.to(self.device))
+                        val_loss = loss_func(logits, batch_y.long().to(self.device))
                         val_avg_loss += val_loss.to('cpu').detach() * len(batch_x)
 
                     val_avg_loss /= num_val_samples
@@ -168,21 +171,25 @@ class NeuralNetworkClassifier(BaseClassificationModel):
                         break
 
             scheduler.step()
-
-        self.model.load_state_dict(self.best_model_stats)
+        
+        if self.best_model_stats is not None:
+            self.model.load_state_dict(self.best_model_stats)
 
         return self
 
     def predict(self, X):
         if self.model is None:
             raise NotImplementedError()
-        proba = self.model(torch.Tensor(X).to(self.device)).detach().cpu().numpy()
+        proba = nn.functional.softmax(self.model(torch.Tensor(X).to(self.device)),dim=1)
+        proba = proba.detach().cpu().numpy()
         return np.argmax(proba, axis=1)
 
     def predict_proba(self, X):
         if self.model is None:
             raise NotImplementedError()
-        return self.model(torch.Tensor(X).to(self.device)).detach().cpu().numpy()
+        proba = nn.functional.softmax(self.model(torch.Tensor(X).to(self.device)),dim=1)
+        proba = proba.detach().cpu().numpy()
+        return proba
 
     @staticmethod
     def get_properties(dataset_properties=None):
@@ -241,3 +248,8 @@ class NeuralNetworkClassifier(BaseClassificationModel):
         ])
 
         return cs
+
+
+
+
+        

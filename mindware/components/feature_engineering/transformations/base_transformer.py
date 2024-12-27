@@ -142,15 +142,19 @@ def ease_trans(func):
 
         if target_fields is None:
             target_fields = collect_fields(input.feature_types, trans.input_type)
-        if len(target_fields) == 0:
-            return input.copy_()
 
         X, y = input.data
         if isinstance(X, pd.DataFrame):
             X = X.values
 
+        input.data = (X, y)
+
+        if len(target_fields) == 0:
+            return input.copy_()
+
         args = (trans, input, target_fields)
         _X = func(*args)
+    
         if isinstance(trans.output_type, list):
             trans.output_type = trans.output_type[0]
         _types = [trans.output_type] * _X.shape[1]

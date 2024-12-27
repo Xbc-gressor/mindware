@@ -27,6 +27,7 @@ class OneHotTransformation(Transformer):
             self.model = OneHotEncoder(handle_unknown='ignore')
             self.model.fit(X_input)
         new_X = self.model.transform(X_input).toarray()
+
         X_output = X.copy()
 
         # Delete the original columns.

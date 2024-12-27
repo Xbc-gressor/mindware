@@ -1,13 +1,14 @@
 import numpy as np
 from mindware.components.utils.constants import CATEGORICAL
+import pandas as pd
 
 
 class DataNode(object):
-    def __init__(self, data=None, feature_type=None, task_type=None, feature_names=None):
+    def __init__(self, data, feature_type, task_type=None, feature_names=None):
         self.task_type = task_type
         self.data = data
-        self.feature_types = feature_type
         self.feature_names = feature_names
+        self.feature_types = feature_type
         self._node_id = -1
         self.depth = None
         self.score = None
@@ -16,6 +17,16 @@ class DataNode(object):
         self.data_balance = 0
         self.config = None
 
+    def count_cat_number(self):
+        X = self.data[0]
+        if isinstance(X, pd.DataFrame):
+            X = X.values
+        ind_number_map = dict()
+        for i, t in enumerate(self.feature_types):
+            if t == 'categorical':
+                ind_number_map[i] = len(np.unique(X[:,i]))+1
+        return ind_number_map
+       
     def __eq__(self, node):
         """Overrides the default implementation"""
         if isinstance(node, DataNode):

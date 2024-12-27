@@ -195,7 +195,9 @@ class BaseAutoML(object):
             estimator = fetch_predict_estimator(self.task_type, algo_id, config,
                                                 data_node.data[0], data_node.data[1],
                                                 weight_balance=data_node.enable_balance,
-                                                data_balance=data_node.data_balance)
+                                                data_balance=data_node.data_balance,
+                                                ind_number_map =self.data_node.count_cat_number())
+            
 
             model_path = os.path.join(self.output_dir, '%s_%s.pkl' % (
                 self.datetime, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
@@ -236,7 +238,10 @@ class BaseAutoML(object):
                     estimator = fetch_predict_estimator(self.task_type, algo_id, config,
                                                         data_node.data[0], data_node.data[1],
                                                         weight_balance=data_node.enable_balance,
-                                                        data_balance=data_node.data_balance)
+                                                        data_balance=data_node.data_balance,
+                                                        ind_number_map =self.data_node.count_cat_number())
+                    
+                    
                     with open(path, 'wb') as f:
                         pkl.dump([op_list, estimator, perf], f)
                 except:
