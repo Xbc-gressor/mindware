@@ -59,9 +59,11 @@ class BaseFE(BaseAutoML):
         else:
             _candidates = get_combined_candidtates(_regressors, _rgs_addons)
 
-        self.cs = get_fe_cs(
-            self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal
-        )
+        cs_args = {
+            'resampling_params': resampling_params,
+            'data_node': data_node
+        }
+        self.cs = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal, **cs_args)
 
         if model_config is None:
             if self.estimator_id in _candidates:

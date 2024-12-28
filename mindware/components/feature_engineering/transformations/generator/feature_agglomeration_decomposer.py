@@ -55,7 +55,7 @@ class FeatureAgglomerationDecomposer(Transformer):
         return X_new
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         cs = ConfigurationSpace()
         n_clusters = UniformIntegerHyperparameter("n_clusters", 2, 400, default_value=25)
         affinity = CategoricalHyperparameter(

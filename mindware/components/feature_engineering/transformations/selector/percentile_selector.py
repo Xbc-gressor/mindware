@@ -68,7 +68,7 @@ class PercentileSelector(Transformer):
         return output_datanode
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         if optimizer == 'smac':
             percentile = UniformFloatHyperparameter(
                 name="percentile", lower=5, upper=99, default_value=50)

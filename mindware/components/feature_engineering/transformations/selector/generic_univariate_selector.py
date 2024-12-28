@@ -67,7 +67,7 @@ class GenericUnivariateSelector(Transformer):
         return output_datanode
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         if optimizer == 'smac':
             alpha = UniformFloatHyperparameter(
                 name="alpha", lower=0.01, upper=0.5, default_value=0.1)

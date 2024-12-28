@@ -35,9 +35,9 @@ def get_cash_cs(include_algorithms=None, task_type=CLASSIFICATION, **cs_args):
 
 
 def get_fe_cs(task_type=CLASSIFICATION, include_image=False,
-              include_text=False, include_preprocessors=None, if_imbal=False):
+              include_text=False, include_preprocessors=None, if_imbal=False, **cs_args):
     cs = get_task_hyperparameter_space(task_type=task_type, include_image=include_image, include_text=include_text,
-                                       include_preprocessors=include_preprocessors, if_imbal=if_imbal)
+                                       include_preprocessors=include_preprocessors, if_imbal=if_imbal, **cs_args)
     return cs
 
 

@@ -54,7 +54,7 @@ class BaseCASHFE(BaseAutoML):
             'data_node': data_node
         }
         self.cs = get_cash_cs(include_algorithms, self.task_type, **cs_args)
-        fe_config_space = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal)
+        fe_config_space = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal, **cs_args)
 
         if self.optimizer_name != 'mab' and not self.optimizer_name.startswith('block'):
             tmp_cs = deepcopy(fe_config_space)

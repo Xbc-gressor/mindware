@@ -12,6 +12,7 @@ from mindware import CASH
 from mindware import EnsembleBuilder
 from mindware import REGRESSION
 from mindware import HPO
+import numpy as np
 import pickle as pkl
 
 if __name__ == '__main__':
@@ -41,7 +42,6 @@ if __name__ == '__main__':
     test_data_node = dm.load_test_csv(os.path.join(data_dir, 'test.csv'))
     test_data_node = dm.preprocess_transform(test_data_node)
 
-
     # Initialize CASHFE
 
     x_encode_str = '' if x_encode is None else ('_' + x_encode)
@@ -65,7 +65,7 @@ if __name__ == '__main__':
         metric=metric,
         data_node=train_data_node, evaluation=evaluation, resampling_params=None,
         optimizer='block_1', inner_iter_num_per_iter=10,
-        time_limit=time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
+        time_limit=time_limit, amount_of_resource=int(1e6), per_run_time_limit=np.inf,
         output_dir='./data', seed=1, n_jobs=1,
         ensemble_method=ensemble_method, ensemble_size=ensemble_size
     )

@@ -39,30 +39,30 @@ declare -a TASKS
 
 # 生成任务列表
 for i in 4 7; do
-    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 7200 --job_idx $i")
-    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 7200 --job_idx $i")
-    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 7200 --job_idx $i")
+    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 7200 --job_idx $i --output_dir ./newfe_data --output_file newfe_results.txt")
+    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 7200 --job_idx $i --output_dir ./newfe_data --output_file newfe_results.txt")
+    # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 7200 --job_idx $i")
 done
 
 # 生成任务列表
 for i in 0 1 2 3 5 6; do
-    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 3600 --job_idx $i")
-    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 3600 --job_idx $i")
-    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 3600 --job_idx $i")
+    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 3600 --job_idx $i --output_dir ./newfe_data --output_file newfe_results.txt")
+    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 3600 --job_idx $i --output_dir ./newfe_data --output_file newfe_results.txt")
+    # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 3600 --job_idx $i")
 done
 
 # 生成任务列表
 for i in 5; do
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 7200 --job_idx $i")
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 7200 --job_idx $i")
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 7200 --job_idx $i")
+    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 7200 --job_idx $i --output_dir ./newfe_data --output_file newfe_results.txt")
+    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 7200 --job_idx $i --output_dir ./newfe_data --output_file newfe_results.txt")
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 7200 --job_idx $i")
 done
 
 # 生成任务列表
 for i in 0 1 2 3 4; do
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 3600 --job_idx $i")
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 3600 --job_idx $i")
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 3600 --job_idx $i")
+    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 3600 --job_idx $i --output_dir ./newfe_data --output_file newfe_results.txt")
+    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 3600 --job_idx $i --output_dir ./newfe_data --output_file newfe_results.txt")
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 3600 --job_idx $i")
 done
 
 

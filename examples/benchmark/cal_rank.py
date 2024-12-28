@@ -5,7 +5,8 @@ from cls_benchmark import chosen_datasets_info as cls_info
 
 
 # rank_fields = ['cashfe_best', 'cashfe_ens', 'cashfe-block_1_best', 'cashfe-block_1_ens']  # 比较mab和block_1
-rank_fields = ['cashfe-block_1_ens', 'autogluon_ens']  # 比较mab和block_1
+# rank_fields = ['cashfe-block_1_ens', 'autogluon_ens']  # 比较mab和block_1
+rank_fields = ['cashfe-block_0_ens', 'cashfe-block_1_ens', 'cashfe-block_2_ens']  # 比较mab和block_1
 
 def parse_data(file_path):
     results = {

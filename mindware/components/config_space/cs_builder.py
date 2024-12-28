@@ -83,13 +83,13 @@ def get_hpo_cs(estimator_id, task_type, **cs_args):
 
 
 def get_fe_cs(task_type=CLASSIFICATION, include_image=False,
-              include_text=False, include_preprocessors=None, if_imbal=False):
+              include_text=False, include_preprocessors=None, if_imbal=False, **cs_args):
 
     if task_type in CLS_TASKS:
         cs = get_cls_fe_cs(task_type, include_image=include_image, include_text=include_text,
-                           include_preprocessors=include_preprocessors, if_imbal=if_imbal)
+                           include_preprocessors=include_preprocessors, if_imbal=if_imbal, **cs_args)
     else:
         cs = get_rgs_fe_cs(task_type, include_image=include_image, include_text=include_text,
-                           include_preprocessors=include_preprocessors)
+                           include_preprocessors=include_preprocessors, **cs_args)
 
     return cs

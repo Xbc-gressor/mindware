@@ -34,9 +34,9 @@ def get_cash_cs(include_algorithms=None, task_type=REGRESSION, **cs_args):
     return cs
 
 
-def get_fe_cs(task_type=REGRESSION, include_image=False, include_text=False, include_preprocessors=None):
+def get_fe_cs(task_type=REGRESSION, include_image=False, include_text=False, include_preprocessors=None, **cs_args):
     cs = get_task_hyperparameter_space(task_type=task_type, include_image=include_image, include_text=include_text,
-                                       include_preprocessors=include_preprocessors)
+                                       include_preprocessors=include_preprocessors, **cs_args)
     return cs
 
 
