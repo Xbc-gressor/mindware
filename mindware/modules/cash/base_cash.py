@@ -51,7 +51,12 @@ class BaseCASH(BaseAutoML):
             'resampling_params': resampling_params,
             'data_node': data_node
         }
-        self.cs = get_cash_cs(include_algorithms, self.task_type, **cs_args)
+        if include_algorithms is not None and len(include_algorithms) == 1:
+            from mindware.components.config_space.cs_builder import get_hpo_cs
+            self.cs = get_hpo_cs(estimator_id=include_algorithms[0], task_type=self.task_type, **cs_args)
+        else:
+            from mindware.components.config_space.cs_builder import get_cash_cs
+            self.cs = get_cash_cs(include_algorithms=include_algorithms, task_type=self.task_type, **cs_args)
 
         # Define evaluator and optimizer
         self.evaluator = None
