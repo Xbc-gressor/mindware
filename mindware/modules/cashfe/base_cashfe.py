@@ -10,8 +10,6 @@ from mindware.utils.logging_utils import setup_logger, get_logger
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
 
-from mindware.components.config_space.cs_builder import get_cash_cs, get_fe_cs
-
 
 class BaseCASHFE(BaseAutoML):
     def __init__(self, include_algorithms: List[str] = None, sub_optimizer: str = 'smac', task_type: str = None,
@@ -53,8 +51,14 @@ class BaseCASHFE(BaseAutoML):
             'resampling_params': resampling_params,
             'data_node': data_node
         }
-        self.cs = get_cash_cs(include_algorithms, self.task_type, **cs_args)
-        fe_config_space = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal)
+        if include_algorithms is not None and len(include_algorithms) == 1:
+            from mindware.components.config_space.cs_builder import get_hpo_cs
+            self.cs = get_hpo_cs(estimator_id=include_algorithms[0], task_type=self.task_type, **cs_args)
+        else:
+            from mindware.components.config_space.cs_builder import get_cash_cs
+            self.cs = get_cash_cs(include_algorithms=include_algorithms, task_type=self.task_type, **cs_args)
+        from mindware.components.config_space.cs_builder import get_fe_cs
+        fe_config_space = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal, **cs_args)
 
         if self.optimizer_name != 'mab' and not self.optimizer_name.startswith('block'):
             tmp_cs = deepcopy(fe_config_space)

@@ -6,7 +6,7 @@ import pandas as pd
 import argparse
 from mindware.utils.data_manager import DataManager
 from mindware.components.utils.constants import *
-from mindware import CASH, CASHFE
+from mindware import CASH, CASHFE, FE, HPO
 
 NUM_THREADS = "1"
 os.environ["OMP_NUM_THREADS"] = NUM_THREADS         # export OMP_NUM_THREADS=1
@@ -55,6 +55,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_test_split_seed', type=int, default=1)
     parser.add_argument('--Opt', type=str, default='cashfe', help='cash or cashfe')
+    parser.add_argument('--estimator_id', type=str, default='xgboost', help='for fe and hpo')
     parser.add_argument('--optimizer', type=str, default='smac', help='smac or mab')
     parser.add_argument('--x_encode', type=str, default=None, help='normalize, minmax')
     parser.add_argument('--ensemble_method', type=str, default='ensemble_selection', help='ensemble_selection or blending')
@@ -64,17 +65,25 @@ if '__main__' == __name__:
     parser.add_argument('--per_time_limit', type=int, default=600, help='time limit')
     parser.add_argument('--inner_iter_num_per_iter', type=int, default=10)
     parser.add_argument('--job_idx', type=int, nargs='*', help='job index')
+    parser.add_argument('--output_dir', type=str, default='./data')
     parser.add_argument('--output_file', type=str, default='results.txt')
     args = parser.parse_args()
 
     task_type = REGRESSION
     metric = 'mse'
+    estimator_id = args.estimator_id
 
     if args.Opt == 'cash':
         # 'lda',
         OPT = CASH
-    else:
+    elif args.Opt == 'cashfe':
         OPT = CASHFE
+    elif args.Opt == 'fe':
+        OPT = FE
+    elif args.Opt == 'hpo':
+        OPT = HPO
+    else:
+        raise ValueError("Not supprt Opt type:", args.Opt)
 
     if args.job_idx is not None and len(args.job_idx) > 0:
         chosen_datasets = [chosen_datasets[idx] for idx in args.job_idx]
@@ -96,15 +105,30 @@ if '__main__' == __name__:
         inc_alg = include_algorithms
         if dataset in ['black_friday']:
             inc_alg = [alg for alg in include_algorithms if alg not in ['adaboost']]
-        opt = OPT(
-            include_algorithms=inc_alg, sub_optimizer='smac', task_type=task_type,
-            metric=metric,
-            data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
-            optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
-            time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
-            output_dir='./data', seed=1, n_jobs=1,
-            ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
-        )
+    
+        if args.Opt in ['cash', 'cashfe']:
+            opt = OPT(
+                include_algorithms=inc_alg, sub_optimizer='smac', task_type=task_type,
+                metric=metric,
+                data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
+                optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
+                time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
+                output_dir=args.output_dir, seed=1, n_jobs=1,
+                ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
+            )
+        elif args.Opt in ['fe', 'hpo']:
+            opt = OPT(
+                estimator_id=estimator_id, task_type=task_type,
+                metric=metric,
+                data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
+                optimizer=args.optimizer, 
+                time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
+                output_dir=args.output_dir, seed=1, n_jobs=1,
+                ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset,
+                # include_preprocessors = ['fast_ica_decomposer']
+            )
+            
+            
         print(opt.get_conf(save=True))
 
         print(opt.run())
@@ -117,4 +141,4 @@ if '__main__' == __name__:
         ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
 
         with open(args.output_file, 'a+') as f:
-            f.write(f'RGS: {args.Opt}, {dataset}: {perf}, {ens_perf}\n')
+            f.write(f'RGS: {args.Opt}-{args.optimizer}, {dataset}: {perf}, {ens_perf}\n')

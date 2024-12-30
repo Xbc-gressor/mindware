@@ -116,7 +116,7 @@ class SMACOptimizer(BaseOptimizer):
         
             self.eval_dict.update({
                 (fe_config, run_history.configurations[i]): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
-                for i in range(-self.inner_iter_num_per_iter, 0)
+                for i in range(max(-len(run_history), -self.inner_iter_num_per_iter), 0)
             })
         else:
             if hasattr(self.evaluator, 'hpo_config'):
@@ -125,7 +125,7 @@ class SMACOptimizer(BaseOptimizer):
                 hpo_config = None
             self.eval_dict.update({
                 (run_history.configurations[i], hpo_config): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
-                for i in range(-self.inner_iter_num_per_iter, 0)
+                for i in range(max(-len(run_history), -self.inner_iter_num_per_iter), 0)
             })
 
         if len(run_history.get_incumbents()) > 0:

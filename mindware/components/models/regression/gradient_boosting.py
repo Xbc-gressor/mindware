@@ -17,6 +17,7 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
                  min_weight_fraction_leaf, max_depth, criterion, max_features,
                  max_leaf_nodes, min_impurity_decrease, random_state=None,
                  verbose=0):
+        BaseRegressionModel.__init__(self)
         self.loss = loss
         self.learning_rate = learning_rate
         self.n_estimators = n_estimators

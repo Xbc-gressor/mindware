@@ -8,7 +8,7 @@ from ConfigSpace.hyperparameters import UniformFloatHyperparameter, UniformInteg
 class LightGBM(BaseClassificationModel):
     def __init__(self, n_estimators, learning_rate, num_leaves, max_depth, min_child_samples,
                  subsample, colsample_bytree, augment_data=0, random_state=None, verbose=0):
-        super().__init__()
+        BaseClassificationModel.__init__(self)
         self.n_estimators = int(n_estimators)
         self.learning_rate = learning_rate
         self.num_leaves = int(num_leaves)
@@ -38,19 +38,17 @@ class LightGBM(BaseClassificationModel):
         self.n_jobs = 4
         
 
-    def fit(self, X, y):
+    def fit(self, X, Y):
         from lightgbm import LGBMClassifier
-        self.classes_ = np.unique(y)
-        print(f"Initial shape of X: {X.shape}, y: {len(y)}")
+        from sklearn.utils.multiclass import unique_labels
+        self.classes_ = unique_labels(Y)
 
         if self.augment_data == 1:
             print("Augmenting data...")
-            self.target = y
+            self.target = Y
             X = X.values if isinstance(X, pd.DataFrame) else X
-            X, y = self.augment_data_func(X, y)
+            X, Y = self.augment_data_func(X, Y)
             print(f"Shape after augment_data_func - X: {X.shape}, y: {len(y)}")
-
-        # print(f"Training LightGBM model with {X.shape[1]} features")
 
         self.estimator = LGBMClassifier(num_leaves=self.num_leaves,
                                         max_depth=self.max_depth,
@@ -64,10 +62,10 @@ class LightGBM(BaseClassificationModel):
                                         verbose=self.verbose)
 
         if self.augment_data == 1:
-            self.estimator.fit(X, y,
+            self.estimator.fit(X, Y,
                                categorical_feature=[2])
         else:
-            self.estimator.fit(X, y)
+            self.estimator.fit(X, Y)
 
         return self
 

@@ -14,6 +14,7 @@ class AdaboostClassifier(BaseClassificationModel):
 
     def __init__(self, n_estimators, learning_rate, algorithm, max_depth,
                  random_state=None):
+        BaseClassificationModel.__init__(self)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.algorithm = algorithm
@@ -23,6 +24,8 @@ class AdaboostClassifier(BaseClassificationModel):
 
     def fit(self, X, Y, sample_weight=None):
         import sklearn.tree
+        from sklearn.utils.multiclass import unique_labels
+        self.classes_ = unique_labels(Y)
 
         self.n_estimators = int(self.n_estimators)
         self.learning_rate = float(self.learning_rate)

@@ -10,6 +10,7 @@ class LightGBM(BaseRegressionModel):
     def __init__(self, n_estimators, learning_rate, num_leaves, min_child_weight,
                  subsample, colsample_bytree, reg_alpha, reg_lambda, augment_data=0,
                  random_state=1, verbose=0):
+        BaseRegressionModel.__init__(self)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.num_leaves = num_leaves

@@ -16,6 +16,7 @@ class ExtraTreesRegressor(IterativeComponentWithSampleWeight, BaseRegressionMode
                  min_samples_split, max_features, bootstrap, max_leaf_nodes,
                  max_depth, min_weight_fraction_leaf, min_impurity_decrease,
                  oob_score=False, n_jobs=1, random_state=None, verbose=0):
+        BaseRegressionModel.__init__(self)
         self.n_estimators = self.get_max_iter()
         self.criterion = criterion
 

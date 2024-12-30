@@ -76,7 +76,9 @@ class RandomSearchOptimizer(BaseOptimizer):
                 if time.time() - _start_time > budget:
                     self.logger.warning('Time limit exceeded!')
                     break
-                _config, _status, _, _perf = self.optimizer.iterate()
+                
+                obs = self.optimizer.iterate()
+                _config, _status, _perf = obs.config, obs.trial_state, obs.objectives
                 self.update_saver([_config], [_perf[0]])
                 if _status == SUCCESS:
                     self.exp_output[time.time()] = (_config, _perf[0])
@@ -90,29 +92,41 @@ class RandomSearchOptimizer(BaseOptimizer):
             elif time.time() - _start_time > budget:
                 self.logger.warning('Time limit exceeded!')
             else:
-                _config_list, _status_list, _, _perf_list = self.optimizer.async_iterate(n=inner_iter_num)
-                self.update_saver(_config_list, _perf_list)
-                for i, _config in enumerate(_config_list):
-                    if _status_list[i] == SUCCESS:
-                        self.exp_output[time.time()] = (_config, _perf_list[i])
+                
+                obs_list = self.optimizer.async_iterate(n=inner_iter_num)
+                _config_list, _perf_list = [], []
+                for obs in obs_list:
+                    _config, _perf = obs.config, obs.objectives
+                    _config_list.append(_config)
+                    _perf_list.append(_perf[0])
+                    if obs.trial_state == SUCCESS:
+                        self.exp_output[time.time()] = (_config, _perf[0])
                         self.configs.append(_config)
-                        self.perfs.append(-_perf_list[i])
-
+                        self.perfs.append(-_perf[0])
+                        
+                self.update_saver(_config_list, _perf_list)
+                
         run_history = self.optimizer.get_history()
-        if self.name in ['hpo', 'cash', 'cashfe']:
+        if self.name in ['hpofe', 'cash', 'cashfe']:
             if hasattr(self.evaluator, 'fe_config'):
                 fe_config = self.evaluator.fe_config
             else:
                 fe_config = None
-            self.eval_dict = {(fe_config, hpo_config): [-run_history.perfs[i], time.time(), run_history.trial_states[i]]
-                              for i, hpo_config in enumerate(run_history.configurations)}
+        
+            self.eval_dict.update({
+                (fe_config, run_history.configurations[i]): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
+                for i in range(max(-len(run_history), -self.inner_iter_num_per_iter), 0)
+            })
         else:
             if hasattr(self.evaluator, 'hpo_config'):
                 hpo_config = self.evaluator.hpo_config
             else:
                 hpo_config = None
-            self.eval_dict = {(fe_config, hpo_config): [-run_history.perfs[i], time.time(), run_history.trial_states[i]]
-                              for i, fe_config in enumerate(run_history.configurations)}
+            self.eval_dict.update({
+                (run_history.configurations[i], hpo_config): [-run_history.objectives[i][0], time.time(), run_history.trial_states[i]]
+                for i in range(max(-len(run_history), -self.inner_iter_num_per_iter), 0)
+            })
+            
         if len(run_history.get_incumbents()) > 0:
             incumbent = run_history.get_incumbents()[0]
             self.incumbent_config, self.incumbent_perf = incumbent.config.get_dictionary().copy(), incumbent.objectives[0]

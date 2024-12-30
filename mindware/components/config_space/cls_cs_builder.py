@@ -16,13 +16,15 @@ def get_hpo_cs(estimator_id, task_type=CLASSIFICATION, **cs_args):
 
 
 def get_cash_cs(include_algorithms=None, task_type=CLASSIFICATION, **cs_args):
-    _candidates = get_combined_candidtates(_classifiers, _addons).keys() - {'neural_network'}
+    _candidates = get_combined_candidtates(_classifiers, _addons)
+    _candidates.pop('neural_network', None)
+    _candidates = list(_candidates)
     if include_algorithms is not None:
-        _candidates = set(include_algorithms).intersection(set(_candidates)) - {'neural_network'}
+        _candidates = [_can for _can in _candidates if _can in include_algorithms]
         if len(_candidates) == 0:
             raise ValueError("No algorithms included! Please check the spelling of the included algorithms!")
     cs = ConfigurationSpace()
-    algo = CategoricalHyperparameter('algorithm', list(_candidates))
+    algo = CategoricalHyperparameter('algorithm', _candidates)
     cs.add_hyperparameter(algo)
     for estimator_id in _candidates:
         estimator_cs = get_hpo_cs(estimator_id, **cs_args)
@@ -33,9 +35,9 @@ def get_cash_cs(include_algorithms=None, task_type=CLASSIFICATION, **cs_args):
 
 
 def get_fe_cs(task_type=CLASSIFICATION, include_image=False,
-              include_text=False, include_preprocessors=None, if_imbal=False):
+              include_text=False, include_preprocessors=None, if_imbal=False, **cs_args):
     cs = get_task_hyperparameter_space(task_type=task_type, include_image=include_image, include_text=include_text,
-                                       include_preprocessors=include_preprocessors, if_imbal=if_imbal)
+                                       include_preprocessors=include_preprocessors, if_imbal=if_imbal, **cs_args)
     return cs
 
 

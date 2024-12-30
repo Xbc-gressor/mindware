@@ -12,6 +12,7 @@ class AdaboostRegressor(BaseRegressionModel):
 
     def __init__(self, n_estimators, learning_rate, max_depth,
                  random_state=None):
+        BaseRegressionModel.__init__(self)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.random_state = random_state

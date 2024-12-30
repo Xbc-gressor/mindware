@@ -93,7 +93,7 @@ class BaseAutoML(object):
         if self.task_type in CLS_TASKS:
             self.if_imbal = is_imbalanced_dataset(self.data_node)
 
-        self.already_refit = False
+        self.refit_status = 'none'  # none, partial, full
 
         self.logger = None
         self.task_id = task_id
@@ -191,12 +191,12 @@ class BaseAutoML(object):
 
         if self.ensemble_method is not None:
             if self.evaluation == 'cv':
-                self.refit()
+                self.refit(partial=True)
 
             self.fit_ensemble(refit)  # 如果是cv，就不再refit
 
         if self.evaluation == 'cv' or refit:
-            if not self.already_refit:
+            if self.refit_status != 'full':
                 self.refit_incumbent()
 
         return self.incumbent_perf
@@ -224,13 +224,12 @@ class BaseAutoML(object):
                                                 weight_balance=data_node.enable_balance,
                                                 data_balance=data_node.data_balance)
 
-            model_path = os.path.join(self.output_dir, '%s_%s.pkl' % (
-                self.datetime, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
-            with open(model_path, 'wb') as f:
-                pkl.dump([op_list, estimator, -self.incumbent_perf], f)
+            model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, self.incumbent, self.datetime)
+            CombinedTopKModelSaver._save([op_list, estimator, self.incumbent_perf], model_path)
 
     # train with whole data
-    def refit(self):
+    def refit(self, partial=False):
+        # if partial, holdout training; else, whole-data training
 
         if self.ensemble_method is None:
             self.logger.error("No ensemble method is specified, no need to refit!")
@@ -244,6 +243,9 @@ class BaseAutoML(object):
 
         with open(config_path, 'rb') as f:
             stats = pkl.load(f)
+        test_size = 0.33
+        if self.resampling_params is not None and 'test_size' in self.resampling_params:
+            test_size = self.resampling_params['test_size']
         for algo_id in stats.keys():
             if algo_id == 'neural_network':
                 continue
@@ -258,18 +260,23 @@ class BaseAutoML(object):
                     else:
                         op_list = {}
                         data_node = self.data_node.copy_()
-
+                    
+                    X, y = data_node.data[0], data_node.data[1]
+                    if partial:
+                        ss = self.evaluator._get_spliter('holdout', test_size=test_size, random_state=self.seed)
+                        for train_index, _ in ss.split(X, y):
+                            X, y = X[train_index], y[train_index]
+                    
                     algo_id = config['algorithm']
                     estimator = fetch_predict_estimator(self.task_type, algo_id, config,
-                                                        data_node.data[0], data_node.data[1],
+                                                        X, y,
                                                         weight_balance=data_node.enable_balance,
                                                         data_balance=data_node.data_balance)
-                    with open(path, 'wb') as f:
-                        pkl.dump([op_list, estimator, perf], f)
+                    CombinedTopKModelSaver._save([op_list, estimator, perf], path)
                 except:
                     self.logger.error("Failed to refit for %s !" % path)
 
-        self.already_refit = True
+        self.refit_status = 'partial' if partial else 'full'
 
     def fit_ensemble(self, refit=True):
 
@@ -277,30 +284,27 @@ class BaseAutoML(object):
 
         if self.ensemble_method is not None:
 
+            # 如果用全数据refit了，就不能包含k_nearest_neighbors, 因为它会将训练数据都预测为label，selection算法只会选knn
             if self.evaluation == 'cv':
-                if not self.already_refit:
-                    raise AttributeError("Please call refit() for cross-validation!")
+                if self.refit_status in ['none', 'full']:
+                    raise AttributeError("Please call refit(partial=True) for cross-validation!")
 
             config_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.datetime)
             with open(config_path, 'rb') as f:
                 stats = pkl.load(f)
 
-            # 如果用全数据refit了，就不能包含k_nearest_neighbors, 因为它会将训练数据都预测为label，selection算法只会选knn
-            if self.already_refit and self.ensemble_method == 'ensemble_selection':
-                if 'k_nearest_neighbors' in stats:
-                    stats.pop('k_nearest_neighbors')
-
             # Ensembling all intermediate/ultimate models found in above optimization process.
             self.es = EnsembleBuilder(stats=stats,
                                       data_node=self.data_node,
+                                      resampling_params=self.resampling_params,
                                       ensemble_method=self.ensemble_method,
                                       ensemble_size=self.ensemble_size,
                                       task_type=self.task_type,
                                       metric=self.metric,
-                                      output_dir=self.output_dir)
+                                      output_dir=self.output_dir, seed=self.seed)
             self.es.fit(data=self.data_node)
 
-            if not self.already_refit and refit:
+            if refit and self.refit_status != 'full':
                 self.es.refit()
         else:
             raise ValueError("No ensemble method is specified!")
@@ -318,22 +322,32 @@ class BaseAutoML(object):
 
     def _predict_stats(self, test_data: DataNode, stats, ens=False, prob=False):
         stats = stats.copy()
-        # 如果用全数据refit了，就不能包含k_nearest_neighbors, 因为它会将训练数据都预测为label，selection算法只会选knn
-        if ens and self.ensemble_method == 'ensemble_selection':
-            if 'k_nearest_neighbors' in stats:
-                stats.pop('k_nearest_neighbors')
 
         print("Predicting with stats")
+        
+        best_path = None
+        best_config = None
+        best_perf = -float("INF")
+        for algo_id in stats.keys():
+            model_to_eval = stats[algo_id]
+            for idx, (config, perf, path) in enumerate(model_to_eval):
+                if perf > best_perf:
+                    best_perf = perf
+                    best_config = config
+                    best_path = path
+        self.incumbent_perf = best_perf
+        self.incumbent = best_config
         if ens and self.ensemble_method is not None:
-            es = EnsembleBuilder(stats=stats,
-                                 data_node=self.data_node,
-                                 ensemble_method=self.ensemble_method,
-                                 ensemble_size=self.ensemble_size,
-                                 task_type=self.task_type,
-                                 metric=self.metric,
-                                 output_dir=self.output_dir)
-            es.fit(data=self.data_node)
-            pred = es.predict(test_data)
+            self.es = EnsembleBuilder(stats=stats,
+                                      data_node=self.data_node,
+                                      resampling_params=self.resampling_params,
+                                      ensemble_method=self.ensemble_method,
+                                      ensemble_size=self.ensemble_size,
+                                      task_type=self.task_type,
+                                      metric=self.metric,
+                                      output_dir=self.output_dir, seed=self.seed)
+            self.es.fit(data=self.data_node)
+            pred = self.es.predict(test_data)
             if self.task_type in CLS_TASKS:
                 if prob:
                     return pred
@@ -343,20 +357,10 @@ class BaseAutoML(object):
                 return pred
 
         else:
-            best_path = None
-            best_perf = -float("INF")
-            for algo_id in stats.keys():
-                model_to_eval = stats[algo_id]
-                for idx, (config, perf, path) in enumerate(model_to_eval):
-                    if perf > best_perf:
-                        best_perf = perf
-                        best_path = path
 
             if best_path is None:
                 raise AttributeError("No stats found!")
-
-            with open(best_path, 'rb') as f:
-                best_op_list, estimator, _ = pkl.load(f)
+            best_op_list, estimator, _  = CombinedTopKModelSaver._load(best_path)
             test_data_node = test_data.copy_()
             test_data_node = construct_node(test_data_node, best_op_list)
 

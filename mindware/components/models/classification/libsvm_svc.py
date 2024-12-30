@@ -14,6 +14,7 @@ from mindware.components.models.base_model import BaseClassificationModel
 class LibSVM_SVC(BaseClassificationModel):
     def __init__(self, C, kernel, gamma, shrinking, tol, max_iter,
                  class_weight=None, degree=3, coef0=0, random_state=None):
+        BaseClassificationModel.__init__(self)
         self.C = C
         self.kernel = kernel
         self.degree = degree
@@ -29,6 +30,9 @@ class LibSVM_SVC(BaseClassificationModel):
 
     def fit(self, X, Y):
         import sklearn.svm
+        from sklearn.utils.multiclass import unique_labels
+        self.classes_ = unique_labels(Y)
+
         # Nested kernel
         if isinstance(self.kernel, tuple):
             nested_kernel = self.kernel

@@ -8,6 +8,7 @@ from mindware.components.utils.constants import DENSE, SPARSE, UNSIGNED_DATA, PR
 
 class LassoRegressor(BaseRegressionModel):
     def __init__(self, alpha, tol, max_iter, random_state=None):
+        BaseRegressionModel.__init__(self)
         self.alpha = alpha
         self.tol = tol
         self.max_iter = max_iter

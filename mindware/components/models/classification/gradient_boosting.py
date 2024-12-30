@@ -19,6 +19,7 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
                  min_weight_fraction_leaf, max_depth, criterion, max_features,
                  max_leaf_nodes, min_impurity_decrease, random_state=None,
                  verbose=0):
+        BaseClassificationModel.__init__(self)
         self.loss = loss
         self.learning_rate = learning_rate
         self.n_estimators = n_estimators
@@ -36,7 +37,7 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
         self.estimator = None
         self.fully_fit_ = False
 
-    def iterative_fit(self, X, y, sample_weight=None, n_iter=1, refit=False):
+    def iterative_fit(self, X, Y, sample_weight=None, n_iter=1, refit=False):
 
         try:
             from sklearn.ensemble import GradientBoostingClassifier as GBC
@@ -90,7 +91,7 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
             self.estimator.n_estimators = min(self.estimator.n_estimators,
                                               self.n_estimators)
 
-        self.estimator.fit(X, y, sample_weight=sample_weight)
+        self.estimator.fit(X, Y, sample_weight=sample_weight)
 
         # Apparently this if is necessary
         if self.estimator.n_estimators >= self.n_estimators:

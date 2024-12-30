@@ -38,7 +38,7 @@ class BaseFE(BaseAutoML):
             ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
         )
 
-        if optimizer not in ['smac', 'tpe', 'random_search', 'block_0']:
+        if optimizer not in ['smac', 'tpe', 'random_search']:
             raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
         if evaluation not in ['holdout', 'cv', 'partial', 'partial_bohb']:
             raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
@@ -59,9 +59,11 @@ class BaseFE(BaseAutoML):
         else:
             _candidates = get_combined_candidtates(_regressors, _rgs_addons)
 
-        self.cs = get_fe_cs(
-            self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal
-        )
+        cs_args = {
+            'resampling_params': resampling_params,
+            'data_node': data_node
+        }
+        self.cs = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal, **cs_args)
 
         if model_config is None:
             if self.estimator_id in _candidates:

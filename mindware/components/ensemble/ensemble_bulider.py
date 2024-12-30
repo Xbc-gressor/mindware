@@ -14,7 +14,8 @@ class EnsembleBuilder:
                  ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
-                 output_dir=None):
+                 resampling_params=None,
+                 output_dir=None, seed=None):
         self.model = None
         if ensemble_method == 'bagging':
             self.model = Bagging(stats=stats,
@@ -22,35 +23,40 @@ class EnsembleBuilder:
                                  ensemble_size=ensemble_size,
                                  task_type=task_type,
                                  metric=metric,
-                                 output_dir=output_dir)
+                                 resampling_params=resampling_params,
+                                 output_dir=output_dir, seed=seed)
         elif ensemble_method == 'blending':
             self.model = Blending(stats=stats,
                                   data_node=data_node,
                                   ensemble_size=ensemble_size,
                                   task_type=task_type,
                                   metric=metric,
-                                  output_dir=output_dir)
+                                  resampling_params=resampling_params,
+                                  output_dir=output_dir, seed=seed)
         elif ensemble_method == 'stacking':
             self.model = Stacking(stats=stats,
                                   data_node=data_node,
                                   ensemble_size=ensemble_size,
                                   task_type=task_type,
                                   metric=metric,
-                                  output_dir=output_dir)
+                                  resampling_params=resampling_params,
+                                  output_dir=output_dir, seed=seed)
         elif ensemble_method == 'ensemble_selection':
             self.model = EnsembleSelection(stats=stats,
                                            data_node=data_node,
                                            ensemble_size=ensemble_size,
                                            task_type=task_type,
                                            metric=metric,
-                                           output_dir=output_dir)
+                                           resampling_params=resampling_params,
+                                           output_dir=output_dir, seed=seed)
         elif ensemble_method == 'cross_validation':
             self.model = CrossValidationEnsembleModel(stats=stats,
                                                       data_node=data_node,
                                                       ensemble_size=ensemble_size,
                                                       task_type=task_type,
                                                       metric=metric,
-                                                      output_dir=output_dir)
+                                                      resampling_params=resampling_params,
+                                                      output_dir=output_dir, seed=seed)
         else:
             raise ValueError("%s is not supported for ensemble!" % ensemble_method)
 

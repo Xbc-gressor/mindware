@@ -12,7 +12,6 @@ from mindware.utils.logging_utils import get_logger
 from mindware.components.evaluators.base_evaluator import _BaseEvaluator
 from mindware.components.evaluators.evaluate_func import validation
 
-from mindware.components.feature_engineering.parse import parse_config, construct_node
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 
 from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
@@ -43,7 +42,7 @@ class BaseEvaluator(_BaseEvaluator):
         self.train_node = None
         self.val_node = None
 
-        self.timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
+        self.datetime = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
     def get_fit_params(self, y, estimator):
         from mindware.components.utils.balancing import get_weights
@@ -95,12 +94,11 @@ class BaseEvaluator(_BaseEvaluator):
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
 
-                if self.resampling_params is None or 'test_size' not in self.resampling_params:
-                    test_size = 0.33
-                else:
+                test_size = 0.33
+                if self.resampling_params is not None and 'test_size' in self.resampling_params:
                     test_size = self.resampling_params['test_size']
                     
-                ss = self._get_spliter(self.resampling_strategy, test_size=test_size, random_state=self.seed)
+                ss = self.__class__._get_spliter(self.resampling_strategy, test_size=test_size, random_state=self.seed)
 
                 for train_index, test_index in ss.split(self.data_node.data[0], self.data_node.data[1]):
                     _x_train, _x_val = self.data_node.data[0][train_index], self.data_node.data[0][test_index]
@@ -126,8 +124,8 @@ class BaseEvaluator(_BaseEvaluator):
 
             _, estimator = self._get_estimator_getter()(config_dict, estimator_id)
 
-            if self.onehot_encoder is None:
-                self.onehot_encoder = self._get_onehot_encoder(_y_train)
+            # if self.onehot_encoder is None:
+            #     self.onehot_encoder = self._get_onehot_encoder(_y_train)
 
             # score = validation(estimator, self.scorer, _x_train, _y_train, _x_val, _y_val,
             #                    random_state=self.seed,
@@ -148,7 +146,7 @@ class BaseEvaluator(_BaseEvaluator):
                     else:
                         folds = self.resampling_params['folds']
 
-                skfold = self._get_spliter(self.resampling_strategy,
+                skfold = self.__class__._get_spliter(self.resampling_strategy,
                                            n_splits=folds, random_state=self.seed, shuffle=False)
                 scores = list()
                 for train_index, test_index in skfold.split(self.data_node.data[0], self.data_node.data[1]):
@@ -175,8 +173,8 @@ class BaseEvaluator(_BaseEvaluator):
 
                     _, estimator = self._get_estimator_getter()(config_dict, estimator_id)
 
-                    if self.onehot_encoder is None:
-                        self.onehot_encoder = self._get_onehot_encoder(_y_train)
+                    # if self.onehot_encoder is None:
+                    #     self.onehot_encoder = self._get_onehot_encoder(_y_train)
 
                     _score = validation(estimator, self.scorer, _x_train, _y_train, _x_val, _y_val,
                                         random_state=self.seed,
@@ -191,12 +189,11 @@ class BaseEvaluator(_BaseEvaluator):
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
 
-                if self.resampling_params is None or 'test_size' not in self.resampling_params:
-                    test_size = 0.33
-                else:
+                test_size = 0.33
+                if self.resampling_params is not None and 'test_size' in self.resampling_params:
                     test_size = self.resampling_params['test_size']
 
-                ss = self._get_spliter(self.resampling_strategy, test_size=test_size, random_state=self.seed)
+                ss = self.__class__._get_spliter(self.resampling_strategy, test_size=test_size, random_state=self.seed)
                 for train_index, test_index in ss.split(self.data_node.data[0], self.data_node.data[1]):
                     _x_train, _x_val = self.data_node.data[0][train_index], self.data_node.data[0][test_index]
                     _y_train, _y_val = self.data_node.data[1][train_index], self.data_node.data[1][test_index]
@@ -210,7 +207,7 @@ class BaseEvaluator(_BaseEvaluator):
             _val_index = None
             _act_x_train, _act_y_train = None, None
             if downsample_ratio != 1:
-                down_ss = self._get_spliter(self.resampling_strategy, test_size=downsample_ratio,
+                down_ss = self.__class__._get_spliter(self.resampling_strategy, test_size=downsample_ratio,
                                             random_state=self.seed)
                 for _, _val_index in down_ss.split(_x_train, _y_train):
                     _act_x_train, _act_y_train = _x_train[_val_index], _y_train[_val_index]
@@ -250,17 +247,8 @@ class BaseEvaluator(_BaseEvaluator):
         if 'holdout' in self.resampling_strategy or 'partial' in self.resampling_strategy:
 
             if np.isfinite(score) and downsample_ratio == 1:
-                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.timestamp)
-
-                if not os.path.exists(model_path):
-                    with open(model_path, 'wb') as f:
-                        pkl.dump([op_list, estimator, score], f)
-                else:
-                    with open(model_path, 'rb') as f:
-                        _, _, perf = pkl.load(f)
-                    if score > perf:
-                        with open(model_path, 'wb') as f:
-                            pkl.dump([op_list, estimator, score], f)
+                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
+                CombinedTopKModelSaver.save_config([op_list, estimator, score], model_path)
 
                 self.logger.info("Model saved to %s" % model_path)
 
@@ -303,7 +291,8 @@ class BaseCLSEvaluator(BaseEvaluator):
     def _get_estimator_getter(self):
         return get_cls_estimator
 
-    def _get_spliter(self, resampling_strategy, **kwargs):
+    @staticmethod
+    def _get_spliter(resampling_strategy, **kwargs):
 
         if 'cv' in resampling_strategy:
             folds = kwargs.pop('n_splits')
@@ -349,7 +338,8 @@ class BaseRGSEvaluator(BaseEvaluator):
     def _get_estimator_getter(self):
         return get_rgs_estimator
 
-    def _get_spliter(self, resampling_strategy, **kwargs):
+    @staticmethod
+    def _get_spliter(resampling_strategy, **kwargs):
 
         if 'cv' in resampling_strategy:
             folds = kwargs.pop('n_splits')

@@ -9,6 +9,7 @@ from mindware.components.utils.constants import DENSE, SPARSE, UNSIGNED_DATA, PR
 class KNearestNeighborsClassifier(BaseClassificationModel):
 
     def __init__(self, n_neighbors, weights, p, random_state=None):
+        BaseClassificationModel.__init__(self)
         self.n_neighbors = n_neighbors
         self.weights = weights
         self.p = p
@@ -18,6 +19,8 @@ class KNearestNeighborsClassifier(BaseClassificationModel):
 
     def fit(self, X, Y):
         import sklearn.multiclass
+        from sklearn.utils.multiclass import unique_labels
+        self.classes_ = unique_labels(Y)
 
         estimator = \
             sklearn.neighbors.KNeighborsClassifier(n_neighbors=self.n_neighbors,

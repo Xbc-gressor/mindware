@@ -2,7 +2,6 @@ from autogluon.tabular import TabularDataset, TabularPredictor
 import time
 import pandas as pd
 import os
-import numpy as np
 from datetime import datetime
 import argparse
 from mindware.utils.data_manager import DataManager
@@ -60,20 +59,19 @@ for dataset in chosen_datasets:
     label_col = chosen_datasets_info.loc[dataset, 'label_col']
     train_df, test_df = dm.split_data(df, label_col=label_col,
                                         test_size=0.2, random_state=args.train_test_split_seed, task_type=task_type)
-    train_df = train_df[np.isfinite(train_df.iloc[:,label_col])]
-    test_df = test_df[np.isfinite(test_df.iloc[:,label_col])]
     eval_metric = 'acc'  # set this to the metric you ultimately care about
     label = train_df.columns[label_col]
     predictor = TabularPredictor(label=label, eval_metric=eval_metric).fit(train_df, presets=['best_quality'], time_limit=time_limit)
+    predictor.predict()
     perf_dct = predictor.evaluate(test_df, silent=True)
     # y_pred = predictor.predict_proba(test_df).iloc[:,1]
     # scorer = make_scorer(accuracy_score)
     # perf = scorer._score_func(test_df, y_pred) * scorer._sign
 
-    leader_info = predictor.leaderboard(test_df)
+    leader_info = predictor.leaderboard(train_df)
     with open(OUTPUT_FILE, 'a+') as f:
         f.write(f'Autogluon CLS: {formatted_start_time}, {dataset}: {perf_dct}\n')
-        f.write(f'leaderboard:{leader_info.to_string(index=False)}\n')
+        f.write(f'leaderboard:{leader_info}\n')
     print('Result has been saved to result.txt.')
 
 

@@ -11,23 +11,28 @@ from mindware.components.ensemble.unnamed_ensemble import choose_base_models_cla
 from mindware.components.feature_engineering.parse import construct_node
 from mindware.utils.logging_utils import get_logger
 from mindware.utils.functions import is_imbalanced_dataset
+from mindware.components.utils.topk_saver import CombinedTopKModelSaver
+from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
 
 
 class BaseEnsembleModel(object):
     """Base class for model ensemble"""
 
-    def __init__(self, stats, ensemble_method: str,
+    def __init__(self, stats, data_node,
+                 ensemble_method: str,
                  ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
-                 data_node,
-                 output_dir=None):
+                 resampling_params=None,
+                 output_dir=None, seed=None):
         self.stats = stats
         self.ensemble_method = ensemble_method
         self.ensemble_size = ensemble_size
         self.task_type = task_type
         self.metric = metric
+        self.resampling_params = resampling_params
         self.output_dir = output_dir
+        self.seed = seed
         self.node = data_node
 
         self.predictions = []
@@ -40,26 +45,25 @@ class BaseEnsembleModel(object):
         if self.task_type in CLS_TASKS:
             self.if_imbal = is_imbalanced_dataset(self.node)
 
+        test_size = 0.33
+        if self.resampling_params is not None and 'test_size' in self.resampling_params:
+            test_size = self.resampling_params['test_size']
         model_cnt = 0
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
             for idx, (_, _, path) in enumerate(model_to_eval):
-                with open(path, 'rb') as f:
-                    op_list, model, _ = pkl.load(f)
+                op_list, model, _ = CombinedTopKModelSaver._load(path)
                 _node = self.node.copy_()
                 _node = construct_node(_node, op_list)
-
-                # TODO: Test size
-                test_size = 0.33
                 X, y = _node.data
 
                 if self.task_type in CLS_TASKS:
-                    ss = StratifiedShuffleSplit(n_splits=1, test_size=test_size, random_state=1)
+                    ss = BaseCLSEvaluator._get_spliter(resampling_strategy='holdout', test_size=test_size, random_state=self.seed)
                 else:
-                    ss = ShuffleSplit(n_splits=1, test_size=test_size, random_state=1)
+                    ss = BaseRGSEvaluator._get_spliter(resampling_strategy='holdout', test_size=test_size, random_state=self.seed)
 
                 X_valid, y_valid = None, None
-                for train_index, val_index in ss.split(X, y):
+                for _, val_index in ss.split(X, y):
                     X_valid = X[val_index]
                     y_valid = y[val_index]
 

@@ -19,6 +19,7 @@ class RandomForest(
                  min_weight_fraction_leaf, bootstrap, max_leaf_nodes,
                  min_impurity_decrease, random_state=None, n_jobs=1,
                  class_weight=None):
+        BaseClassificationModel.__init__(self)
         self.n_estimators = self.get_max_iter()
         self.criterion = criterion
         self.max_features = max_features
@@ -41,7 +42,7 @@ class RandomForest(
     def get_current_iter(self):
         return self.estimator.n_estimators
 
-    def iterative_fit(self, X, y, sample_weight=None, n_iter=1, refit=False):
+    def iterative_fit(self, X, Y, sample_weight=None, n_iter=1, refit=False):
         from sklearn.ensemble import RandomForestClassifier
 
         if refit:
@@ -93,7 +94,7 @@ class RandomForest(
             self.estimator.n_estimators = min(self.estimator.n_estimators,
                                               self.n_estimators)
 
-        self.estimator.fit(X, y, sample_weight=sample_weight)
+        self.estimator.fit(X, Y, sample_weight=sample_weight)
         return self
 
     def configuration_fully_fitted(self):

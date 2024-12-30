@@ -35,7 +35,7 @@ class NeuralNetworkClassifier(BaseRegressionModel):
                  sgd_learning_rate=None, sgd_momentum=None, weight_decay=None, nesterov=None,
                  adam_learning_rate=None, beta1=None,
                  random_state=None, device='cuda', **kwargs):
-        super(NeuralNetworkClassifier, self).__init__()
+        BaseRegressionModel.__init__(self)
 
         self.optimizer = optimizer
         self.batch_size = batch_size

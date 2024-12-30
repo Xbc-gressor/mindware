@@ -9,6 +9,7 @@ from mindware.components.utils.constants import DENSE, SPARSE, UNSIGNED_DATA, PR
 
 class Logistic_Regression(BaseClassificationModel):
     def __init__(self, C, penalty, solver, tol, max_iter, random_state=None):
+        BaseClassificationModel.__init__(self)
         self.C = C
         self.tol = tol
         self.random_state = random_state
@@ -22,6 +23,8 @@ class Logistic_Regression(BaseClassificationModel):
 
     def fit(self, X, Y, sample_weight=None):
         from sklearn.linear_model import LogisticRegression
+        from sklearn.utils.multiclass import unique_labels
+        self.classes_ = unique_labels(Y)
 
         self.C = float(self.C)
 

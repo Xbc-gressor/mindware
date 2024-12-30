@@ -7,7 +7,9 @@ from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.ensemble.base_ensemble import BaseEnsembleModel
 from mindware.components.feature_engineering.parse import construct_node
 
+from mindware.components.feature_engineering.parse import parse_config
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
+from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from functools import reduce
 
 
@@ -16,14 +18,16 @@ class Bagging(BaseEnsembleModel):
                  ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
-                 output_dir=None):
+                 resampling_params=None,
+                 output_dir=None, seed=None):
         super().__init__(stats=stats,
                          data_node=data_node,
                          ensemble_method='bagging',
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
-                         output_dir=output_dir)
+                         resampling_params=resampling_params,
+                         output_dir=output_dir, seed=seed)
 
     def fit(self, datanode):
         return self
@@ -38,9 +42,7 @@ class Bagging(BaseEnsembleModel):
             for idx, (_, _, path) in enumerate(model_to_eval):
 
                 if self.base_model_mask[model_cnt] == 1:
-
-                    with open(path, 'rb') as f:
-                        op_list, model, _ = pkl.load(f)
+                    op_list, model, _ = CombinedTopKModelSaver._load(path)
                     _node = data.copy_()
                     _node = construct_node(_node, op_list)
 
@@ -82,16 +84,19 @@ class Bagging(BaseEnsembleModel):
                 # X, y = self.node.data
                 if self.base_model_mask[model_cnt] == 1:
                     self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], model_path))
-                    with open(model_path, 'rb') as f:
-                        op_list, estimator, perf = pkl.load(f)
+                    op_list, estimator, perf = CombinedTopKModelSaver._load(model_path)
 
-                    _node = self.node.copy_()
-                    _node = construct_node(_node, op_list)
+                    if op_list == {}:
+                        _node = self.node.copy_()
+                    else:
+                        _node, op_list = parse_config(self.node.copy_(), config, record=True,
+                                                      if_imbal=self.if_imbal)
 
                     estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
                                                         _node.data[0], _node.data[1],
                                                         weight_balance=_node.enable_balance,
                                                         data_balance=_node.data_balance)
-                    with open(model_path, 'wb') as f:
-                        pkl.dump((op_list, estimator, perf), f)
+
+                    CombinedTopKModelSaver._save(items=[op_list, estimator, perf], save_path=model_path)
+
                 model_cnt += 1
