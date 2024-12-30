@@ -110,7 +110,7 @@ if '__main__' == __name__:
             opt = OPT(
                 include_algorithms=inc_alg, sub_optimizer='smac', task_type=task_type,
                 metric=metric,
-                data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
+                data_node=train_data_node, evaluation=args.evaluation, resampling_params={'folds': 3},
                 optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
                 time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
                 output_dir=args.output_dir, seed=1, n_jobs=1,
