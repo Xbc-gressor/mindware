@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 Autogluon CLS: 2024-12-24 02:08:02, covertype: {'accuracy': 0.9071515920105078, 'balanced_accuracy': 0.7299038427434301, 'mcc': 0.854656867295249}
 leaderboard:                          model  score_test  ...  can_infer fit_order
 0         KNeighborsDist_BAG_L1    0.986899  ...       True         2
@@ -739,7 +738,6 @@ NeuralNetFastAI_r102_BAG_L1    0.716981   0.707942    accuracy        0.440791  
       ExtraTreesEntr_BAG_L1    0.699898   0.696775    accuracy        0.869067       3.017741    1.668423                 0.869067                3.017741           1.668423            1       True          9
       KNeighborsDist_BAG_L1    0.592249   0.590209    accuracy        5.221719      10.449180    0.098219                 5.221719               10.449180           0.098219            1       True          2
       KNeighborsUnif_BAG_L1    0.591994   0.590145    accuracy        2.810338      10.053205    0.080864                 2.810338               10.053205           0.080864            1       True          1
-=======
 cv
 CLS: cash, kc1: 0.8601895734597157, 0.8720379146919431
 CLS: cashfe, kc1: 0.8720379146919431, 0.8720379146919431
@@ -833,4 +831,3 @@ RGS: autogluon, puma8NH: 0.0, -9.74182877560484
 RGS: autogluon, cpu_act: 0.0, -6.6705308114704085
 RGS: autogluon, Moneyball: 0.0, -445.083942668931
 RGS: autogluon, bank32nh: 0.0, -0.005614897572473634
->>>>>>> 4ec23164423668d0be8b2a91827de650ddd37b2e
