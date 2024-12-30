@@ -91,3 +91,50 @@ RGS: autogluon, puma8NH: 0.0, -9.74182877560484
 RGS: autogluon, cpu_act: 0.0, -6.6705308114704085
 RGS: autogluon, Moneyball: 0.0, -445.083942668931
 RGS: autogluon, bank32nh: 0.0, -0.005614897572473634
+---------------
+CLS: newcashfe-block_2, higgs: 0.7307496175420704, 0.7359000509943906
+CLS: newcashfe-block_1, higgs: 0.7302396736359, 0.7379908210096889
+CLS: newcashfe-block_1, covertype: 0.8842338874043209, 0.8872231532225191
+CLS: newcashfe-block_2, covertype: 0.8860455636577743, 0.8908012138230899
+CLS: newcashfe-block_2, kc1: 0.8720379146919431, 0.8744075829383886
+CLS: newcashfe-block_1, kc1: 0.8649289099526066, 0.8791469194312796
+CLS: newcashfe-block_2, spambase: 0.9609120521172638, 0.9565689467969598
+CLS: newcashfe-block_1, spambase: 0.9533116178067318, 0.9543973941368078
+CLS: newcashfe-block_2, cpu_act: 0.9310555216595485, 0.9347162904209884
+CLS: newcashfe-block_1, cpu_act: 0.937156802928615, 0.9365466748017084
+CLS: newcashfe-block_2, ailerons: 0.8814545454545455, 0.8909090909090909
+CLS: newcashfe-block_1, ailerons: 0.892, 0.896
+CLS: newcashfe-block_2, sick: 0.9894039735099338, 0.990728476821192
+CLS: newcashfe-block_1, sick: 0.9880794701986755, 0.9867549668874173
+CLS: newcashfe-block_2, mv: 0.9975472160902624, 0.9984056904586706
+CLS: newcashfe-block_1, mv: 0.9970566593083149, 0.9981604120676968
+RGS: newcashfe-block_2, black_friday: -11871077.90248233, -11822107.872693334
+RGS: newcashfe-block_1, black_friday: -11918316.37858896, -11820540.808646811
+RGS: newcashfe-block_2, debutanizer: -0.005832411228494607, -0.00401635673887717
+RGS: newcashfe-block_1, debutanizer: -0.0036350384931553028, -0.0038823461797085155
+RGS: newcashfe-block_2, puma8NH: -10.003521254137837, -9.810766536435652
+RGS: newcashfe-block_1, puma8NH: -9.931889758773764, -9.832504727669416
+RGS: newcashfe-block_2, cpu_act: -5.716834754386845, -4.773542117913323
+RGS: newcashfe-block_1, cpu_act: -7.3526734090762425, -5.6915358888643475
+RGS: newcashfe-block_2, bank32nh: -0.006134623126780317, -0.005947567453061562
+RGS: newcashfe-block_1, bank32nh: -0.006309115623659047, -0.0060885477788415535
+RGS: newcashfe-block_2, Moneyball: -532.005473566292, -453.7112473851631
+RGS: newcashfe-block_1, Moneyball: -532.5512174631216, -465.4421757415197
+---------------去掉ica的结果
+CLS: newcashfe_rmica-block_1, spambase: 0.9598262757871878, 0.9609120521172638
+RGS: newcashfe_rmica-block_1, puma8NH: -9.958192262058079, -9.845663938484128
+CLS: newcashfe_rmica-block_1, covertype: 0.8884007427872639, 0.8990896326826396
+RGS: newcashfe_rmica-block_1, cpu_act: -5.187559356519412, -4.930841394626699
+RGS: newcashfe_rmica-block_1, bank32nh: -0.00607709002466026, -0.0058960229941095585
+---------------保留ica的结果
+CLS: cashfe-block_1, spambase: 0.9598262757871878, 0.9609120521172638
+RGS: cashfe-block_1, puma8NH: -9.931889758773764, -9.832213273649081
+CLS: cashfe-block_1, covertype: 0.8861814393767834, 0.8896236242583451
+RGS: cashfe-block_1, cpu_act: -7.3526734090762425, -5.6915358888643475
+RGS: cashfe-block_1, bank32nh: -0.0062881282374600425, -0.006097502025520503
+---------------更早版本（去掉了压缩、loadsave统一化、split统一化、fe空间限制的优化
+CLS: cashfe_early-block_1, spambase: 0.9598262757871878, 0.9587404994571118
+RGS: cashfe_early-block_1, puma8NH: -9.931633925913898, -9.84169818230425
+RGS: cashfe_early-block_1, cpu_act: -4.89891962657235, -4.958244102768421
+CLS: cashfe_early-block_1, covertype: 0.8910729652611078, 0.8933828524842611
+RGS: cashfe_early-block_1, bank32nh: -0.00607709002466026, -0.005891575207092732

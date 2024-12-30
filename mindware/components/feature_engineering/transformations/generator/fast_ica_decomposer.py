@@ -75,7 +75,7 @@ class FastIcaDecomposer(Transformer):
 
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
-        
+    
         # n_components cannot be larger than min(n_features, n_samples).
         n_samples = kwargs.get('n_samples', None)
         n_features = kwargs.get('n_features', None)

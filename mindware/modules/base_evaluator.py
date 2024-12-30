@@ -250,6 +250,7 @@ class BaseEvaluator(_BaseEvaluator):
                 self.logger.info("Model saved to %s" % model_path)
 
         try:
+            self.logger.info('conf: %s' % str(config))
             self.logger.info('Evaluation<%s> | Score: %.4f | Time cost: %.2f seconds | Shape: %s' %
                              (estimator_id,
                               self.scorer._sign * score,
