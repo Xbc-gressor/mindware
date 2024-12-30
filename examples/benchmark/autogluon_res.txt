@@ -1,0 +1,34 @@
+| CLS:  |
+| :---: |
+|       |任务      |结果(选定模型分数) |Time_Limit|测试集最优最优模型   |验证集最优模型(最终选定模型)|测试集最优模型分数
+|       |covertype|0.9071515920105078|7200|NeuralNetFastAI_BAG_L2   |WeightedEnsemble_L3|0.908193
+|       |covertype|0.9072421758231805|3600|NeuralNetFastAI_BAG_L2   |WeightedEnsemble_L3|0.907559
+|       |kc1      |0.8720379146919431|3600|RandomForest_r15_BAG_L1  |WeightedEnsemble_L3|0.883886
+|       |kc1      |0.8720379146919431|1800|RandomForest_r195_BAG_L1 |WeightedEnsemble_L3|0.881517
+|       |spambase |0.9609120521172638|3600|NeuralNetTorch_r89_BAG_L2|WeightedEnsemble_L3|0.965255
+|       |spambase |0.9619978284473398|1800|NeuralNetTorch_r79_BAG_L2|WeightedEnsemble_L3|0.965255
+|       |cpu_act  |0.9341061622940817||3600|NeuralNetFastAI_r191_BAG_L2|WeightedEnsemble_L3|0.940207
+|       |cpu_act  |0.9377669310555217|1800|NeuralNetFastAI_r145_BAG_L2|WeightedEnsemble_L3|0.940818
+|       |ailerons |0.893090909090909|3600|NeuralNetTorch_r22_BAG_L2 |WeightedEnsemble_L3|0.897091
+|       |ailerons |0.8952727272727272|1800|CatBoost_r70_BAG_L1      |WeightedEnsemble_L2|0.896000
+|       |sick     |0.9880794701986755|3600|CatBoost_r167_BAG_L1     |WeightedEnsemble_L2|0.990728
+|       |sick     |0.9880794701986755|1800|CatBoost_r167_BAG_L1     |WeightedEnsemble_L2|0.990728
+|       |mv       |0.9996320824135394|3600|LightGBM_BAG_L2          |WeightedEnsemble_L3|0.999755
+|       |mv       |0.9996320824135394|1800|NeuralNetFastAI_r102_BAG_L1|WeightedEnsemble_L2|0.999632
+|       |higgs    |0.7394696583375828|7200|NeuralNetTorch_r79_BAG_L2|WeightedEnsemble_L3|0.739929
+|       |higgs    |0.7374808771035186|3600|NeuralNetFastAI_BAG_L2   |WeightedEnsemble_L3|0.740082
+|       |
+| RGS： |
+|       |任务|结果|Time_Limit|测试集最优最优模型|验证集最优模型|测试集最优模型分数
+|       |black_friday   |-11822400.005625758    |7200|WeightedEnsemble_L2   |WeightedEnsemble_L2|Same
+|       |black_friday   |-11821965.637439106    |3600|WeightedEnsemble_L2   |WeightedEnsemble_L2|Same
+|       |debutanizer    |-0.002430865289614281  |3600|LightGBM_r188_BAG_L2  |WeightedEnsemble_L3|-0.002364
+|       |debutanizer    |-0.00253272969756081   |1800|NeuralNetFastAI_r191_BAG_L2|WeightedEnsemble_L3|-0.002456
+|       |puma8NH        |-9.74182877560484      |3600|WeightedEnsemble_L2   |WeightedEnsemble_L2|Same
+|       |puma8NH        |-9.751683737741859     |1800|WeightedEnsemble_L2   |WeightedEnsemble_L2|Same
+|       |cpu_act        |-6.6705308114704085    |3600|NeuralNetTorch_r30_BAG_L1|WeightedEnsemble_L2|-6.633923
+|       |cpu_act        |-6.344722391702257     |1800|WeightedEnsemble_L3   |WeightedEnsemble_L3|Same
+|       |Moneyball      |-445.083942668931      |3600|NeuralNetFastAI_r111_BAG_L2|WeightedEnsemble_L3|-430.795418
+|       |Moneyball      |-435.56794843976934    |1800|NeuralNetFastAI_r100_BAG_L1|WeightedEnsemble_L2|-433.686792
+|       |bank32nh       |-0.005614897572473634  |3600|NeuralNetFastAI_r143_BAG_L1|WeightedEnsemble_L3|-0.005567
+|       |bank32nh       |-0.005660376370218599  |1800|NeuralNetFastAI_r143_BAG_L1|WeightedEnsemble_L3|-0.005567

@@ -1,8 +1,740 @@
-cv
-CLS: cash, kc1: 0.8601895734597157, 0.8720379146919431
-CLS: cashfe, kc1: 0.8720379146919431, 0.8720379146919431
-CLS: cash, higgs: 0.7310555838857725, 0.7219275879653239
-CLS: cash, covertype: 0.0, 0.0
-CLS: cashfe, covertype: 0.0, 0.0
-CLS: cashfe, higgs: 0.7294747577766446, 0.7203977562468129
----------------
+Autogluon CLS: 2024-12-24 02:08:02, covertype: {'accuracy': 0.9071515920105078, 'balanced_accuracy': 0.7299038427434301, 'mcc': 0.854656867295249}
+leaderboard:                          model  score_test  ...  can_infer fit_order
+0         KNeighborsDist_BAG_L1    0.986899  ...       True         2
+1       RandomForestEntr_BAG_L1    0.986899  ...       True         7
+2       RandomForestGini_BAG_L1    0.986899  ...       True         6
+3               LightGBM_BAG_L1    0.986899  ...       True         5
+4                XGBoost_BAG_L1    0.986899  ...       True        11
+5           WeightedEnsemble_L2    0.986899  ...       True        15
+6             LightGBMXT_BAG_L1    0.980762  ...       True         4
+7         NeuralNetTorch_BAG_L2    0.961954  ...       True        25
+8            CatBoost_r9_BAG_L2    0.960765  ...       True        31
+9               CatBoost_BAG_L2    0.960029  ...       True        21
+10         CatBoost_r177_BAG_L2    0.959961  ...       True        27
+11    NeuralNetTorch_r79_BAG_L2    0.959780  ...       True        28
+12      RandomForestEntr_BAG_L2    0.958987  ...       True        20
+13        ExtraTreesEntr_BAG_L2    0.958863  ...       True        23
+14         LightGBMLarge_BAG_L1    0.958772  ...       True        13
+15        ExtraTreesGini_BAG_L2    0.958523  ...       True        22
+16            LightGBMXT_BAG_L2    0.958047  ...       True        17
+17      RandomForestGini_BAG_L2    0.957855  ...       True        19
+18          WeightedEnsemble_L3    0.957628  ...       True        32
+19              LightGBM_BAG_L2    0.957583  ...       True        18
+20               XGBoost_BAG_L2    0.957527  ...       True        24
+21         LightGBM_r131_BAG_L2    0.957493  ...       True        29
+22  NeuralNetFastAI_r191_BAG_L2    0.957357  ...       True        30
+23         LightGBMLarge_BAG_L2    0.956768  ...       True        26
+24        ExtraTreesEntr_BAG_L1    0.956519  ...       True        10
+25       NeuralNetFastAI_BAG_L2    0.955715  ...       True        16
+26        ExtraTreesGini_BAG_L1    0.952963  ...       True         9
+27              CatBoost_BAG_L1    0.926025  ...       True         8
+28        KNeighborsUnif_BAG_L1    0.903130  ...       True         1
+29       NeuralNetFastAI_BAG_L1    0.863238  ...       True         3
+30        NeuralNetTorch_BAG_L1    0.838157  ...       True        12
+31         CatBoost_r177_BAG_L1    0.779084  ...       True        14
+
+[32 rows x 13 columns]
+Autogluon CLS: 2024-12-24 04:29:39, covertype: {'accuracy': 0.9072421758231805, 'balanced_accuracy': 0.726577694019159, 'mcc': 0.8548034467970168}
+leaderboard:                      model  score_test  ...  can_infer fit_order
+0     KNeighborsDist_BAG_L1    0.986899  ...       True         2
+1   RandomForestEntr_BAG_L1    0.986899  ...       True         7
+2   RandomForestGini_BAG_L1    0.986899  ...       True         6
+3           LightGBM_BAG_L1    0.986899  ...       True         5
+4       WeightedEnsemble_L2    0.986899  ...       True        12
+5         LightGBMXT_BAG_L1    0.981000  ...       True         4
+6           CatBoost_BAG_L2    0.959780  ...       True        18
+7     ExtraTreesEntr_BAG_L2    0.958534  ...       True        20
+8   RandomForestEntr_BAG_L2    0.958455  ...       True        17
+9     ExtraTreesGini_BAG_L2    0.958025  ...       True        19
+10        LightGBMXT_BAG_L2    0.957844  ...       True        14
+11      WeightedEnsemble_L3    0.957719  ...       True        21
+12  RandomForestGini_BAG_L2    0.957493  ...       True        16
+13          LightGBM_BAG_L2    0.957345  ...       True        15
+14    ExtraTreesEntr_BAG_L1    0.956519  ...       True        10
+15   NeuralNetFastAI_BAG_L2    0.956406  ...       True        13
+16    ExtraTreesGini_BAG_L1    0.952963  ...       True         9
+17          CatBoost_BAG_L1    0.904692  ...       True         8
+18    KNeighborsUnif_BAG_L1    0.903130  ...       True         1
+19   NeuralNetFastAI_BAG_L1    0.863238  ...       True         3
+20           XGBoost_BAG_L1    0.846763  ...       True        11
+
+[21 rows x 13 columns]
+Autogluon CLS: 2024-12-24 05:40:57, kc1: {'accuracy': 0.8720379146919431, 'balanced_accuracy': 0.6097823744882569, 'mcc': 0.38222939094884417, 'roc_auc': 0.854449472096531, 'f1': 0.35714285714285715, 'precision': 0.7894736842105263, 'recall': 0.23076923076923078}
+leaderboard:                           model  score_test  ...  can_infer fit_order
+0       RandomForest_r195_BAG_L1    0.989923  ...       True        26
+1          ExtraTrees_r42_BAG_L1    0.989923  ...       True        22
+2         ExtraTrees_r197_BAG_L1    0.989923  ...       True        91
+3        RandomForest_r16_BAG_L1    0.989923  ...       True        94
+4          ExtraTreesGini_BAG_L1    0.989923  ...       True         8
+..                           ...         ...  ...        ...       ...
+215   NeuralNetTorch_r158_BAG_L1    0.855957  ...       True        51
+216  NeuralNetFastAI_r111_BAG_L1    0.855365  ...       True        64
+217          LightGBM_r96_BAG_L1    0.853586  ...       True        19
+218         LightGBM_r196_BAG_L1    0.851808  ...       True        44
+219   NeuralNetFastAI_r65_BAG_L1    0.769413  ...       True        67
+
+[220 rows x 13 columns]
+Autogluon CLS: 2024-12-24 06:30:19, kc1: {'accuracy': 0.8720379146919431, 'balanced_accuracy': 0.6097823744882569, 'mcc': 0.38222939094884417, 'roc_auc': 0.8685412626589097, 'f1': 0.35714285714285715, 'precision': 0.7894736842105263, 'recall': 0.23076923076923078}
+leaderboard:                          model  score_test  ...  can_infer fit_order
+0      RandomForest_r195_BAG_L1    0.989923  ...       True        26
+1         ExtraTrees_r42_BAG_L1    0.989923  ...       True        22
+2       RandomForestGini_BAG_L1    0.989923  ...       True         5
+3         ExtraTrees_r49_BAG_L1    0.989923  ...       True        56
+4         ExtraTreesGini_BAG_L1    0.989923  ...       True         8
+..                          ...         ...  ...        ...       ...
+117        ExtraTrees_r4_BAG_L1    0.855957  ...       True        66
+118  NeuralNetTorch_r158_BAG_L1    0.855957  ...       True        51
+119         LightGBM_r96_BAG_L1    0.853586  ...       True        19
+120        LightGBM_r196_BAG_L1    0.851808  ...       True        44
+121  NeuralNetFastAI_r65_BAG_L1    0.769413  ...       True        67
+
+[122 rows x 13 columns]
+Autogluon CLS: 2024-12-24 07:00:56, spambase: {'accuracy': 0.9609120521172638, 'balanced_accuracy': 0.9585962261915342, 'mcc': 0.9180857990456414, 'roc_auc': 0.9892868074686256, 'f1': 0.9502762430939227, 'precision': 0.9529085872576177, 'recall': 0.9476584022038568}
+leaderboard:                           model  score_test  ...  can_infer fit_order
+0           LightGBMLarge_BAG_L1    0.999457  ...       True        13
+1        RandomForest_r16_BAG_L1    0.999457  ...       True        94
+2          ExtraTrees_r42_BAG_L1    0.999457  ...       True        22
+3         ExtraTrees_r197_BAG_L1    0.999457  ...       True        91
+4       RandomForest_r195_BAG_L1    0.999457  ...       True        26
+..                           ...         ...  ...        ...       ...
+215  NeuralNetFastAI_r156_BAG_L1    0.941848  ...       True        43
+216         ExtraTrees_r4_BAG_L1    0.937228  ...       True        66
+217   NeuralNetFastAI_r65_BAG_L1    0.929891  ...       True        67
+218      RandomForest_r34_BAG_L1    0.923913  ...       True        60
+219        KNeighborsUnif_BAG_L1    0.868478  ...       True         1
+
+[220 rows x 13 columns]
+Autogluon CLS: 2024-12-24 07:59:52, spambase: {'accuracy': 0.9619978284473398, 'balanced_accuracy': 0.9594922835392043, 'mcc': 0.9203350227181452, 'roc_auc': 0.98989898989899, 'f1': 0.9515905947441217, 'precision': 0.9555555555555556, 'recall': 0.9476584022038568}
+leaderboard:                           model  score_test  ...  can_infer fit_order
+0           LightGBMLarge_BAG_L1    0.999457  ...       True        13
+1          ExtraTrees_r42_BAG_L1    0.999457  ...       True        22
+2        RandomForestGini_BAG_L1    0.999457  ...       True         5
+3       RandomForest_r195_BAG_L1    0.999457  ...       True        26
+4          ExtraTrees_r49_BAG_L1    0.999457  ...       True        56
+..                           ...         ...  ...        ...       ...
+125  NeuralNetFastAI_r156_BAG_L1    0.941848  ...       True        43
+126         ExtraTrees_r4_BAG_L1    0.937228  ...       True        66
+127   NeuralNetFastAI_r65_BAG_L1    0.929891  ...       True        67
+128      RandomForest_r34_BAG_L1    0.923913  ...       True        60
+129        KNeighborsUnif_BAG_L1    0.868478  ...       True         1
+
+[130 rows x 13 columns]
+Autogluon CLS: 2024-12-24 08:30:42, cpu_act: {'accuracy': 0.9341061622940817, 'balanced_accuracy': 0.9168068961137922, 'mcc': 0.8425560215236946, 'roc_auc': 0.9832112719780995, 'f1': 0.8891170431211499, 'precision': 0.9058577405857741, 'recall': 0.8729838709677419}
+leaderboard:                          model  score_test  ...  can_infer fit_order
+0          LightGBMLarge_BAG_L1    1.000000  ...       True        13
+1       RandomForest_r16_BAG_L1    1.000000  ...       True        94
+2       RandomForestGini_BAG_L1    1.000000  ...       True         5
+3        ExtraTrees_r197_BAG_L1    1.000000  ...       True        91
+4         ExtraTrees_r42_BAG_L1    1.000000  ...       True        22
+..                          ...         ...  ...        ...       ...
+167        ExtraTrees_r4_BAG_L1    0.938959  ...       True        66
+168    NeuralNetTorch_r1_BAG_L1    0.938654  ...       True       109
+169  NeuralNetFastAI_r65_BAG_L1    0.938349  ...       True        67
+170     RandomForest_r34_BAG_L1    0.937891  ...       True        60
+171       KNeighborsUnif_BAG_L1    0.854113  ...       True         1
+
+[172 rows x 13 columns]
+Autogluon CLS: 2024-12-24 09:31:54, cpu_act: {'accuracy': 0.9377669310555217, 'balanced_accuracy': 0.9222846640137725, 'mcc': 0.8515478564898439, 'roc_auc': 0.9836434256201846, 'f1': 0.8957055214723927, 'precision': 0.9087136929460581, 'recall': 0.8830645161290323}
+leaderboard:                          model  score_test  ...  can_infer fit_order
+0          LightGBMLarge_BAG_L1    1.000000  ...       True        13
+1         ExtraTrees_r42_BAG_L1    1.000000  ...       True        22
+2       RandomForestGini_BAG_L1    1.000000  ...       True         5
+3      RandomForest_r195_BAG_L1    1.000000  ...       True        26
+4         ExtraTreesEntr_BAG_L1    1.000000  ...       True         9
+..                          ...         ...  ...        ...       ...
+89  NeuralNetFastAI_r143_BAG_L1    0.946284  ...       True        41
+90   NeuralNetTorch_r158_BAG_L1    0.942469  ...       True        51
+91  NeuralNetFastAI_r111_BAG_L1    0.938959  ...       True        63
+92      RandomForest_r34_BAG_L1    0.937891  ...       True        60
+93        KNeighborsUnif_BAG_L1    0.854113  ...       True         1
+
+[94 rows x 13 columns]
+Autogluon CLS: 2024-12-24 10:02:30, ailerons: {'accuracy': 0.893090909090909, 'balanced_accuracy': 0.8895440251572326, 'mcc': 0.7807485873414014, 'roc_auc': 0.9629636848762064, 'f1': 0.8729472774416595, 'precision': 0.8797909407665505, 'recall': 0.8662092624356775}
+leaderboard:                           model  score_test  ...  can_infer fit_order
+0       RandomForest_r195_BAG_L1    1.000000  ...       True        26
+1          ExtraTrees_r42_BAG_L1    1.000000  ...       True        22
+2        RandomForestGini_BAG_L1    1.000000  ...       True         5
+3        RandomForestEntr_BAG_L1    1.000000  ...       True         6
+4       RandomForest_r166_BAG_L1    1.000000  ...       True        76
+..                           ...         ...  ...        ...       ...
+130   NeuralNetTorch_r158_BAG_L1    0.885818  ...       True        51
+131   NeuralNetFastAI_r11_BAG_L1    0.885818  ...       True        34
+132   NeuralNetFastAI_r65_BAG_L1    0.885091  ...       True        67
+133  NeuralNetFastAI_r172_BAG_L1    0.883818  ...       True        88
+134        KNeighborsUnif_BAG_L1    0.819182  ...       True         1
+
+[135 rows x 13 columns]
+Autogluon CLS: 2024-12-24 11:04:07, ailerons: {'accuracy': 0.8952727272727272, 'balanced_accuracy': 0.8913248046502764, 'mcc': 0.785107042290694, 'roc_auc': 0.963772047230452, 'f1': 0.8751084128360798, 'precision': 0.8850877192982456, 'recall': 0.8653516295025729}
+leaderboard:                          model  score_test  ...  can_infer fit_order
+0      RandomForest_r195_BAG_L1    1.000000  ...       True        26
+1         ExtraTrees_r42_BAG_L1    1.000000  ...       True        22
+2       RandomForestEntr_BAG_L1    1.000000  ...       True         6
+3       RandomForestGini_BAG_L1    1.000000  ...       True         5
+4         ExtraTreesEntr_BAG_L1    1.000000  ...       True         9
+5         ExtraTreesGini_BAG_L1    1.000000  ...       True         8
+6         KNeighborsDist_BAG_L1    1.000000  ...       True         2
+7          LightGBM_r161_BAG_L1    0.997909  ...       True        40
+8            XGBoost_r33_BAG_L1    0.994000  ...       True        21
+9       RandomForest_r39_BAG_L1    0.991000  ...       True        45
+10         LightGBMLarge_BAG_L1    0.981818  ...       True        13
+11           XGBoost_r98_BAG_L1    0.981182  ...       True        49
+12         LightGBM_r130_BAG_L1    0.974909  ...       True        31
+13          XGBoost_r194_BAG_L1    0.960182  ...       True        35
+14         LightGBM_r131_BAG_L1    0.953545  ...       True        16
+15           CatBoost_r9_BAG_L1    0.946455  ...       True        18
+16              LightGBM_BAG_L1    0.943091  ...       True         4
+17          WeightedEnsemble_L2    0.943091  ...       True        54
+18       ExtraTrees_r172_BAG_L1    0.940455  ...       True        36
+19               XGBoost_BAG_L1    0.936545  ...       True        11
+20         LightGBM_r188_BAG_L1    0.936455  ...       True        27
+21         CatBoost_r167_BAG_L1    0.933545  ...       True        46
+22           XGBoost_r89_BAG_L1    0.932273  ...       True        29
+23          CatBoost_r70_BAG_L1    0.923182  ...       True        42
+24         CatBoost_r177_BAG_L1    0.922000  ...       True        14
+25          CatBoost_r86_BAG_L1    0.917545  ...       True        52
+26              CatBoost_BAG_L1    0.915455  ...       True         7
+27          CatBoost_r13_BAG_L1    0.915273  ...       True        25
+28          CatBoost_r50_BAG_L1    0.914000  ...       True        33
+29          LightGBM_r15_BAG_L1    0.913000  ...       True        50
+30            LightGBMXT_BAG_L1    0.913000  ...       True         3
+31         LightGBM_r196_BAG_L1    0.909455  ...       True        44
+32          CatBoost_r69_BAG_L1    0.908182  ...       True        37
+33       NeuralNetFastAI_BAG_L1    0.906364  ...       True        10
+34  NeuralNetFastAI_r191_BAG_L1    0.905000  ...       True        17
+35  NeuralNetFastAI_r145_BAG_L1    0.904818  ...       True        28
+36         CatBoost_r137_BAG_L1    0.902727  ...       True        23
+37   NeuralNetFastAI_r95_BAG_L1    0.901455  ...       True        47
+38        NeuralNetTorch_BAG_L1    0.900182  ...       True        12
+39    NeuralNetTorch_r86_BAG_L1    0.898727  ...       True        32
+40    NeuralNetTorch_r14_BAG_L1    0.896909  ...       True        39
+41    NeuralNetTorch_r79_BAG_L1    0.895091  ...       True        15
+42          LightGBM_r96_BAG_L1    0.894545  ...       True        19
+43  NeuralNetFastAI_r156_BAG_L1    0.894000  ...       True        43
+44    NeuralNetTorch_r41_BAG_L1    0.893636  ...       True        48
+45    NeuralNetTorch_r30_BAG_L1    0.892091  ...       True        30
+46  NeuralNetFastAI_r102_BAG_L1    0.892000  ...       True        24
+47    NeuralNetTorch_r22_BAG_L1    0.891909  ...       True        20
+48  NeuralNetFastAI_r103_BAG_L1    0.890727  ...       True        38
+49   NeuralNetFastAI_r37_BAG_L1    0.887000  ...       True        53
+50  NeuralNetFastAI_r143_BAG_L1    0.886273  ...       True        41
+51   NeuralNetTorch_r158_BAG_L1    0.885818  ...       True        51
+52   NeuralNetFastAI_r11_BAG_L1    0.885818  ...       True        34
+53        KNeighborsUnif_BAG_L1    0.819182  ...       True         1
+
+[54 rows x 13 columns]
+Autogluon CLS: 2024-12-24 11:35:01, sick: {'accuracy': 0.9880794701986755, 'balanced_accuracy': 0.9326669528423377, 'mcc': 0.8931235262130789, 'roc_auc': 0.9967498620224444, 'f1': 0.898876404494382, 'precision': 0.9302325581395349, 'recall': 0.8695652173913043}
+leaderboard:                           model  score_test  ...  can_infer fit_order
+0            LightGBM_r15_BAG_L1    1.000000  ...       True        50
+1          KNeighborsDist_BAG_L1    1.000000  ...       True         2
+2           LightGBMLarge_BAG_L1    1.000000  ...       True        13
+3        RandomForest_r16_BAG_L1    1.000000  ...       True        94
+4          ExtraTrees_r42_BAG_L1    1.000000  ...       True        22
+..                           ...         ...  ...        ...       ...
+106         ExtraTrees_r4_BAG_L1    0.970500  ...       True        66
+107       ExtraTrees_r126_BAG_L1    0.965197  ...       True        99
+108        KNeighborsUnif_BAG_L1    0.947299  ...       True         1
+109  NeuralNetFastAI_r100_BAG_L1    0.916473  ...       True       101
+110   NeuralNetFastAI_r65_BAG_L1    0.842890  ...       True        67
+
+[111 rows x 13 columns]
+Autogluon CLS: 2024-12-24 12:06:34, sick: {'accuracy': 0.9880794701986755, 'balanced_accuracy': 0.9326669528423377, 'mcc': 0.8931235262130789, 'roc_auc': 0.9967498620224444, 'f1': 0.898876404494382, 'precision': 0.9302325581395349, 'recall': 0.8695652173913043}
+leaderboard:                           model  score_test  ...  can_infer fit_order
+0            LightGBM_r15_BAG_L1    1.000000  ...       True        50
+1           LightGBMLarge_BAG_L1    1.000000  ...       True        13
+2          KNeighborsDist_BAG_L1    1.000000  ...       True         2
+3          ExtraTrees_r42_BAG_L1    1.000000  ...       True        22
+4        RandomForest_r16_BAG_L1    1.000000  ...       True        94
+..                           ...         ...  ...        ...       ...
+106         ExtraTrees_r4_BAG_L1    0.970500  ...       True        66
+107       ExtraTrees_r126_BAG_L1    0.965197  ...       True        99
+108        KNeighborsUnif_BAG_L1    0.947299  ...       True         1
+109  NeuralNetFastAI_r100_BAG_L1    0.916473  ...       True       101
+110   NeuralNetFastAI_r65_BAG_L1    0.842890  ...       True        67
+
+[111 rows x 13 columns]
+Autogluon CLS: 2024-12-24 12:31:02, mv: {'accuracy': 0.9996320824135394, 'balanced_accuracy': 0.9996916118421053, 'mcc': 0.9992360893196975, 'roc_auc': 0.9999978753399457, 'f1': 0.9995442807230746, 'precision': 0.9990889766170665, 'recall': 1.0}
+leaderboard:                          model  score_test  ...  can_infer fit_order
+0         ExtraTrees_r42_BAG_L1    1.000000  ...       True        22
+1       RandomForestGini_BAG_L1    1.000000  ...       True         5
+2         ExtraTreesGini_BAG_L1    1.000000  ...       True         8
+3         ExtraTreesEntr_BAG_L1    1.000000  ...       True         9
+4          LightGBM_r130_BAG_L1    1.000000  ...       True        31
+..                          ...         ...  ...        ...       ...
+70    NeuralNetTorch_r14_BAG_L1    0.998712  ...       True        39
+71         CatBoost_r137_BAG_L1    0.998651  ...       True        23
+72          LightGBM_r96_BAG_L1    0.998038  ...       True        19
+73  NeuralNetFastAI_r143_BAG_L1    0.984884  ...       True        41
+74        KNeighborsUnif_BAG_L1    0.862605  ...       True         1
+
+[75 rows x 13 columns]
+Autogluon CLS: 2024-12-24 13:32:27, mv: {'accuracy': 0.9996320824135394, 'balanced_accuracy': 0.9996424322108463, 'mcc': 0.999235754803652, 'roc_auc': 0.9999977503599424, 'f1': 0.999544142227625, 'precision': 0.9993922819811607, 'recall': 0.9996960486322188}
+leaderboard:                          model  score_test  ...  can_infer fit_order
+0       RandomForestGini_BAG_L1    1.000000  ...       True         5
+1         ExtraTrees_r42_BAG_L1    1.000000  ...       True        22
+2       RandomForestEntr_BAG_L1    1.000000  ...       True         6
+3      RandomForest_r195_BAG_L1    1.000000  ...       True        26
+4         ExtraTreesEntr_BAG_L1    1.000000  ...       True         9
+5          LightGBM_r130_BAG_L1    1.000000  ...       True        31
+6         KNeighborsDist_BAG_L1    1.000000  ...       True         2
+7         ExtraTreesGini_BAG_L1    1.000000  ...       True         8
+8           WeightedEnsemble_L2    1.000000  ...       True        36
+9            CatBoost_r9_BAG_L1    0.999969  ...       True        18
+10         LightGBMLarge_BAG_L1    0.999908  ...       True        13
+11           XGBoost_r89_BAG_L1    0.999877  ...       True        29
+12           XGBoost_r33_BAG_L1    0.999877  ...       True        21
+13              LightGBM_BAG_L1    0.999847  ...       True         4
+14        NeuralNetTorch_BAG_L1    0.999847  ...       True        12
+15          XGBoost_r194_BAG_L1    0.999755  ...       True        35
+16         LightGBM_r188_BAG_L1    0.999755  ...       True        27
+17               XGBoost_BAG_L1    0.999755  ...       True        11
+18    NeuralNetTorch_r86_BAG_L1    0.999755  ...       True        32
+19         LightGBM_r131_BAG_L1    0.999724  ...       True        16
+20    NeuralNetTorch_r22_BAG_L1    0.999693  ...       True        20
+21          CatBoost_r50_BAG_L1    0.999663  ...       True        33
+22  NeuralNetFastAI_r102_BAG_L1    0.999663  ...       True        24
+23    NeuralNetTorch_r30_BAG_L1    0.999540  ...       True        30
+24              CatBoost_BAG_L1    0.999509  ...       True         7
+25  NeuralNetFastAI_r191_BAG_L1    0.999479  ...       True        17
+26            LightGBMXT_BAG_L1    0.999203  ...       True         3
+27       NeuralNetFastAI_BAG_L1    0.999203  ...       True        10
+28         CatBoost_r177_BAG_L1    0.999141  ...       True        14
+29  NeuralNetFastAI_r145_BAG_L1    0.999080  ...       True        28
+30    NeuralNetTorch_r79_BAG_L1    0.998774  ...       True        15
+31          CatBoost_r13_BAG_L1    0.998743  ...       True        25
+32         CatBoost_r137_BAG_L1    0.998651  ...       True        23
+33          LightGBM_r96_BAG_L1    0.998038  ...       True        19
+34   NeuralNetFastAI_r11_BAG_L1    0.996566  ...       True        34
+35        KNeighborsUnif_BAG_L1    0.862605  ...       True         1
+
+[36 rows x 13 columns]
+Autogluon RGS: 2024-12-24 14:03:06, black_friday: {'mean_squared_error': -11822400.005625758, 'root_mean_squared_error': -3438.3717084727414, 'mean_absolute_error': -2662.627628965648, 'r2': 0.5437989468927807, 'pearsonr': 0.7374677804984932, 'median_absolute_error': -2127.171875}
+leaderboard:                          model    score_test  ...  can_infer fit_order
+0        RandomForestMSE_BAG_L1 -7.611654e+06  ...       True         5
+1          ExtraTreesMSE_BAG_L1 -8.068760e+06  ...       True         7
+2          LightGBMLarge_BAG_L1 -1.047865e+07  ...       True        11
+3          LightGBM_r131_BAG_L1 -1.053422e+07  ...       True        14
+4               LightGBM_BAG_L1 -1.072243e+07  ...       True         4
+5             LightGBMXT_BAG_L1 -1.072542e+07  ...       True         3
+6           WeightedEnsemble_L2 -1.076661e+07  ...       True        20
+7                XGBoost_BAG_L1 -1.084575e+07  ...       True         9
+8          CatBoost_r177_BAG_L1 -1.088517e+07  ...       True        12
+9            CatBoost_r9_BAG_L1 -1.101838e+07  ...       True        16
+10           XGBoost_r33_BAG_L1 -1.109305e+07  ...       True        19
+11              CatBoost_BAG_L1 -1.132987e+07  ...       True         6
+12          LightGBM_r96_BAG_L1 -1.196970e+07  ...       True        17
+13       NeuralNetFastAI_BAG_L1 -1.271044e+07  ...       True         8
+14    NeuralNetTorch_r79_BAG_L1 -1.279632e+07  ...       True        13
+15  NeuralNetFastAI_r191_BAG_L1 -1.281842e+07  ...       True        15
+16        NeuralNetTorch_BAG_L1 -1.320162e+07  ...       True        10
+17        KNeighborsDist_BAG_L1 -1.428366e+07  ...       True         2
+18        KNeighborsUnif_BAG_L1 -1.430695e+07  ...       True         1
+19    NeuralNetTorch_r22_BAG_L1 -1.515064e+07  ...       True        18
+
+[20 rows x 13 columns]
+Autogluon RGS: 2024-12-24 16:15:36, black_friday: {'mean_squared_error': -11821965.637439106, 'root_mean_squared_error': -3438.3085430832275, 'mean_absolute_error': -2662.560495773291, 'r2': 0.5438157082292348, 'pearsonr': 0.7374802099832528, 'median_absolute_error': -2125.6337890625}
+leaderboard:                        model    score_test  ...  can_infer fit_order
+0      RandomForestMSE_BAG_L1 -7.611654e+06  ...       True         5
+1        ExtraTreesMSE_BAG_L1 -8.068760e+06  ...       True         7
+2        LightGBMLarge_BAG_L1 -1.047865e+07  ...       True        11
+3             LightGBM_BAG_L1 -1.072243e+07  ...       True         4
+4           LightGBMXT_BAG_L1 -1.072542e+07  ...       True         3
+5         WeightedEnsemble_L2 -1.076507e+07  ...       True        15
+6              XGBoost_BAG_L1 -1.084575e+07  ...       True         9
+7        CatBoost_r177_BAG_L1 -1.088517e+07  ...       True        12
+8        LightGBM_r131_BAG_L1 -1.090014e+07  ...       True        14
+9             CatBoost_BAG_L1 -1.132987e+07  ...       True         6
+10     NeuralNetFastAI_BAG_L1 -1.271044e+07  ...       True         8
+11      NeuralNetTorch_BAG_L1 -1.322984e+07  ...       True        10
+12  NeuralNetTorch_r79_BAG_L1 -1.381843e+07  ...       True        13
+13      KNeighborsDist_BAG_L1 -1.428366e+07  ...       True         2
+14      KNeighborsUnif_BAG_L1 -1.430695e+07  ...       True         1
+
+[15 rows x 13 columns]
+Autogluon RGS: 2024-12-24 17:24:03, debutanizer: {'mean_squared_error': -0.002430865289614281, 'root_mean_squared_error': -0.04930380603578471, 'mean_absolute_error': -0.03054041871736993, 'r2': 0.9072129503925637, 'pearsonr': 0.9531850922896175, 'median_absolute_error': -0.01590932251464844}
+leaderboard:                          model    score_test  ...  can_infer fit_order
+0         KNeighborsDist_BAG_L1 -5.915047e-17  ...       True         2
+1           CatBoost_r86_BAG_L1 -5.183813e-05  ...       True        50
+2          CatBoost_r167_BAG_L1 -5.728732e-05  ...       True        44
+3            CatBoost_r9_BAG_L1 -5.771071e-05  ...       True        16
+4          LightGBMLarge_BAG_L1 -6.567066e-05  ...       True        11
+..                          ...           ...  ...        ...       ...
+83      RandomForest_r34_BAG_L1 -1.202582e-02  ...       True        58
+84   NeuralNetTorch_r197_BAG_L1 -1.234217e-02  ...       True        52
+85   NeuralNetTorch_r158_BAG_L1 -1.376789e-02  ...       True        49
+86   NeuralNetTorch_r143_BAG_L1 -1.392022e-02  ...       True        60
+87  NeuralNetFastAI_r143_BAG_L1 -1.471365e-02  ...       True        39
+
+[88 rows x 13 columns]
+Autogluon RGS: 2024-12-24 18:27:46, debutanizer: {'mean_squared_error': -0.00253272969756081, 'root_mean_squared_error': -0.050326232697876463, 'mean_absolute_error': -0.03169887321661285, 'r2': 0.9033247473260473, 'pearsonr': 0.9512654940387786, 'median_absolute_error': -0.01778411609457016}
+leaderboard:                          model    score_test  ...  can_infer fit_order
+0         KNeighborsDist_BAG_L1 -5.915047e-17  ...       True         2
+1            CatBoost_r9_BAG_L1 -5.771070e-05  ...       True        16
+2          LightGBMLarge_BAG_L1 -6.567065e-05  ...       True        11
+3               CatBoost_BAG_L1 -6.639140e-05  ...       True         6
+4          LightGBM_r188_BAG_L1 -6.684724e-05  ...       True        25
+5           CatBoost_r13_BAG_L1 -6.845159e-05  ...       True        23
+6          CatBoost_r177_BAG_L1 -7.209630e-05  ...       True        12
+7          LightGBM_r131_BAG_L1 -7.482345e-05  ...       True        14
+8               LightGBM_BAG_L1 -8.625787e-05  ...       True         4
+9                XGBoost_BAG_L1 -9.112876e-05  ...       True         9
+10           XGBoost_r33_BAG_L1 -9.532778e-05  ...       True        19
+11         LightGBM_r130_BAG_L1 -9.652590e-05  ...       True        29
+12            LightGBMXT_BAG_L1 -1.075070e-04  ...       True         3
+13           XGBoost_r89_BAG_L1 -1.077393e-04  ...       True        27
+14         ExtraTreesMSE_BAG_L2 -1.268787e-04  ...       True        37
+15        ExtraTrees_r42_BAG_L2 -1.302215e-04  ...       True        50
+16       RandomForestMSE_BAG_L2 -1.511761e-04  ...       True        35
+17         CatBoost_r137_BAG_L1 -1.527525e-04  ...       True        21
+18               XGBoost_BAG_L2 -1.681993e-04  ...       True        39
+19         LightGBMLarge_BAG_L2 -1.710331e-04  ...       True        41
+20           CatBoost_r9_BAG_L2 -1.772821e-04  ...       True        46
+21           XGBoost_r33_BAG_L2 -1.876716e-04  ...       True        49
+22         LightGBM_r131_BAG_L2 -2.181397e-04  ...       True        44
+23              CatBoost_BAG_L2 -2.182469e-04  ...       True        36
+24              LightGBM_BAG_L2 -2.332658e-04  ...       True        34
+25         CatBoost_r137_BAG_L2 -2.343105e-04  ...       True        51
+26          WeightedEnsemble_L3 -2.411086e-04  ...       True        53
+27         CatBoost_r177_BAG_L2 -2.421145e-04  ...       True        42
+28  NeuralNetFastAI_r191_BAG_L2 -2.546885e-04  ...       True        45
+29          CatBoost_r50_BAG_L1 -2.870435e-04  ...       True        31
+30          WeightedEnsemble_L2 -2.932039e-04  ...       True        32
+31            LightGBMXT_BAG_L2 -3.013655e-04  ...       True        33
+32       NeuralNetFastAI_BAG_L2 -3.105065e-04  ...       True        38
+33        NeuralNetTorch_BAG_L2 -3.971137e-04  ...       True        40
+34    NeuralNetTorch_r79_BAG_L2 -4.042115e-04  ...       True        43
+35    NeuralNetTorch_r22_BAG_L2 -4.523655e-04  ...       True        48
+36          LightGBM_r96_BAG_L2 -5.231550e-04  ...       True        47
+37         ExtraTreesMSE_BAG_L1 -6.448909e-04  ...       True         7
+38       RandomForestMSE_BAG_L1 -6.576579e-04  ...       True         5
+39     RandomForest_r195_BAG_L1 -6.789045e-04  ...       True        24
+40  NeuralNetFastAI_r102_BAG_L2 -6.857317e-04  ...       True        52
+41        ExtraTrees_r42_BAG_L1 -6.938588e-04  ...       True        20
+42    NeuralNetTorch_r86_BAG_L1 -1.925240e-03  ...       True        30
+43    NeuralNetTorch_r22_BAG_L1 -2.148872e-03  ...       True        18
+44        NeuralNetTorch_BAG_L1 -2.448429e-03  ...       True        10
+45    NeuralNetTorch_r79_BAG_L1 -2.924621e-03  ...       True        13
+46          LightGBM_r96_BAG_L1 -3.511615e-03  ...       True        17
+47        KNeighborsUnif_BAG_L1 -3.526873e-03  ...       True         1
+48  NeuralNetFastAI_r145_BAG_L1 -4.517603e-03  ...       True        26
+49  NeuralNetFastAI_r191_BAG_L1 -4.873071e-03  ...       True        15
+50    NeuralNetTorch_r30_BAG_L1 -4.923374e-03  ...       True        28
+51       NeuralNetFastAI_BAG_L1 -6.005761e-03  ...       True         8
+52  NeuralNetFastAI_r102_BAG_L1 -1.104349e-02  ...       True        22
+
+[53 rows x 13 columns]
+Autogluon RGS: 2024-12-24 18:58:55, puma8NH: {'mean_squared_error': -9.74182877560484, 'root_mean_squared_error': -3.121190281864411, 'mean_absolute_error': -2.406819740407654, 'r2': 0.6937656066043534, 'pearsonr': 0.833252209690347, 'median_absolute_error': -1.9508796574096685}
+leaderboard:                          model    score_test  ...  can_infer fit_order
+0         KNeighborsDist_BAG_L1 -2.382878e-14  ...       True         2
+1            XGBoost_r33_BAG_L1 -6.459923e-01  ...       True        19
+2            XGBoost_r98_BAG_L1 -7.957137e-01  ...       True        47
+3          LightGBM_r161_BAG_L1 -8.692796e-01  ...       True        38
+4         ExtraTrees_r42_BAG_L1 -1.407834e+00  ...       True        20
+..                          ...           ...  ...        ...       ...
+80    NeuralNetTorch_r87_BAG_L1 -1.006781e+01  ...       True        70
+81  NeuralNetFastAI_r143_BAG_L1 -1.027466e+01  ...       True        39
+82  NeuralNetFastAI_r111_BAG_L1 -1.253699e+01  ...       True        62
+83  NeuralNetFastAI_r156_BAG_L1 -1.786728e+01  ...       True        41
+84   NeuralNetFastAI_r65_BAG_L1 -1.867962e+01  ...       True        65
+
+[85 rows x 13 columns]
+Autogluon RGS: 2024-12-24 20:03:14, puma8NH: {'mean_squared_error': -9.751683737741859, 'root_mean_squared_error': -3.1227686013763267, 'mean_absolute_error': -2.4140191603758243, 'r2': 0.6934558158636741, 'pearsonr': 0.8332781226612307, 'median_absolute_error': -1.9594365674743646}
+leaderboard:                          model    score_test  ...  can_infer fit_order
+0         KNeighborsDist_BAG_L1 -2.382878e-14  ...       True         2
+1            XGBoost_r33_BAG_L1 -6.459923e-01  ...       True        19
+2            XGBoost_r98_BAG_L1 -7.957137e-01  ...       True        47
+3          LightGBM_r161_BAG_L1 -8.692796e-01  ...       True        38
+4         ExtraTrees_r42_BAG_L1 -1.407834e+00  ...       True        20
+5          ExtraTreesMSE_BAG_L1 -1.409327e+00  ...       True         7
+6      RandomForest_r195_BAG_L1 -1.439448e+00  ...       True        24
+7        RandomForestMSE_BAG_L1 -1.456929e+00  ...       True         5
+8       RandomForest_r39_BAG_L1 -2.126200e+00  ...       True        43
+9          LightGBMLarge_BAG_L1 -3.789364e+00  ...       True        11
+10         LightGBM_r188_BAG_L1 -4.795477e+00  ...       True        25
+11         LightGBM_r196_BAG_L1 -4.998753e+00  ...       True        42
+12         LightGBM_r130_BAG_L1 -5.293637e+00  ...       True        29
+13          XGBoost_r194_BAG_L1 -5.458706e+00  ...       True        33
+14         LightGBM_r131_BAG_L1 -5.818854e+00  ...       True        14
+15       ExtraTrees_r172_BAG_L1 -6.056463e+00  ...       True        34
+16           CatBoost_r9_BAG_L1 -6.436641e+00  ...       True        16
+17           XGBoost_r89_BAG_L1 -6.586909e+00  ...       True        27
+18               XGBoost_BAG_L1 -7.293846e+00  ...       True         9
+19          LightGBM_r15_BAG_L1 -7.442062e+00  ...       True        48
+20              LightGBM_BAG_L1 -7.606213e+00  ...       True         4
+21          CatBoost_r70_BAG_L1 -7.685051e+00  ...       True        40
+22            LightGBMXT_BAG_L1 -7.687758e+00  ...       True         3
+23          CatBoost_r13_BAG_L1 -7.951571e+00  ...       True        23
+24          LightGBM_r96_BAG_L1 -8.102915e+00  ...       True        17
+25         CatBoost_r167_BAG_L1 -8.596495e+00  ...       True        44
+26              CatBoost_BAG_L1 -8.620599e+00  ...       True         6
+27         CatBoost_r177_BAG_L1 -8.663970e+00  ...       True        12
+28          CatBoost_r50_BAG_L1 -8.699293e+00  ...       True        31
+29          CatBoost_r69_BAG_L1 -8.759252e+00  ...       True        35
+30       NeuralNetFastAI_BAG_L1 -8.955766e+00  ...       True         8
+31  NeuralNetFastAI_r191_BAG_L1 -8.981767e+00  ...       True        15
+32  NeuralNetFastAI_r145_BAG_L1 -9.120830e+00  ...       True        26
+33         CatBoost_r137_BAG_L1 -9.140848e+00  ...       True        21
+34        KNeighborsUnif_BAG_L1 -9.268333e+00  ...       True         1
+35    NeuralNetTorch_r86_BAG_L1 -9.273630e+00  ...       True        30
+36          WeightedEnsemble_L2 -9.298032e+00  ...       True        49
+37        NeuralNetTorch_BAG_L1 -9.368845e+00  ...       True        10
+38   NeuralNetFastAI_r95_BAG_L1 -9.375488e+00  ...       True        45
+39  NeuralNetFastAI_r102_BAG_L1 -9.615839e+00  ...       True        22
+40  NeuralNetFastAI_r103_BAG_L1 -9.635958e+00  ...       True        36
+41    NeuralNetTorch_r14_BAG_L1 -9.653707e+00  ...       True        37
+42    NeuralNetTorch_r41_BAG_L1 -9.699580e+00  ...       True        46
+43    NeuralNetTorch_r79_BAG_L1 -9.747573e+00  ...       True        13
+44    NeuralNetTorch_r22_BAG_L1 -9.811852e+00  ...       True        18
+45   NeuralNetFastAI_r11_BAG_L1 -9.848684e+00  ...       True        32
+46    NeuralNetTorch_r30_BAG_L1 -9.957096e+00  ...       True        28
+47  NeuralNetFastAI_r143_BAG_L1 -1.027466e+01  ...       True        39
+48  NeuralNetFastAI_r156_BAG_L1 -1.786728e+01  ...       True        41
+
+[49 rows x 13 columns]
+Autogluon RGS: 2024-12-24 20:36:24, cpu_act: {'mean_squared_error': -6.6705308114704085, 'accuracy': 0.2550335570469799, 'balanced_accuracy': 0.183173668148435, 'mcc': 0.22620350891848698}
+leaderboard:                        model  score_test  ...  can_infer fit_order
+0       ExtraTrees_r42_BAG_L1   -0.211506  ...       True        20
+1     RandomForestGini_BAG_L1   -0.213948  ...       True         5
+2    RandomForest_r195_BAG_L1   -0.215169  ...       True        23
+3         WeightedEnsemble_L2   -0.243400  ...       True        29
+4     RandomForestEntr_BAG_L1   -0.245231  ...       True         6
+5        LightGBMLarge_BAG_L1   -0.252861  ...       True        12
+6              XGBoost_BAG_L1   -0.264306  ...       True        10
+7       ExtraTreesEntr_BAG_L1   -0.273615  ...       True         9
+8       ExtraTreesGini_BAG_L1   -0.276820  ...       True         8
+9          XGBoost_r33_BAG_L1   -0.281245  ...       True        19
+10            LightGBM_BAG_L1   -0.297268  ...       True         4
+11         XGBoost_r89_BAG_L1   -0.302304  ...       True        25
+12       LightGBM_r130_BAG_L1   -0.310087  ...       True        27
+13       LightGBM_r131_BAG_L1   -0.322600  ...       True        15
+14       LightGBM_r188_BAG_L1   -0.533191  ...       True        24
+15          LightGBMXT_BAG_L1   -0.537006  ...       True         3
+16        CatBoost_r13_BAG_L1   -2.007783  ...       True        22
+17         CatBoost_r9_BAG_L1   -2.083626  ...       True        16
+18            CatBoost_BAG_L1   -2.774302  ...       True         7
+19       CatBoost_r177_BAG_L1   -3.055394  ...       True        13
+20        LightGBM_r96_BAG_L1   -3.209522  ...       True        17
+21      KNeighborsDist_BAG_L1   -3.824508  ...       True         2
+22       CatBoost_r137_BAG_L1   -4.644743  ...       True        21
+23  NeuralNetTorch_r30_BAG_L1   -6.086983  ...       True        26
+24  NeuralNetTorch_r79_BAG_L1   -6.333893  ...       True        14
+25  NeuralNetTorch_r22_BAG_L1   -6.544178  ...       True        18
+26      NeuralNetTorch_BAG_L1   -6.761941  ...       True        11
+27  NeuralNetTorch_r86_BAG_L1   -7.666260  ...       True        28
+28      KNeighborsUnif_BAG_L1  -75.893637  ...       True         1
+
+[29 rows x 13 columns]
+Autogluon RGS: 2024-12-24 21:37:54, cpu_act: {'mean_squared_error': -6.344722391702257, 'accuracy': 0.2556436851738865, 'balanced_accuracy': 0.19079443466506246, 'mcc': 0.2253826412337259}
+leaderboard:                      model  score_test  ...  can_infer fit_order
+0   RandomForestGini_BAG_L1   -0.213948  ...       True         5
+1   RandomForestEntr_BAG_L1   -0.245231  ...       True         6
+2       WeightedEnsemble_L3   -0.255150  ...       True        16
+3     ExtraTreesEntr_BAG_L1   -0.273615  ...       True         9
+4     ExtraTreesGini_BAG_L1   -0.276820  ...       True         8
+5       WeightedEnsemble_L2   -0.280940  ...       True        12
+6           LightGBM_BAG_L1   -0.297268  ...       True         4
+7         LightGBMXT_BAG_L1   -0.597284  ...       True         3
+8      LightGBMLarge_BAG_L1   -1.922173  ...       True        11
+9            XGBoost_BAG_L1   -1.927514  ...       True        10
+10          CatBoost_BAG_L1   -2.774302  ...       True         7
+11    KNeighborsDist_BAG_L1   -3.824508  ...       True         2
+12  RandomForestGini_BAG_L2   -4.941553  ...       True        15
+13        LightGBMXT_BAG_L2   -5.155654  ...       True        13
+14          LightGBM_BAG_L2  -23.013124  ...       True        14
+15    KNeighborsUnif_BAG_L1  -75.893637  ...       True         1
+
+[16 rows x 13 columns]
+Autogluon RGS: 2024-12-24 22:08:54, Moneyball: {'mean_squared_error': -445.083942668931, 'root_mean_squared_error': -21.0970126479777, 'mean_absolute_error': -15.797070831422381, 'r2': 0.9419660902601112, 'pearsonr': 0.9712719126423643, 'median_absolute_error': -11.2044677734375}
+leaderboard:                           model   score_test  ...  can_infer fit_order
+0          KNeighborsDist_BAG_L1    -0.000000  ...       True         2
+1             XGBoost_r98_BAG_L1   -12.626486  ...       True        47
+2             XGBoost_r33_BAG_L1   -14.966707  ...       True        19
+3             XGBoost_r34_BAG_L1   -16.689235  ...       True       105
+4            XGBoost_r194_BAG_L1   -23.055644  ...       True        33
+..                           ...          ...  ...        ...       ...
+180         ExtraTrees_r4_BAG_L1  -711.598764  ...       True        64
+181      RandomForest_r34_BAG_L1  -742.611323  ...       True        58
+182        KNeighborsUnif_BAG_L1 -1356.680997  ...       True         1
+183   NeuralNetFastAI_r37_BAG_L2 -1777.976272  ...       True       158
+184  NeuralNetFastAI_r160_BAG_L2 -2278.204218  ...       True       184
+
+[185 rows x 13 columns]
+Autogluon RGS: 2024-12-24 23:14:37, Moneyball: {'mean_squared_error': -435.56794843976934, 'root_mean_squared_error': -20.870264695009723, 'mean_absolute_error': -15.635923439674531, 'r2': 0.9432068682285747, 'pearsonr': 0.9717504498884995, 'median_absolute_error': -12.1943359375}
+leaderboard:                           model   score_test  ...  can_infer fit_order
+0          KNeighborsDist_BAG_L1    -0.000000  ...       True         2
+1             XGBoost_r98_BAG_L1   -12.626479  ...       True        47
+2             XGBoost_r33_BAG_L1   -14.966701  ...       True        19
+3             XGBoost_r34_BAG_L1   -16.689232  ...       True       105
+4            XGBoost_r194_BAG_L1   -23.055633  ...       True        33
+..                           ...          ...  ...        ...       ...
+104   NeuralNetFastAI_r37_BAG_L1  -494.277967  ...       True        51
+105  NeuralNetFastAI_r172_BAG_L1  -511.103325  ...       True        86
+106         ExtraTrees_r4_BAG_L1  -711.598764  ...       True        64
+107      RandomForest_r34_BAG_L1  -742.611323  ...       True        58
+108        KNeighborsUnif_BAG_L1 -1356.680997  ...       True         1
+
+[109 rows x 13 columns]
+Autogluon RGS: 2024-12-25 14:01:34, bank32nh: {'mean_squared_error': -0.005614897572473634, 'root_mean_squared_error': -0.07493262021625585, 'mean_absolute_error': -0.047734687448381045, 'r2': 0.6103548717572213, 'pearsonr': 0.7812757100126331, 'median_absolute_error': -0.023318728021264078}
+leaderboard:                           model  score_test  ...  can_infer fit_order
+0    NeuralNetFastAI_r143_BAG_L1   -0.005567  ...       True        39
+1    NeuralNetFastAI_r160_BAG_L1   -0.005586  ...       True        77
+2    NeuralNetFastAI_r102_BAG_L2   -0.005588  ...       True       107
+3            WeightedEnsemble_L2   -0.005611  ...       True        87
+4            WeightedEnsemble_L3   -0.005615  ...       True       141
+..                           ...         ...  ...        ...       ...
+136        NeuralNetTorch_BAG_L1   -0.007825  ...       True        10
+137        KNeighborsDist_BAG_L1   -0.007842  ...       True         2
+138        KNeighborsUnif_BAG_L1   -0.007844  ...       True         1
+139        ExtraTrees_r49_BAG_L1   -0.008095  ...       True        54
+140    NeuralNetTorch_r30_BAG_L1   -0.020475  ...       True        28
+
+WeightedEnsemble_L3:验证集表现最好，测试集表现最好是上面leaderboard最前面的
+
+
+[141 rows x 13 columns]
+Autogluon RGS: 2024-12-25 15:04:12, bank32nh: {'mean_squared_error': -0.005660376370218599, 'root_mean_squared_error': -0.07523547281846907, 'mean_absolute_error': -0.047758567739656185, 'r2': 0.6071988761667519, 'pearsonr': 0.7792874577583541, 'median_absolute_error': -0.023504500630140306}
+leaderboard:                          model  score_test  ...  can_infer fit_order
+0   NeuralNetFastAI_r143_BAG_L1   -0.005567  ...       True        39
+1    NeuralNetFastAI_r11_BAG_L2   -0.005641  ...       True        76
+2           WeightedEnsemble_L3   -0.005660  ...       True        81
+3        NeuralNetFastAI_BAG_L2   -0.005662  ...       True        52
+4           WeightedEnsemble_L2   -0.005672  ...       True        46
+..                          ...         ...  ...        ...       ...
+76        NeuralNetTorch_BAG_L1   -0.007825  ...       True        10
+77        KNeighborsDist_BAG_L1   -0.007842  ...       True         2
+78        KNeighborsUnif_BAG_L1   -0.007844  ...       True         1
+79    NeuralNetTorch_r30_BAG_L2   -0.007879  ...       True        72
+80    NeuralNetTorch_r30_BAG_L1   -0.020475  ...       True        28
+
+[81 rows x 13 columns]
+
+WeightedEnsemble_L3:验证集表现最好，测试集表现最好是上面leaderboard最前面的
+
+
+Autogluon CLS: 2024-12-26 17:02:09, higgs: {'accuracy': 0.7394696583375828, 'balanced_accuracy': 0.7383861943340646, 'mcc': 0.477008204668483, 'roc_auc': 0.8209856672763756, 'f1': 0.7544812340814071, 'precision': 0.7516277288395251, 'recall': 0.7573564881813797}
+leaderboard:                      model  score_test  score_val eval_metric  pred_time_test  pred_time_val    fit_time  pred_time_test_marginal  pred_time_val_marginal  fit_time_marginal  stack_level  can_infer  fit_order
+  NeuralNetTorch_r79_BAG_L2    0.739929   0.743753    accuracy       35.963605      63.926097 3655.375765                 1.089551                0.787822         191.274966            2       True         55
+ NeuralNetFastAI_r11_BAG_L2    0.739929   0.730316    accuracy       38.015730      65.418122 3479.106583                 3.141676                2.279847          15.005784            2       True         74
+NeuralNetFastAI_r145_BAG_L2    0.739929   0.743052    accuracy       38.118799      64.949880 3777.561151                 3.244745                1.811604         313.460352            2       True         68
+     NeuralNetFastAI_BAG_L2    0.739827   0.742976    accuracy       36.987591      65.109295 3600.263465                 2.113537                1.971020         136.162666            2       True         50
+  NeuralNetTorch_r86_BAG_L2    0.739725   0.742325    accuracy       35.856155      64.062847 3549.927188                 0.982101                0.924571          85.826390            2       True         72
+  NeuralNetTorch_r30_BAG_L2    0.739725   0.744136    accuracy       35.959824      64.134109 3799.095687                 1.085769                0.995834         334.994889            2       True         70
+NeuralNetFastAI_r102_BAG_L2    0.739674   0.743460    accuracy       35.466567      63.446058 3506.800317                 0.592513                0.307783          42.699518            2       True         64
+        WeightedEnsemble_L3    0.739470   0.744391    accuracy       36.525995      64.827312 3815.407876                 0.001979                0.003266           1.484735            3       True         75
+  NeuralNetTorch_r22_BAG_L2    0.739419   0.742810    accuracy       35.882750      63.833533 3613.985346                 1.008696                0.695257         149.884547            2       True         60
+NeuralNetFastAI_r191_BAG_L2    0.739317   0.743804    accuracy       36.886958      64.359496 3706.393934                 2.012904                1.221221         242.293136            2       True         57
+      ExtraTrees_r42_BAG_L2    0.739062   0.739788    accuracy       35.496209      66.964823 3467.355735                 0.622155                3.826548           3.254936            2       True         62
+        CatBoost_r50_BAG_L2    0.739011   0.743575    accuracy       34.945921      63.224184 3466.520285                 0.071867                0.085909           2.419486            2       True         73
+      NeuralNetTorch_BAG_L2    0.739011   0.742644    accuracy       35.808228      63.734337 3550.942353                 0.934174                0.596061          86.841554            2       True         52
+          LightGBMXT_BAG_L2    0.738909   0.743498    accuracy       34.933001      63.211810 3465.908190                 0.058947                0.073534           1.807391            2       True         43
+       CatBoost_r177_BAG_L2    0.738858   0.743460    accuracy       34.928367      63.205040 3466.652962                 0.054312                0.066765           2.552164            2       True         54
+        CatBoost_r13_BAG_L2    0.738858   0.742797    accuracy       34.941169      63.209727 3468.072670                 0.067115                0.071451           3.971872            2       True         65
+         CatBoost_r9_BAG_L2    0.738858   0.742988    accuracy       34.981479      63.239135 3469.970017                 0.107425                0.100859           5.869219            2       True         58
+        WeightedEnsemble_L2    0.738705   0.742580    accuracy       14.335174      15.256521 2350.348638                 0.005875                0.002716           1.588238            2       True         42
+     NeuralNetFastAI_BAG_L1    0.738501   0.730979    accuracy        1.590420       1.166299  139.252944                 1.590420                1.166299         139.252944            1       True         10
+NeuralNetFastAI_r145_BAG_L1    0.738501   0.733809    accuracy        3.377800       3.541930  368.034952                 3.377800                3.541930         368.034952            1       True         28
+       LightGBM_r188_BAG_L2    0.738450   0.742899    accuracy       34.946739      63.224949 3467.197551                 0.072685                0.086673           3.096753            2       True         67
+         XGBoost_r89_BAG_L2    0.738450   0.743842    accuracy       35.274387      63.544678 3466.704094                 0.400332                0.406403           2.603296            2       True         69
+       CatBoost_r137_BAG_L2    0.738348   0.743078    accuracy       34.915883      63.188895 3465.378087                 0.041829                0.050620           1.277288            2       True         63
+            CatBoost_BAG_L2    0.738246   0.743205    accuracy       34.926018      63.211473 3467.403677                 0.051964                0.073197           3.302878            2       True         47
+      ExtraTreesGini_BAG_L2    0.738195   0.738590    accuracy       35.853414      67.764627 3465.996550                 0.979360                4.626351           1.895751            2       True         48
+       LightGBM_r130_BAG_L2    0.737991   0.743944    accuracy       34.938388      63.241338 3466.582757                 0.064334                0.103063           2.481958            2       True         71
+        LightGBM_r96_BAG_L2    0.737787   0.742848    accuracy       34.964065      63.271234 3466.423261                 0.090011                0.132958           2.322463            2       True         59
+             XGBoost_BAG_L2    0.737736   0.743269    accuracy       35.317867      63.474267 3467.814960                 0.443813                0.335991           3.714162            2       True         51
+    RandomForestEntr_BAG_L2    0.737736   0.739419    accuracy       35.435674      66.787892 3470.321800                 0.561620                3.649617           6.221002            2       True         46
+       LightGBM_r131_BAG_L2    0.737685   0.743192    accuracy       34.957304      63.238914 3467.083977                 0.083250                0.100638           2.983179            2       True         56
+            LightGBM_BAG_L2    0.737634   0.743039    accuracy       34.927999      63.218033 3466.085157                 0.053945                0.079757           1.984359            2       True         44
+       LightGBMLarge_BAG_L2    0.737532   0.742976    accuracy       34.952453      63.232545 3467.605768                 0.078399                0.094270           3.504970            2       True         53
+    RandomForestGini_BAG_L2    0.737022   0.739304    accuracy       35.480002      66.926993 3469.499074                 0.605948                3.788718           5.398275            2       True         45
+         XGBoost_r33_BAG_L2    0.736971   0.743970    accuracy       35.438247      63.828212 3478.928253                 0.564193                0.689937          14.827455            2       True         61
+      ExtraTreesEntr_BAG_L2    0.736869   0.738029    accuracy       35.819192      67.630940 3465.949350                 0.945138                4.492665           1.848552            2       True         49
+   RandomForest_r195_BAG_L2    0.736818   0.737366    accuracy       35.350548      66.874635 3498.875626                 0.476494                3.736360          34.774827            2       True         66
+NeuralNetFastAI_r102_BAG_L1    0.735747   0.732267    accuracy        0.469932       0.522574   34.404011                 0.469932                0.522574          34.404011            1       True         24
+  NeuralNetTorch_r79_BAG_L1    0.735237   0.735237    accuracy        0.876514       0.908899  335.031729                 0.876514                0.908899         335.031729            1       True         15
+NeuralNetFastAI_r191_BAG_L1    0.734880   0.730954    accuracy        1.773312       1.458113  285.144378                 1.773312                1.458113         285.144378            1       True         17
+  NeuralNetTorch_r22_BAG_L1    0.734625   0.730775    accuracy        0.799169       0.651043  249.138835                 0.799169                0.651043         249.138835            1       True         20
+  NeuralNetTorch_r30_BAG_L1    0.733860   0.734052    accuracy        0.999051       0.841542  492.672962                 0.999051                0.841542         492.672962            1       True         30
+        CatBoost_r13_BAG_L1    0.733197   0.733159    accuracy        0.229863       0.126899  137.332329                 0.229863                0.126899         137.332329            1       True         25
+NeuralNetFastAI_r103_BAG_L1    0.731871   0.728774    accuracy        1.649626       0.993316  199.547217                 1.649626                0.993316         199.547217            1       True         38
+         CatBoost_r9_BAG_L1    0.731719   0.730393    accuracy        0.271314       0.190135   51.891999                 0.271314                0.190135          51.891999            1       True         18
+        XGBoost_r194_BAG_L1    0.731107   0.729424    accuracy        0.090971       0.074785    7.613856                 0.090971                0.074785           7.613856            1       True         35
+       CatBoost_r177_BAG_L1    0.731005   0.730941    accuracy        0.089432       0.083454   12.735276                 0.089432                0.083454          12.735276            1       True         14
+            CatBoost_BAG_L1    0.730546   0.731272    accuracy        0.106680       0.079118   15.569936                 0.106680                0.079118          15.569936            1       True          7
+       LightGBM_r130_BAG_L1    0.730393   0.731221    accuracy        0.111115       0.177843   11.094409                 0.111115                0.177843          11.094409            1       True         31
+        CatBoost_r69_BAG_L1    0.730189   0.728710    accuracy        0.124304       0.089424   23.112462                 0.124304                0.089424          23.112462            1       True         37
+       LightGBMLarge_BAG_L1    0.729934   0.730915    accuracy        0.177465       0.253706    8.226107                 0.177465                0.253706           8.226107            1       True         13
+  NeuralNetTorch_r86_BAG_L1    0.729271   0.727473    accuracy        1.091465       3.027257  385.413826                 1.091465                3.027257         385.413826            1       True         32
+       LightGBM_r188_BAG_L1    0.728863   0.730558    accuracy        0.509372       0.608468   14.150358                 0.509372                0.608468          14.150358            1       True         27
+       LightGBM_r131_BAG_L1    0.728812   0.728799    accuracy        0.511982       0.720780   14.917900                 0.511982                0.720780          14.917900            1       True         16
+          LightGBMXT_BAG_L1    0.728047   0.729921    accuracy        0.398958       0.625821    8.408268                 0.398958                0.625821           8.408268            1       True          3
+      NeuralNetTorch_BAG_L1    0.727537   0.725293    accuracy        0.752591       0.538557  186.802040                 0.752591                0.538557         186.802040            1       True         12
+       LightGBM_r161_BAG_L1    0.727435   0.729335    accuracy        0.607270       0.825840   23.442031                 0.607270                0.825840          23.442031            1       True         39
+         XGBoost_r33_BAG_L1    0.727180   0.729424    accuracy        0.555289       0.754213   21.800189                 0.555289                0.754213          21.800189            1       True         21
+         XGBoost_r89_BAG_L1    0.727078   0.727371    accuracy        0.264089       0.204749    5.108588                 0.264089                0.204749           5.108588            1       True         29
+             XGBoost_BAG_L1    0.726925   0.729041    accuracy        0.237035       0.216836    3.157142                 0.237035                0.216836           3.157142            1       True         11
+       CatBoost_r137_BAG_L1    0.726313   0.726390    accuracy        0.173285       0.088289   15.688659                 0.173285                0.088289          15.688659            1       True         23
+            LightGBM_BAG_L1    0.725803   0.726428    accuracy        0.108578       0.132158    3.667576                 0.108578                0.132158           3.667576            1       True          4
+        CatBoost_r50_BAG_L1    0.725803   0.726071    accuracy        0.172206       0.165433   16.461830                 0.172206                0.165433          16.461830            1       True         33
+        LightGBM_r96_BAG_L1    0.724834   0.726415    accuracy        1.536400       2.347034   21.069531                 1.536400                2.347034          21.069531            1       True         19
+ NeuralNetFastAI_r11_BAG_L1    0.723049   0.725931    accuracy        3.068475       1.847216  327.886950                 3.068475                1.847216         327.886950            1       True         34
+    RandomForestGini_BAG_L1    0.721010   0.719824    accuracy        0.687641       2.837303    3.460270                 0.687641                2.837303           3.460270            1       True          5
+    RandomForestEntr_BAG_L1    0.719990   0.719620    accuracy        0.675565       2.754235    4.007570                 0.675565                2.754235           4.007570            1       True          6
+   RandomForest_r195_BAG_L1    0.717746   0.718881    accuracy        0.568782       2.807822   10.953350                 0.568782                2.807822          10.953350            1       True         26
+      ExtraTrees_r42_BAG_L1    0.717287   0.715069    accuracy        0.784011       3.000330    1.961964                 0.784011                3.000330           1.961964            1       True         22
+     ExtraTrees_r172_BAG_L1    0.716573   0.719799    accuracy        0.463902       2.546134    1.882208                 0.463902                2.546134           1.882208            1       True         36
+        CatBoost_r70_BAG_L1    0.715400   0.713284    accuracy        0.077249       0.076068    1.743927                 0.077249                0.076068           1.743927            1       True         41
+NeuralNetFastAI_r143_BAG_L1    0.704589   0.702244    accuracy        0.618515       0.649469   17.749201                 0.618515                0.649469          17.749201            1       True         40
+      ExtraTreesGini_BAG_L1    0.702703   0.697935    accuracy        1.162389       3.044453    1.699961                 1.162389                3.044453           1.699961            1       True          8
+      ExtraTreesEntr_BAG_L1    0.699898   0.696775    accuracy        0.846206       2.997925    1.693802                 0.846206                2.997925           1.693802            1       True          9
+      KNeighborsDist_BAG_L1    0.592249   0.590209    accuracy        3.227058      10.572590    0.093922                 3.227058               10.572590           0.093922            1       True          2
+      KNeighborsUnif_BAG_L1    0.591994   0.590145    accuracy        3.038771       8.590219    0.076335                 3.038771                8.590219           0.076335            1       True          1
+
+
+
+
+Autogluon CLS: 2024-12-26 19:03:51, higgs: {'accuracy': 0.7374808771035186, 'balanced_accuracy': 0.7358269564362114, 'mcc': 0.47258848902911144, 'roc_auc': 0.8202708129999214, 'f1': 0.7548804875726122, 'precision': 0.7452289179279872, 'recall': 0.764785335262904}
+leaderboard:                      model  score_test  score_val eval_metric  pred_time_test  pred_time_val    fit_time  pred_time_test_marginal  pred_time_val_marginal  fit_time_marginal  stack_level  can_infer  fit_order
+     NeuralNetFastAI_BAG_L2    0.740082   0.741548    accuracy       24.851022      47.463933 1852.539161                 1.997623                1.144181         133.864861            2       True         33
+        WeightedEnsemble_L2    0.739419   0.742058    accuracy        8.822030      12.370184 1545.895494                 0.004620                0.003407           1.477252            2       True         25
+          LightGBMXT_BAG_L2    0.738960   0.742198    accuracy       22.906075      46.372658 1720.144985                 0.052676                0.052906           1.470684            2       True         26
+  NeuralNetTorch_r22_BAG_L2    0.738858   0.741726    accuracy       23.731677      47.142697 1791.508834                 0.878279                0.822945          72.834533            2       True         43
+      ExtraTreesEntr_BAG_L2    0.738705   0.737443    accuracy       23.758037      50.025820 1720.474523                 0.904639                3.706068           1.800222            2       True         32
+     NeuralNetFastAI_BAG_L1    0.738501   0.730979    accuracy        1.747216       1.166397  136.953789                 1.747216                1.166397         136.953789            1       True         10
+NeuralNetFastAI_r191_BAG_L2    0.738399   0.742109    accuracy       24.630562      47.411975 2008.786809                 1.777164                1.092222         290.112509            2       True         40
+  NeuralNetTorch_r79_BAG_L2    0.737889   0.742313    accuracy       23.822372      46.993357 1917.457261                 0.968973                0.673605         198.782960            2       True         38
+       CatBoost_r177_BAG_L2    0.737838   0.742478    accuracy       22.893056      46.377105 1720.285789                 0.039658                0.057352           1.611488            2       True         37
+            CatBoost_BAG_L2    0.737838   0.742185    accuracy       22.909898      46.375855 1720.876842                 0.056500                0.056103           2.202541            2       True         30
+         CatBoost_r9_BAG_L2    0.737838   0.742682    accuracy       22.980295      46.443070 1725.483692                 0.126896                0.123317           6.809391            2       True         41
+      ExtraTreesGini_BAG_L2    0.737787   0.737149    accuracy       23.776192      50.058701 1720.495278                 0.922793                3.738949           1.820978            2       True         31
+        LightGBM_r96_BAG_L2    0.737736   0.741254    accuracy       22.913419      46.379077 1719.900403                 0.060021                0.059324           1.226102            2       True         42
+      NeuralNetTorch_BAG_L2    0.737736   0.741254    accuracy       23.623076      46.890099 1817.759971                 0.769678                0.570346          99.085671            2       True         35
+            LightGBM_BAG_L2    0.737685   0.741892    accuracy       22.896940      46.381031 1720.255393                 0.043541                0.061279           1.581093            2       True         27
+       LightGBMLarge_BAG_L2    0.737634   0.741535    accuracy       22.919232      46.411443 1721.641047                 0.065834                0.091690           2.966746            2       True         36
+    RandomForestEntr_BAG_L2    0.737583   0.738641    accuracy       23.454086      49.538584 1724.308057                 0.600687                3.218832           5.633756            2       True         29
+             XGBoost_BAG_L2    0.737481   0.742810    accuracy       23.179786      46.580520 1721.354549                 0.326387                0.260768           2.680248            2       True         34
+        WeightedEnsemble_L3    0.737481   0.742810    accuracy       23.182246      46.583510 1722.849774                 0.002460                0.002990           1.495225            3       True         45
+         XGBoost_r33_BAG_L2    0.737379   0.741866    accuracy       23.392612      46.866371 1733.789065                 0.539214                0.546619          15.114764            2       True         44
+       LightGBM_r131_BAG_L2    0.737328   0.742402    accuracy       22.936105      46.417091 1722.705573                 0.082707                0.097339           4.031273            2       True         39
+    RandomForestGini_BAG_L2    0.737328   0.738539    accuracy       23.475170      49.827465 1723.468278                 0.621772                3.507712           4.793977            2       True         28
+  NeuralNetTorch_r22_BAG_L1    0.735594   0.730762    accuracy        0.827653       0.989781  201.966002                 0.827653                0.989781         201.966002            1       True         20
+  NeuralNetTorch_r79_BAG_L1    0.735237   0.735237    accuracy        0.842523       0.533624  634.331012                 0.842523                0.533624         634.331012            1       True         15
+NeuralNetFastAI_r191_BAG_L1    0.734880   0.730954    accuracy        1.729775       1.447994  284.753099                 1.729775                1.447994         284.753099            1       True         17
+         CatBoost_r9_BAG_L1    0.731719   0.730393    accuracy        0.289641       0.246277   51.608597                 0.289641                0.246277          51.608597            1       True         18
+       CatBoost_r177_BAG_L1    0.731005   0.730941    accuracy        0.091768       0.071161   15.150798                 0.091768                0.071161          15.150798            1       True         14
+            CatBoost_BAG_L1    0.730546   0.731272    accuracy        0.158099       0.098047   14.652812                 0.158099                0.098047          14.652812            1       True          7
+       LightGBMLarge_BAG_L1    0.729934   0.730915    accuracy        0.175958       0.239175   16.590884                 0.175958                0.239175          16.590884            1       True         13
+       LightGBM_r131_BAG_L1    0.728812   0.728799    accuracy        0.522248       0.737501   15.250032                 0.522248                0.737501          15.250032            1       True         16
+          LightGBMXT_BAG_L1    0.728047   0.729921    accuracy        0.491575       0.630982    9.368562                 0.491575                0.630982           9.368562            1       True          3
+      NeuralNetTorch_BAG_L1    0.727537   0.725293    accuracy        0.762337       0.932038  248.311900                 0.762337                0.932038         248.311900            1       True         12
+         XGBoost_r33_BAG_L1    0.727180   0.729424    accuracy        0.563281       0.607246   20.569856                 0.563281                0.607246          20.569856            1       True         21
+             XGBoost_BAG_L1    0.726925   0.729041    accuracy        0.229510       0.197828    3.053555                 0.229510                0.197828           3.053555            1       True         11
+       CatBoost_r137_BAG_L1    0.726313   0.726390    accuracy        0.150897       0.104919   14.029264                 0.150897                0.104919          14.029264            1       True         23
+            LightGBM_BAG_L1    0.725803   0.726428    accuracy        0.107870       0.120084    5.548762                 0.107870                0.120084           5.548762            1       True          4
+        LightGBM_r96_BAG_L1    0.724834   0.726415    accuracy        1.516195       2.477662   25.368811                 1.516195                2.477662          25.368811            1       True         19
+    RandomForestGini_BAG_L1    0.721010   0.719824    accuracy        0.668493       2.855886    3.324475                 0.668493                2.855886           3.324475            1       True          5
+    RandomForestEntr_BAG_L1    0.719990   0.719620    accuracy        0.697746       2.827735    3.706629                 0.697746                2.827735           3.706629            1       True          6
+      ExtraTrees_r42_BAG_L1    0.717287   0.715069    accuracy        0.827577       3.040292    2.082459                 0.827577                3.040292           2.082459            1       True         22
+NeuralNetFastAI_r102_BAG_L1    0.716981   0.707942    accuracy        0.440791       0.370299    8.665951                 0.440791                0.370299           8.665951            1       True         24
+      ExtraTreesGini_BAG_L1    0.702703   0.697935    accuracy        1.111122       3.104698    1.539546                 1.111122                3.104698           1.539546            1       True          8
+      ExtraTreesEntr_BAG_L1    0.699898   0.696775    accuracy        0.869067       3.017741    1.668423                 0.869067                3.017741           1.668423            1       True          9
+      KNeighborsDist_BAG_L1    0.592249   0.590209    accuracy        5.221719      10.449180    0.098219                 5.221719               10.449180           0.098219            1       True          2
+      KNeighborsUnif_BAG_L1    0.591994   0.590145    accuracy        2.810338      10.053205    0.080864                 2.810338               10.053205           0.080864            1       True          1
