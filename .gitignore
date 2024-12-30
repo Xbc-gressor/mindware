@@ -40,3 +40,46 @@ test/.ipynb_checkpoints/
 docs/*/build/
 
 conf/
+
+*.DS_Store
+*.pyc
+*.swp
+*.csv
+*.log
+temp/*
+dist/*
+build/*
+*.egg-info/
+
+# test-related
+.coverage
+.cache
+.pytest_cache
+
+# developer environments
+.idea
+.vscode
+
+smac3-output*
+logs/
+data/
+
+local_examples/
+
+# TensorboardX files.
+runs/
+
+# Jupyter checkpoint files.
+test/.ipynb_checkpoints/
+
+# Other
+.tox
+.pypirc
+.ipynb_checkpoints/
+*~
+.html/
+.mypy_cache/
+
+docs/*/build/
+
+conf/

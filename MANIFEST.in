@@ -3,3 +3,9 @@ recursive-include mindware *.pyx
 recursive-include requirements *.txt
 recursive-include mindware/components/meta_learning/meta_resource *.pkl
 recursive-include mindware/components/meta_learning/meta_resource *.pth
+
+include mindware/utils/logging.yaml
+recursive-include mindware *.pyx
+recursive-include requirements *.txt
+recursive-include mindware/components/meta_learning/meta_resource *.pkl
+recursive-include mindware/components/meta_learning/meta_resource *.pth
