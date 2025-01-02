@@ -8,7 +8,7 @@ from cls_benchmark import chosen_datasets_info as cls_info
 # rank_fields = ['cashfe-block_1_ens', 'autogluon_ens']  # 比较mab和block_1
 # rank_fields = ['cashfe-block_0_ens', 'cashfe-block_1_ens', 'cashfe-block_2_ens']  # 比较mab和block_1
 # rank_fields = ['cashfe-block_0_ens', 'cashfe-block_1_ens', 'cashfe-block_2_ens', 'newcashfe-block_1_ens', 'newcashfe-block_2_ens']  # 比较new fe，结果不如原来的
-rank_fields = ['cashfe-block_1_ens', 'newcashfe-block_1_ens', 'newcashfe_rmica-block_1_ens', 'cashfe_early-block_1_ens']  # 比较去掉ica后new fe的效果
+rank_fields = ['cashfe-block_1_ens', 'newcashfe-block_1_ens', 'newcashfe_rmica-block_1_ens', 'newcashfe_ica-block_1_ens']  # 比较去掉ica后new fe的效果
 
 def parse_data(file_path):
     results = {
@@ -22,7 +22,7 @@ def parse_data(file_path):
             if '---------------' in line:
                 break
         for line in file:  # Continue reading after the '---------------'
-            match = re.match(r"(CLS|RGS): (cashfe|cash|cashfe-block_0|cashfe-block_1|cashfe-block_2|newcashfe-block_1|newcashfe_rmica-block_1|cashfe_early-block_1|newcashfe-block_2|autogluon), (\w+): (-?\d+\.\d+), (-?\d+\.\d+)", line)
+            match = re.match(r"(CLS|RGS): (cashfe|cash|cashfe-block_0|cashfe-block_1|cashfe-block_2|newcashfe-block_1|newcashfe_rmica-block_1|newcashfe_ica-block_1|cashfe_early-block_1|newcashfe-block_2|autogluon), (\w+): (-?\d+\.\d+), (-?\d+\.\d+)", line)
             if match:
                 task_type, algorithm, dataset, best, ens = match.groups()
                 if dataset not in results[task_type]:

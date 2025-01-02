@@ -68,18 +68,18 @@ declare -a TASKS
 
 # 生成任务列表，测试为什么block1变差了
 for i in 7; do
-    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 7200 --job_idx $i --output_dir ./newfe_ica_data --output_file newfe_ica_results.txt")
+    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --train_test_split_seed 2025 --time_limit 7200 --job_idx $i --output_dir ./s2025_ica_data --output_file s2025_ica_results.txt")
 done
 
 # 生成任务列表
 for i in 1; do
-    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 3600 --job_idx $i --output_dir ./newfe_ica_data --output_file newfe_ica_results.txt")
+    TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --train_test_split_seed 2025 --time_limit 3600 --job_idx $i --output_dir ./s2025_ica_data --output_file s2025_ica_results.txt")
 done
 
 
 # 生成任务列表
 for i in 1 2 3; do
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 3600 --job_idx $i --output_dir ./newfe_ica_data --output_file newfe_ica_results.txt")
+    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --train_test_split_seed 2025 --time_limit 3600 --job_idx $i --output_dir ./s2025_ica_data --output_file s2025_ica_results.txt")
 done
 
 

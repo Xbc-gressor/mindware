@@ -127,11 +127,11 @@ CLS: newcashfe_rmica-block_1, covertype: 0.8884007427872639, 0.8990896326826396
 RGS: newcashfe_rmica-block_1, cpu_act: -5.187559356519412, -4.930841394626699
 RGS: newcashfe_rmica-block_1, bank32nh: -0.00607709002466026, -0.0058960229941095585
 ---------------保留ica的结果
-CLS: cashfe-block_1, spambase: 0.9598262757871878, 0.9609120521172638
-RGS: cashfe-block_1, puma8NH: -9.931889758773764, -9.832213273649081
-CLS: cashfe-block_1, covertype: 0.8861814393767834, 0.8896236242583451
-RGS: cashfe-block_1, cpu_act: -7.3526734090762425, -5.6915358888643475
-RGS: cashfe-block_1, bank32nh: -0.0062881282374600425, -0.006097502025520503
+CLS: newcashfe_ica-block_1, spambase: 0.9598262757871878, 0.9609120521172638
+RGS: newcashfe_ica-block_1, puma8NH: -9.931889758773764, -9.832213273649081
+CLS: newcashfe_ica-block_1, covertype: 0.8861814393767834, 0.8896236242583451
+RGS: newcashfe_ica-block_1, cpu_act: -7.3526734090762425, -5.6915358888643475
+RGS: newcashfe_ica-block_1, bank32nh: -0.0062881282374600425, -0.006097502025520503
 ---------------更早版本（去掉了压缩、loadsave统一化、split统一化、fe空间限制的优化
 CLS: cashfe_early-block_1, spambase: 0.9598262757871878, 0.9587404994571118
 RGS: cashfe_early-block_1, puma8NH: -9.931633925913898, -9.84169818230425

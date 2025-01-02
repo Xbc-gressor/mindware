@@ -405,7 +405,7 @@ class BaseAutoML(object):
         model_info = dict()
         if self.es is not None:
             model_info['ensemble'] = self.es.get_ens_model_info()
-        path = os.path.join(self.output_dir, '%s_%s.pkl' % (self.datetime, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
+        path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, self.incumbent, self.datetime)
         model_info['best'] = (self.incumbent['algorithm'], self.incumbent, path)
 
         opt_trajectory = self.optimizer.get_opt_trajectory()
