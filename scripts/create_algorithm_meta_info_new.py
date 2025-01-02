@@ -4,18 +4,18 @@ import pickle
 import argparse
 import numpy as np
 from sklearn.metrics import balanced_accuracy_score
+from sklearn.model_selection import train_test_split
 
-sys.path.append(os.getcwd())
-from autosklearn.classification import AutoSklearnClassifier
-from autosklearn.pipeline.components.classification import add_classifier
+# 将当前文件所在文件夹的上层目录加入到sys.path中
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mindware.components.utils.constants import MULTICLASS_CLS, BINARY_CLS, REGRESSION, CLS_TASKS, CATEGORICAL
-from mindware.datasets.utils import load_train_test_data
+from mindware.components.utils.constants import MULTICLASS_CLS, BINARY_CLS, REGRESSION, CLS_TASKS, RGS_TASKS, CATEGORICAL
 from mindware.components.metrics.metric import get_metric
-from scripts.ausk_udf_models.lightgbm import LightGBM
-from scripts.ausk_udf_models.logistic_regression import Logistic_Regression
+from mindware.utils.data_manager import DataManager
+from mindware.components.feature_engineering.transformation_graph import DataNode
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--data_dir', type=str, default='/root/automl_data/automl_data')
 parser.add_argument('--start_id', type=int, default=0)
 parser.add_argument('--rep', type=int, default=3)
 parser.add_argument('--datasets', type=str, default='diabetes')
@@ -23,82 +23,123 @@ parser.add_argument('--metrics', type=str, default='all')
 parser.add_argument('--task', type=str, choices=['reg', 'cls'], default='cls')
 parser.add_argument('--algo', type=str, default='all')
 parser.add_argument('--time_limit', type=int, default=1200)
+parser.add_argument('--amount_of_resource', type=int, default=100)
 args = parser.parse_args()
 
 datasets = args.datasets.split(',')
 start_id, rep = args.start_id, args.rep
 time_limit = args.time_limit
+amount_of_resource = args.amount_of_resource
 save_dir = './data/meta_res/'
+data_dir = args.data_dir
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-cls_metrics = ['acc', 'f1', 'auc']
-reg_metrics = ['mse', 'r2', 'mae']
+# cls_metrics = ['acc', 'f1', 'auc']
+# reg_metrics = ['mse', 'r2', 'mae']
+
+cls_metrics = ['acc']
+reg_metrics = ['mse']
 
 
-def evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=600, seed=1, task_type=None):
-    if algo == 'lightgbm':
-        _algo = ['LightGBM']
-        add_classifier(LightGBM)
-    elif algo == 'logistic_regression':
-        _algo = ['Logistic_Regression']
-        add_classifier(Logistic_Regression)
+def load_data(dataset, data_dir='./', datanode_returned=False, preprocess=True, task_type=None):
+    dm = DataManager()
+    if task_type is None:
+        data_path = os.path.join(data_dir, 'datasets/%s.csv' % dataset)
+    elif task_type in CLS_TASKS:
+        data_path = os.path.join(data_dir, 'cls_datasets/%s.csv' % dataset)
+    elif task_type in RGS_TASKS:
+        data_path = os.path.join(data_dir, 'rgs_datasets/%s.csv' % dataset)
     else:
-        _algo = [algo]
+        raise ValueError("Unknown task type %s" % str(task_type))
+
+    # Load train data.
+    if dataset in ['higgs', 'amazon_employee', 'spectf', 'usps', 'vehicle_sensIT', 'codrna']:
+        label_column = 0
+    elif dataset in ['rmftsa_sleepdata(1)']:
+        label_column = 1
+    else:
+        label_column = -1
+
+    if dataset in ['spambase', 'messidor_features']:
+        header = None
+    else:
+        header = 'infer'
+
+    if dataset in ['winequality_white', 'winequality_red']:
+        sep = ';'
+    else:
+        sep = ','
+
+    train_data_node = dm.load_train_csv(data_path, label_col=label_column, header=header, sep=sep,
+                                        na_values=["n/a", "na", "--", "-", "?"])
+
+    if preprocess:
+        train_data = dm.preprocess_fit(train_data_node, task_type)
+    else:
+        train_data = train_data_node
+
+    if datanode_returned:
+        return train_data, dm
+    else:
+        X, y = train_data.data
+        feature_types = train_data.feature_types
+        return X, y, feature_types, dm
+
+
+def load_train_test_data(dataset, data_dir='./', test_size=0.2, task_type=None, random_state=45):
+    X, y, feature_type, dm = load_data(dataset, data_dir, False, task_type=task_type)
+    if task_type is None or task_type in CLS_TASKS:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state, stratify=y)
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state)
+    train_node = DataNode(data=[X_train, y_train], feature_type=feature_type.copy())
+    test_node = DataNode(data=[X_test, y_test], feature_type=feature_type.copy())
+    # print('is imbalanced dataset', is_imbalanced_dataset(train_node))
+    return train_node, test_node, dm
+
+
+def evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=600, amount_of_resource=100, seed=1, task_type=None):
+    _algo = [algo]
     print('EVALUATE-%s-%s-%s: run_id=%d' % (dataset, algo, obj_metric, run_id))
-    train_data, test_data = load_train_test_data(dataset, task_type=task_type)
+    train_data, test_data, dm = load_train_test_data(dataset, data_dir=data_dir, task_type=task_type)
     if task_type in CLS_TASKS:
         task_type = BINARY_CLS if len(set(train_data.data[1])) == 2 else MULTICLASS_CLS
     print(set(train_data.data[1]))
 
-    raw_data, test_raw_data = load_train_test_data(dataset, task_type=MULTICLASS_CLS)
-    X, y = raw_data.data
-    X_test, y_test = test_raw_data.data
-    feat_type = ['Categorical' if _type == CATEGORICAL else 'Numerical'
-                 for _type in raw_data.feature_types]
-    from autosklearn.metrics import balanced_accuracy as balanced_acc
-    automl = AutoSklearnClassifier(
-        time_left_for_this_task=int(time_limit),
-        per_run_time_limit=180,
-        n_jobs=1,
-        include_estimators=_algo,
-        initial_configurations_via_metalearning=0,
-        ensemble_memory_limit=16384,
-        ml_memory_limit=16384,
-        # tmp_folder='/var/folders/0t/mjph32q55hd10x3qr_kdd2vw0000gn/T/autosklearn_tmp',
-        ensemble_size=1,
-        seed=int(seed),
-        resampling_strategy='holdout',
-        resampling_strategy_arguments={'train_size': 0.67}
-    )
-    automl.fit(X.copy(), y.copy(), feat_type=feat_type, metric=balanced_acc)
-    model_desc = automl.show_models()
-    str_stats = automl.sprint_statistics()
-    valid_results = automl.cv_results_['mean_test_score']
-    print('Eval num: %d' % (len(valid_results)))
+    from mindware import CASHFE
+    opt = CASHFE(
+                include_algorithms=_algo, sub_optimizer='smac', task_type=task_type,
+                metric=obj_metric,
+                data_node=train_data, evaluation='holdout', resampling_params={'test_size': 0.33},
+                optimizer='block_0', inner_iter_num_per_iter=1,
+                time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=180,
+                output_dir='./data', seed=int(seed), n_jobs=1,
+                ensemble_method=None, task_id=dataset
+            )
 
-    validation_score = np.max(valid_results)
+    print(opt.get_conf(save=True))
 
-    # Test performance.
-    automl.refit(X.copy(), y.copy())
-    predictions = automl.predict(X_test)
-    test_score = balanced_accuracy_score(y_test, predictions)
+    print(opt.run())
+    print(opt.get_model_info(save=True))
 
-    # Print statistics about the auto-sklearn run such as number of
-    # iterations, number of models failed with a time out.
-    print(str_stats)
-    print(model_desc)
-    print('Validation Accuracy:', validation_score)
-    print("Test Accuracy      :", test_score)
+    validation_score = opt.incumbent_perf
+    eval_num = len(opt.optimizer.perfs)
+
+    scorer = opt.metric
+    pred = opt.predict(test_data, ens=False)
+    test_score = scorer._score_func(test_data.data[1], pred) * scorer._sign
 
     save_path = save_dir + '%s-%s-%s-%d-%d.pkl' % (dataset, algo, obj_metric, run_id, time_limit)
     with open(save_path, 'wb') as f:
-        pickle.dump([dataset, algo, validation_score, test_score, task_type], f)
+        pickle.dump([dataset, algo, eval_num, validation_score, test_score, task_type], f)
 
 
 def check_datasets(datasets, task_type=None):
     for _dataset in datasets:
         try:
-            _, _ = load_train_test_data(_dataset, random_state=1, task_type=task_type)
+            _, _, _ = load_train_test_data(_dataset, data_dir=data_dir, random_state=1, task_type=task_type)
         except Exception as e:
             raise ValueError('Dataset - %s does not exist!' % _dataset)
 
@@ -155,13 +196,13 @@ if __name__ == "__main__":
                     seed = seeds[run_id]
                     try:
                         task_id = '%s-%s-%s-%d: %s' % (dataset, algo, obj_metric, run_id, 'success')
-                        evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=time_limit,
+                        evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=time_limit, amount_of_resource=amount_of_resource,
                                               seed=seed, task_type=task_type)
                     except Exception as e:
                         task_id = '%s-%s-%s-%d: %s' % (dataset, algo, obj_metric, run_id, str(e))
+                        running_info.append(task_id)
 
                     print(task_id)
-                    running_info.append(task_id)
                     with open(save_dir + log_filename, 'a') as f:
                         f.write('\n' + task_id)
 

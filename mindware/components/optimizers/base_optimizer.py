@@ -29,7 +29,7 @@ class BaseOptimizer(object):
         self.perfs = list()
         self.incumbent_perf = float("-INF")
         if isinstance(self.config_space, ConfigurationSpace):
-            self.incumbent_config = self.config_space.get_default_configuration()
+            self.incumbent_config = self.config_space.get_default_configuration().get_dictionary()
         elif isinstance(self.config_space, tuple):
             tmp = {}
             for cs in self.config_space:

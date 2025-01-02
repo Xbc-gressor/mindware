@@ -11,3 +11,28 @@ TODO:
    同样是因为config不同，但是hash值相同，所以会在删除新的config的时候，把旧的有些不一样的config也删除了，但旧的还在topk里面
 TODO: BOHB在CASH会出现搜索空间太小，采样不足，这种情况允许相同的config，但是logger.error，修改sample_configurations()函数
 TODO: 自定义metric如果需要proba，用make_scorer包装后，运行时无法判定estimator是分类器还是拟合器，会报错，目前只能自定义scorer
+
+
+FE的问题：
+feature_agglomeration_decomposer, affinity=cosine的时候，如果某个特征0很多，导致train_set该特征全是0的话，会报错
+
+  'fast_ica_decomposer:algorithm': 'deflation',
+  'fast_ica_decomposer:fun': 'exp',
+  'fast_ica_decomposer:whiten': 'False',
+
+  'fast_ica_decomposer:algorithm': 'parallel',
+  'fast_ica_decomposer:fun': 'cube',
+  'fast_ica_decomposer:whiten': 'False',
+
+
+  'nystronem_sampler:gamma': 5.104657844176255,
+  'nystronem_sampler:kernel': 'rbf',
+  'nystronem_sampler:n_components': 1088,
+
+  'nystronem_sampler:gamma': 0.10000000000000006,
+  'nystronem_sampler:kernel': 'rbf',
+  'nystronem_sampler:n_components': 100,
+
+  'nystronem_sampler:gamma': 0.10000000000000006,
+  'nystronem_sampler:kernel': 'rbf',
+  'nystronem_sampler:n_components': 100,

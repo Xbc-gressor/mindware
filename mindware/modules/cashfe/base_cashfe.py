@@ -104,7 +104,11 @@ class BaseCASHFE(BaseAutoML):
     def get_conf(self, save=False):
 
         conf = super(BaseCASHFE, self).get_conf()
-        conf['include_algorithms'] = self.cs['algorithm'].choices
+        from ConfigSpace.hyperparameters import Constant
+        if isinstance(self.cs['algorithm'], Constant):
+            conf['include_algorithms'] = [self.cs['algorithm'].value]
+        else:
+            conf['include_algorithms'] = self.cs['algorithm'].choices
 
         if save:
             with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:
