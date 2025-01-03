@@ -80,6 +80,7 @@ class SMACOptimizer(BaseOptimizer):
                     break
                 obs = self.optimizer.iterate()
                 _config, _status, _perf = obs.config, obs.trial_state, obs.objectives
+                self.logger.info('conf: %s' % str(_config.get_dictionary()))
                 self.update_saver([_config], [_perf[0]])
                 if _status == SUCCESS:
                     self.exp_output[time.time()] = (_config, _perf[0])

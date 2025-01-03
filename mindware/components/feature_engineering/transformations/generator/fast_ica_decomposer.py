@@ -4,6 +4,7 @@ from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import CategoricalHyperparameter, Constant, \
     UniformIntegerHyperparameter
 from ConfigSpace.conditions import EqualsCondition, NotEqualsCondition
+from ConfigSpace.forbidden import ForbiddenAndConjunction, ForbiddenEqualsClause
 from mindware.components.utils.configspace_utils import check_for_bool, check_none
 import sklearn
 
@@ -75,10 +76,11 @@ class FastIcaDecomposer(Transformer):
 
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
-    
         # n_components cannot be larger than min(n_features, n_samples).
         n_samples = kwargs.get('n_samples', None)
         n_features = kwargs.get('n_features', None)
+        exp_deflation_mask = kwargs.get('exp_deflation_mask', False)
+        cube_parallel_mask = kwargs.get('cube_parallel_mask', False)
         
         n_components_upper = 2000
         if n_samples is not None:
@@ -106,6 +108,20 @@ class FastIcaDecomposer(Transformer):
                 'fun', ['logcosh', 'exp', 'cube'], 'logcosh')
             cs.add_hyperparameters([n_components, algorithm, whiten, fun])
             cs.add_condition(NotEqualsCondition(n_components, whiten, "False"))
+            if not exp_deflation_mask:
+                fun_and_algorithm = ForbiddenAndConjunction(
+                    ForbiddenEqualsClause(whiten, "False"),
+                    ForbiddenEqualsClause(fun, "exp"),
+                    ForbiddenEqualsClause(algorithm, "deflation"))
+                cs.add_forbidden_clause(fun_and_algorithm)
+                
+            if not cube_parallel_mask:
+                fun_and_algorithm = ForbiddenAndConjunction(
+                    ForbiddenEqualsClause(whiten, "False"),
+                    ForbiddenEqualsClause(fun, "cube"),
+                    ForbiddenEqualsClause(algorithm, "parallel"))
+                cs.add_forbidden_clause(fun_and_algorithm)
+            
             return cs
         elif optimizer == 'tpe':
             from hyperopt import hp

@@ -63,6 +63,9 @@ class BaseFE(BaseAutoML):
             'resampling_params': resampling_params,
             'data_node': data_node
         }
+        from mindware.components.config_space.cs_builder import get_fe_cs_args
+        cs_args = get_fe_cs_args(**cs_args)
+        self.cs_args = cs_args
         self.cs = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal, **cs_args)
 
         if model_config is None:

@@ -110,6 +110,8 @@ class ExtraTreeBasedSelectorRegression(Transformer):
 
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
+        y_neg_mask = kwargs.get('y_neg_mask', False)
+        
         if optimizer == 'smac':
             cs = ConfigurationSpace()
 
@@ -122,8 +124,12 @@ class ExtraTreeBasedSelectorRegression(Transformer):
                 criterion = CategoricalHyperparameter(
                     "criterion", ["squared_error", "absolute_error"], default_value="squared_error")
             elif '1.2.2' <= sklearn.__version__ <= '1.3.2':
-                criterion = CategoricalHyperparameter(
-                    "criterion", ["squared_error", "absolute_error", "friedman_mse", "poisson"], default_value="squared_error")
+                if y_neg_mask:
+                    criterion = CategoricalHyperparameter(
+                        "criterion", ["squared_error", "absolute_error", "friedman_mse", "poisson"], default_value="squared_error")
+                else:
+                    criterion = CategoricalHyperparameter(
+                        "criterion", ["squared_error", "absolute_error", "friedman_mse"], default_value="squared_error")
             else:
                 raise ValueError("scikit-learn version %s is not supported." % sklearn.__version__)
 

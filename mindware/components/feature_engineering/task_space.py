@@ -93,32 +93,29 @@ def get_task_hyperparameter_space(task_type, include_preprocessors=None,
     else:
         preprocessor = _preprocessor_candidates
 
-    from mindware.components.config_space.cs_builder import get_cs_args
-    _cs_args = get_cs_args(**cs_args)
-
     configs = dict()
 
     if include_image:
-        image_preprocessor_dict = _get_configuration_space(_image_preprocessor, optimizer=optimizer, **_cs_args)
+        image_preprocessor_dict = _get_configuration_space(_image_preprocessor, optimizer=optimizer, **cs_args)
         configs['image_preprocessor'] = image_preprocessor_dict
     if include_text:
-        text_preprocessor_dict = _get_configuration_space(_text_preprocessor, optimizer=optimizer, **_cs_args)
+        text_preprocessor_dict = _get_configuration_space(_text_preprocessor, optimizer=optimizer, **cs_args)
         configs['text_preprocessor'] = text_preprocessor_dict
 
     for stage in stage_list:
         if stage == 'preprocessor':
-            stage_dict = _get_configuration_space(preprocessor, trans_types, optimizer=optimizer, **_cs_args)
+            stage_dict = _get_configuration_space(preprocessor, trans_types, optimizer=optimizer, **cs_args)
         elif stage == 'rescaler':
-            stage_dict = _get_configuration_space(_rescaler_candidates, trans_types, optimizer=optimizer, **_cs_args)
+            stage_dict = _get_configuration_space(_rescaler_candidates, trans_types, optimizer=optimizer, **cs_args)
         elif stage == 'balancer':
             if task_type in CLS_TASKS:
-                stage_dict = _get_configuration_space(_balancer_candadates, optimizer=optimizer, **_cs_args)
+                stage_dict = _get_configuration_space(_balancer_candadates, optimizer=optimizer, **cs_args)
             else:
                 stage_dict = None
         else:
             # Third party stage
             trans_types.extend([candidate.type for _, candidate in thirdparty_candidates_dict[stage].items()])
-            stage_dict = _get_configuration_space(thirdparty_candidates_dict[stage], trans_types, optimizer=optimizer, **_cs_args)
+            stage_dict = _get_configuration_space(thirdparty_candidates_dict[stage], trans_types, optimizer=optimizer, **cs_args)
         configs[stage] = stage_dict
 
     cs = _build_hierachical_configspace(configs, optimizer=optimizer)

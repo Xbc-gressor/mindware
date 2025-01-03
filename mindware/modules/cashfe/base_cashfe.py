@@ -51,6 +51,11 @@ class BaseCASHFE(BaseAutoML):
             'resampling_params': resampling_params,
             'data_node': data_node
         }
+        
+        from mindware.components.config_space.cs_builder import get_fe_cs_args
+        cs_args = get_fe_cs_args(**cs_args)
+        self.cs_args = cs_args
+    
         if include_algorithms is not None and len(include_algorithms) == 1:
             from mindware.components.config_space.cs_builder import get_hpo_cs
             self.cs = get_hpo_cs(estimator_id=include_algorithms[0], task_type=self.task_type, **cs_args)

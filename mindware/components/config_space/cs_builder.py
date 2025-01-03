@@ -28,19 +28,50 @@ def get_cs_args(**kwargs):
         _cs_args = {
             'n_classes': np.unique(data_node.data[1]).shape[0],
             'n_features': data_node.data[0].shape[1],
-            'n_samples': n_samples
+            'n_samples': n_samples,
+            'y_neg_mask': np.all(data_node.data[1] >= 0)
         }
-
+    
     return _cs_args
+
+def get_fe_cs_args(**kwargs):
+    _cs_args = get_cs_args(**kwargs)
+    
+    resampling_params = kwargs.get('resampling_params', None)
+    data_node = kwargs.get('data_node', None)
+
+    test_size = 0.33
+    if resampling_params is not None and 'test_size' in resampling_params:
+        test_size = resampling_params['test_size']
+
+    if data_node is not None:
+        max_zero_ratio = np.max(np.sum(data_node.data[0] == 0, axis=0) / data_node.data[0].shape[0])
+        _cs_args['zero_ratio_mask'] = max_zero_ratio < (1 - test_size)
+        
+        from sklearn.decomposition import FastICA
+        try:
+            ica = FastICA(fun='exp', algorithm='deflation', whiten=False)
+            ica.fit(data_node.data[0])
+            _cs_args['exp_deflation_mask'] = True
+        except:
+            _cs_args['exp_deflation_mask'] = False
+    
+        try:
+            ica = FastICA(fun='cube', algorithm='parallel', whiten=False)
+            ica.fit(data_node.data[0])
+            _cs_args['cube_parallel_mask'] = True
+        except:
+            _cs_args['cube_parallel_mask'] = False
+        
+    return _cs_args
+
 
 def get_cash_cs(include_algorithms=None, task_type=CLASSIFICATION, **cs_args):
 
-    _cs_args = get_cs_args(**cs_args)
-
     if task_type in CLS_TASKS:
-        cs = get_cls_cash_cs(include_algorithms, task_type, **_cs_args)
+        cs = get_cls_cash_cs(include_algorithms, task_type, **cs_args)
     else:
-        cs = get_rgs_cash_cs(include_algorithms, task_type, **_cs_args)
+        cs = get_rgs_cash_cs(include_algorithms, task_type, **cs_args)
 
     return cs
 

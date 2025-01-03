@@ -427,10 +427,16 @@ class BaseAutoML(object):
             'metric': str(self.metric),
             'optimizer': self.optimizer_name,
             'time_limit': self.time_limit,
+            'amount_of_resource': self.amount_of_resource,
             'per_run_time_limit': self.per_run_time_limit,
             'evaluation': self.evaluation,
             'seed': self.seed,
             'if_imbal': self.if_imbal
         }
+        if hasattr(self, 'cs_args'):
+            conf['cs_args'] = self.cs_args
+            for key in conf['cs_args']:
+                if isinstance(conf['cs_args'][key], np.bool_):
+                    conf['cs_args'][key] = bool(conf['cs_args'][key])
 
         return conf

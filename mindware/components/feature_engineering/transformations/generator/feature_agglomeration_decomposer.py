@@ -56,10 +56,18 @@ class FeatureAgglomerationDecomposer(Transformer):
 
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
+        
+        zero_ratio_mask = kwargs.get('zero_ratio_mask', False)  # if some features have too much zero, ignore cosine
+        
         cs = ConfigurationSpace()
         n_clusters = UniformIntegerHyperparameter("n_clusters", 2, 400, default_value=25)
-        affinity = CategoricalHyperparameter(
-            "affinity", ["euclidean", "manhattan", "cosine"], default_value="euclidean")
+        if zero_ratio_mask:
+            affinity = CategoricalHyperparameter(
+                "affinity", ["euclidean", "manhattan", "cosine"], default_value="euclidean")
+        else:
+            affinity = CategoricalHyperparameter(
+                "affinity", ["euclidean", "manhattan"], default_value="euclidean")
+            
         linkage = CategoricalHyperparameter(
             "linkage", ["ward", "complete", "average"], default_value="ward")
         pooling_func = CategoricalHyperparameter(
@@ -67,8 +75,13 @@ class FeatureAgglomerationDecomposer(Transformer):
 
         cs.add_hyperparameters([n_clusters, affinity, linkage, pooling_func])
 
-        affinity_and_linkage = ForbiddenAndConjunction(
-            ForbiddenInClause(affinity, ["manhattan", "cosine"]),
-            ForbiddenEqualsClause(linkage, "ward"))
+        if zero_ratio_mask:
+            affinity_and_linkage = ForbiddenAndConjunction(
+                ForbiddenInClause(affinity, ["manhattan", "cosine"]),
+                ForbiddenEqualsClause(linkage, "ward"))
+        else:
+            affinity_and_linkage = ForbiddenAndConjunction(
+                ForbiddenEqualsClause(affinity, "manhattan"),
+                ForbiddenEqualsClause(linkage, "ward"))
         cs.add_forbidden_clause(affinity_and_linkage)
         return cs

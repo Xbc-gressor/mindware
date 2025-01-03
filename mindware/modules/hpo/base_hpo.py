@@ -51,6 +51,9 @@ class BaseHPO(BaseAutoML):
             'resampling_params': resampling_params,
             'data_node': data_node
         }
+        from mindware.components.config_space.cs_builder import get_cs_args
+        cs_args = get_cs_args(**cs_args)
+        self.cs_args = cs_args
         # _candidates = None
         self.cs = get_hpo_cs(self.estimator_id, self.task_type, **cs_args)
 
