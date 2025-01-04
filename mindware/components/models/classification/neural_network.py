@@ -228,7 +228,7 @@ class NeuralNetworkClassifier(BaseClassificationModel):
         batch_size = CategoricalHyperparameter(
             "batch_size", [128, 256, 512, 1024], default_value=256)
         lr_decay = CategoricalHyperparameter("lr_decay", [1e-2, 5e-2, 1e-1, 2e-1], default_value=1e-1)
-        epoch_num = UnParametrizedHyperparameter("epoch_num", 150)
+        epoch_num = UnParametrizedHyperparameter("epoch_num", 500)
 
         cs.add_hyperparameters(
             [optimizer, weight_decay,

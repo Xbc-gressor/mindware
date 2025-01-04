@@ -1,6 +1,73 @@
-CLS: Autogluon_neural_network, ord, sick: 0.9602649006622517, 0.9668874172185431
-CLS: Autogluon_neural_network, one_hot, kc1: 0.8720379146919431, 0.8625592417061612
-CLS: Autogluon_neural_network, one_hot, spambase: 0.9326818675352877, 0.9294245385450597
-CLS: Autogluon_neural_network, ord, kc1: 0.8412322274881516, 0.8530805687203792
-CLS: Autogluon_neural_network, ord, spambase: 0.9272529858849077, 0.9391965255157437
-CLS: neural_network, one_hot, sick: 0.9668874172185431, 0.9655629139072848
+CLS: Autogluon_neural_network, one_hot, sick: 0.9390728476821192, 0.952317880794702
+CLS: Autogluon_neural_network, ord, sick: 0.9682119205298013, 0.9695364238410596
+CLS: neural_network, one_hot, sick: 0.9668874172185431, 0.9695364238410596
+CLS: Autogluon_neural_network, one_hot, kc1: 0.8601895734597157, 0.8483412322274881
+CLS: neural_network, one_hot, kc1: 0.8364928909952607, 0.8601895734597157
+CLS: Autogluon_neural_network, one_hot, spambase: 0.9305103148751357, 0.9500542888165038
+CLS: neural_network, one_hot, spambase: 0.9370249728555917, 0.9402823018458197
+CLS: Autogluon_neural_network, one_hot, cpu_act: 0.9243441122635754, 0.9310555216595485
+CLS: neural_network, one_hot, cpu_act: 0.8889566809029896, 0.8987187309334961
+CLS: Autogluon_neural_network, one_hot, ailerons: 0.8632727272727273, 0.884
+CLS: neural_network, one_hot, ailerons: 0.881090909090909, 0.8807272727272727
+CLS: Autogluon_neural_network, one_hot, higgs: 0.7043855175930648, 0.7251402345741969
+CLS: neural_network, one_hot, higgs: 0.7116777154513003, 0.7240693523712391
+CLS: Autogluon_neural_network, one_hot, mv: 0.9857738533235222, 0.9964434633308805
+CLS: Autogluon_neural_network, ord, mv: 0.9719156242335051, 0.9952170713760118
+CLS: neural_network, one_hot, mv: 0.9922737306843267, 0.9914152563159185
+CLS: Autogluon_neural_network, one_hot, covertype: 0.7960505457674714, 0.7978169301145885
+CLS: Autogluon_neural_network, ord, covertype: 0.8629919833325784, 0.8730467865392454
+CLS: neural_network, one_hot, covertype: 0.7151139091444358, 0.7221341546265683
+
+--num_epoch 101
+
+CLS: Autogluon_neural_network, one_hot, sick: 0.9695364238410596, 0.9695364238410596
+CLS: Autogluon_neural_network, ord, sick: 0.9735099337748344, 0.9748344370860927
+CLS: neural_network, one_hot, sick: 0.9536423841059603, 0.9708609271523179
+CLS: Autogluon_neural_network, one_hot, covertype: 0.8537977263463019, 0.859051587481317
+CLS: Autogluon_neural_network, ord, covertype: 0.8570134516961819, 0.875537841387744
+CLS: neural_network, one_hot, covertype: 0.6753476153811314, 0.7158838715521536
+CLS: Autogluon_neural_network, one_hot, kc1: 0.8578199052132701, 0.8625592417061612
+CLS: neural_network, one_hot, kc1: 0.8507109004739336, 0.8578199052132701
+CLS: Autogluon_neural_network, one_hot, spambase: 0.9381107491856677, 0.9522258414766558
+CLS: neural_network, one_hot, spambase: 0.9174809989142236, 0.9229098805646037
+CLS: Autogluon_neural_network, one_hot, cpu_act: 0.9139719341061623, 0.9298352654057352
+CLS: neural_network, one_hot, cpu_act: 0.8871262965222697, 0.9029896278218426
+CLS: Autogluon_neural_network, one_hot, ailerons: 0.876, 0.8883636363636364
+CLS: neural_network, one_hot, ailerons: 0.8843636363636364, 0.8818181818181818
+CLS: Autogluon_neural_network, one_hot, higgs: 0.7026007139214686, 0.725446200917899
+CLS: neural_network, one_hot, higgs: 0.714176440591535, 0.7226415094339622
+
+
+no refit：
+CLS: Autogluon_neural_network, one_hot, sick: 0.9748344370860927, 0.9708609271523179
+CLS: Autogluon_neural_network, ord, sick: 0.9721854304635762, 0.9788079470198675
+CLS: neural_network, one_hot, sick: 0.952317880794702, 0.952317880794702
+CLS: Autogluon_neural_network, one_hot, kc1: 0.8483412322274881, 0.8483412322274881
+CLS: neural_network, one_hot, kc1: 0.8507109004739336, 0.8554502369668247
+CLS: Autogluon_neural_network, one_hot, spambase: 0.9457111834961998, 0.9478827361563518
+CLS: neural_network, one_hot, spambase: 0.9283387622149837, 0.9315960912052117
+CLS: Autogluon_neural_network, one_hot, cpu_act: 0.9292251372788286, 0.9267846247712019
+CLS: neural_network, one_hot, cpu_act: 0.8889566809029896, 0.8889566809029896
+
+cv:
+CLS: Autogluon_neural_network, one_hot, sick: 0.9682119205298013, 0.9682119205298013
+CLS: Autogluon_neural_network, ord, sick: 0.976158940397351, 0.976158940397351
+CLS: neural_network, one_hot, sick: 0.952317880794702, 0.9589403973509933
+CLS: Autogluon_neural_network, one_hot, kc1: 0.8507109004739336, 0.8625592417061612
+CLS: neural_network, one_hot, kc1: 0.8459715639810427, 0.8459715639810427
+CLS: Autogluon_neural_network, one_hot, spambase: 0.9381107491856677, 0.9435396308360477
+CLS: neural_network, one_hot, spambase: 0.9381107491856677, 0.9370249728555917
+CLS: Autogluon_neural_network, one_hot, cpu_act: 0.9261744966442953, 0.9243441122635754
+CLS: neural_network, one_hot, cpu_act: 0.8877364246491763, 0.8962782184258694
+
+
+holdout cv:
+CLS: Autogluon_neural_network, one_hot, sick: 0.9788079470198675, 0.9774834437086093
+CLS: Autogluon_neural_network, ord, sick: 0.9629139072847682, 0.9708609271523179
+CLS: neural_network, one_hot, sick: 0.9615894039735099, 0.952317880794702
+CLS: Autogluon_neural_network, one_hot, kc1: 0.8625592417061612, 0.8649289099526066
+CLS: neural_network, one_hot, kc1: 0.8459715639810427, 0.8459715639810427
+CLS: Autogluon_neural_network, one_hot, spambase: 0.9402823018458197, 0.9424538545059717
+CLS: neural_network, one_hot, spambase: 0.8479913137893594, 0.9272529858849077
+CLS: Autogluon_neural_network, one_hot, cpu_act: 0.924954240390482, 0.9273947528981086
+CLS: neural_network, one_hot, cpu_act: 0.8096400244051251, 0.8694325808419768

@@ -7,6 +7,7 @@ import argparse
 from mindware.utils.data_manager import DataManager
 from mindware.components.utils.constants import *
 from mindware import CASH, CASHFE, HPO
+import pickle
 
 NUM_THREADS = "1"
 os.environ["OMP_NUM_THREADS"] = NUM_THREADS         # export OMP_NUM_THREADS=1
@@ -16,7 +17,7 @@ os.environ["VECLIB_MAXIMUM_THREADS"] = NUM_THREADS  # export VECLIB_MAXIMUM_THRE
 os.environ["NUMEXPR_NUM_THREADS"] = NUM_THREADS     # export NUMEXPR_NUM_THREADS=1
 
 # datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
-datasets_dir = 'D:/kaggle_data/sub_automl_data/'
+datasets_dir = '/home/kaggle_data/sub_automl_data/'
 # 读取 Excel 文件中的特定 sheet
 datasets_info = pd.read_excel(os.path.join(datasets_dir, '数据集.xlsx'), sheet_name='CLS')
 candidate_datasets = [
@@ -29,10 +30,11 @@ candidate_datasets = [
     "a9a", "mnist_784", "higgs", "covertype"
 ]
 can_datasets_info = datasets_info[datasets_info['Datasets'].isin(candidate_datasets)].set_index('Datasets')
-chosen_datasets = ['kc1', 'spambase', 'cpu_act', 'sick', 'mv', 'covertype']
+chosen_datasets = ['kc1', 'spambase', 'cpu_act', 'ailerons', 'higgs', 'sick', 'mv', 'covertype']
 chosen_datasets_info = can_datasets_info.loc[chosen_datasets]
 chosen_datasets_info['label_col'] = -1
-#chosen_datasets_info.loc['higgs', 'label_col'] = 0
+chosen_datasets_info.loc['higgs', 'label_col'] = 0
+
 
 """
            Instances  Classes  Continuous  Nominal  label_col
@@ -40,6 +42,8 @@ Datasets
 kc1             2109        2          21        0         -1
 spambase        4600        2          57        0         -1
 cpu_act         8192        2          21        0         -1
+ailerons       13750        2          40        0         -1
+higgs          98050        2          28        0          0
 sick            3772        2           7       22         -1
 mv             40768        2           7        3         -1
 covertype     110393        7          14       40         -1
@@ -79,35 +83,80 @@ if '__main__' == __name__:
             dm = DataManager()
         header = None if dataset == 'spambase' else 'infer'
         df = dm.load_csv(dataset_path, header=header)
-        train_df, test_df = dm.split_data(df, label_col=chosen_datasets_info.loc[dataset, 'label_col'],
+        train_df, test_df = dm.split_data(df, label_col=int(chosen_datasets_info.loc[dataset, 'label_col']),
                                           test_size=0.2, random_state=args.train_test_split_seed, task_type=task_type)
-        train_data_node = dm.from_train_df(train_df, label_col=chosen_datasets_info.loc[dataset, 'label_col'])
+        train_data_node = dm.from_train_df(train_df, label_col=int(chosen_datasets_info.loc[dataset, 'label_col']))
         train_data_node = dm.preprocess_fit(train_data_node, task_type, x_encode=args.x_encode)
 
         test_data_node = dm.from_test_df(test_df, has_label=True)
         test_data_node = dm.preprocess_transform(test_data_node)
 
+        # ensemble
 
+        # opt = HPO(
+        #     estimator_id=args.algorithm, task_type=task_type,
+        #     metric=metric,
+        #     data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
+        #     optimizer='smac',
+        #     time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
+        #     output_dir= datasets_dir+'data', seed=1, n_jobs=1,
+        #     ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
+        # )
+        # print(opt.get_conf(save=True))  # 保存设置
+
+        # print(opt.run())
+        # print(opt.get_model_info(save=True))  # 保存最优模型信息
+        # scorer = opt.metric
+        # pred = opt.predict(test_data_node, ens=False)
+        # perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
+
+        # ens_pred = opt.predict(test_data_node, ens=True)
+        # ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
+
+        # with open('results.txt', 'a+') as f:
+        #     f.write(f'CLS: {args.algorithm}, {args.encoder}, {dataset}: {perf}, {ens_perf}\n')
+
+
+        # no ensemble
         opt = HPO(
             estimator_id=args.algorithm, task_type=task_type,
             metric=metric,
             data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
             optimizer='smac',
             time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
-            output_dir= datasets_dir+'/data', seed=1, n_jobs=1,
-            ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
+            output_dir= datasets_dir+'data', seed=1, n_jobs=1,
+            task_id=dataset
         )
         print(opt.get_conf(save=True))  # 保存设置
 
         print(opt.run())
-        print(opt.get_model_info(save=True))  # 保存最优模型信息
         scorer = opt.metric
-        pred = opt.predict(test_data_node, ens=False)
+        
+        model_info = opt.get_model_info(save=True)
+        path = model_info['best'][2]
+
+        with open(path,'rb') as f:
+            _,best_estimator,_ = pickle.load(f)
+
+
+        with open('results_3.txt','a+') as f:
+            f.write(f'CLS:{dataset}\n')
+
+        folds = len(best_estimator.models)
+        for i in range(folds):
+            model = best_estimator.models[i]
+            pred = model.predict(test_data_node.data[0])
+            perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
+            with open('results_3.txt','a+') as f:
+                f.write(f'fold {i} ,perf:{perf}\n')  
+
+        origin_model = best_estimator.origin_model
+        pred = origin_model.predict(test_data_node.data[0])
         perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
+        with open('results_3.txt','a+') as f:
+                f.write(f'origin ,perf:{perf}\n')  
 
-        ens_pred = opt.predict(test_data_node, ens=True)
-        ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
-
-        with open('results.txt', 'a+') as f:
-            f.write(f'CLS: {args.algorithm}, {args.encoder}, {dataset}: {perf}, {ens_perf}\n')
-
+        pred = best_estimator.predict(test_data_node.data[0])
+        perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
+        with open('results_3.txt','a+') as f:
+            f.write(f'CV   ,perf:{perf}\n')

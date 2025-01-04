@@ -19,6 +19,8 @@ from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rg
 from mindware.components.evaluators.cls_evaluator import get_estimator as get_cls_estimator
 
 
+from mindware.components.models.cv_neural_network import cv_neural_network
+
 class BaseEvaluator(_BaseEvaluator):
     def __init__(
             self, fixed_config=None, scorer=None, data_node=None, task_type=0,
@@ -90,6 +92,9 @@ class BaseEvaluator(_BaseEvaluator):
         estimator = None
         _x_train, _y_train = None, None
         _act_x_train, _act_y_train = None, None
+
+        cv_model = None # for neural_network, we need to store all its cv models, to avoid refit
+        
         if 'holdout' in self.resampling_strategy:
             # Prepare data node.
             with warnings.catch_warnings():
@@ -138,6 +143,9 @@ class BaseEvaluator(_BaseEvaluator):
                                fit_params=fit_params)
 
         elif 'cv' in self.resampling_strategy:
+            if 'neural_network' in estimator_id:
+                cv_model = cv_neural_network()
+
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
 
@@ -156,7 +164,7 @@ class BaseEvaluator(_BaseEvaluator):
                     self.train_node.data = [_x_train, _y_train]
                     self.val_node.data = [_x_val, _y_val]
 
-                    _, data_node, _val_node = self._get_parse_data_node(config, record=True)
+                    op_list, data_node, _val_node = self._get_parse_data_node(config, record=True)
 
                     _x_train, _y_train = data_node.data
                     _x_val, _y_val = _val_node.data
@@ -185,6 +193,8 @@ class BaseEvaluator(_BaseEvaluator):
                                                                                  _ThresholdScorer) else None,
                                         fit_params=fit_params)
                     scores.append(_score)
+                    if cv_model is not None:
+                        cv_model.append(estimator)
                 score = np.mean(scores)
 
         elif 'partial' in self.resampling_strategy:
@@ -250,7 +260,10 @@ class BaseEvaluator(_BaseEvaluator):
         else:
             raise ValueError('Invalid resampling strategy: %s!' % self.resampling_strategy)
 
-        if 'holdout' in self.resampling_strategy or 'partial' in self.resampling_strategy:
+        if 'holdout' in self.resampling_strategy or 'partial' in self.resampling_strategy or cv_model is not None:
+            
+            if cv_model is not None:
+                estimator = cv_model
 
             if np.isfinite(score) and downsample_ratio == 1:
                 model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.timestamp)

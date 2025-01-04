@@ -3,6 +3,7 @@ import numpy as np
 import pickle as pkl
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics._scorer import _BaseScorer, _PredictScorer, _ThresholdScorer
+from sklearn.model_selection import StratifiedKFold, KFold
 
 from mindware.components.utils.constants import *
 from mindware.components.ensemble.base_ensemble import BaseEnsembleModel
@@ -10,6 +11,7 @@ from mindware.components.feature_engineering.parse import construct_node
 
 from mindware.components.feature_engineering.parse import parse_config
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
+from mindware.components.models.cv_neural_network import cv_neural_network
 
 
 class EnsembleSelection(BaseEnsembleModel):
@@ -315,12 +317,31 @@ class EnsembleSelection(BaseEnsembleModel):
                     else:
                         _node, op_list = parse_config(self.node.copy_(), config, record=True,
                                                       if_imbal=self.if_imbal)
+                        
+                    # for 'neural_network' we use the cv to refit
+                    if 'neural_network' in algo_id:
+                        estimator = cv_neural_network()
+                        if self.task_type in CLS_TASKS:
+                            kf = StratifiedKFold(n_splits=5)
+                        else:
+                            kf = KFold(n_splits=5)
 
-                    estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
-                                                        _node.data[0], _node.data[1],
-                                                        weight_balance=_node.enable_balance,
-                                                        data_balance=_node.data_balance,
-                                                        ind_number_map =_node.count_cat_number())
+                        for train,test in kf.split(_node.data[0],_node.data[1]):
+                            X_train, y_train, X_val, y_val = _node.data[0][train], _node.data[1][train], _node.data[0][test],_node.data[1][test]
+                            estimator_ = fetch_predict_estimator(self.task_type, config['algorithm'], config,
+                                                                 X_train, y_train,
+                                                                 weight_balance=_node.enable_balance,
+                                                                 data_balance=_node.data_balance,
+                                                                 X_val=X_val, y_val=y_val,
+                                                                 ind_number_map =_node.count_cat_number())
+                            estimator.append(estimator_)
+                        
+                    else:
+                        estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
+                                                            _node.data[0], _node.data[1],
+                                                            weight_balance=_node.enable_balance,
+                                                            data_balance=_node.data_balance)
+                    
 
                     with open(model_path, 'wb') as f:
                         pkl.dump((op_list, estimator, perf), f)

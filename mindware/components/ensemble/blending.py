@@ -59,6 +59,7 @@ class Blending(BaseEnsembleModel):
                 self.meta_learner = LGBMRegressor(max_depth=4, learning_rate=0.05, n_estimators=70, n_jobs=1)
 
     def fit(self, data):
+        # TODO:support neural network
         # Split training data for phase 1 and phase 2
         test_size = 0.2
 

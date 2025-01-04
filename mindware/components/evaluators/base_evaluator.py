@@ -3,7 +3,7 @@ from mindware.components.metrics.metric import get_metric
 from mindware.components.utils.constants import *
 
 
-def fetch_predict_estimator(task_type, estimator_id, config, X_train, y_train, weight_balance=0, data_balance=0,
+def fetch_predict_estimator(task_type, estimator_id, config, X_train, y_train, weight_balance=0, data_balance=0, X_val=None, y_val=None,
                             ind_number_map=None):
     # Build the ML estimator.
     from mindware.components.utils.balancing import get_weights, smote
@@ -21,8 +21,15 @@ def fetch_predict_estimator(task_type, estimator_id, config, X_train, y_train, w
     elif task_type in RGS_TASKS:
         from mindware.components.evaluators.rgs_evaluator import get_estimator
     _, estimator = get_estimator(config_dict, estimator_id)
-    estimator.get_data_info(ind_number_map)
 
+    # now just the autogluon neural_network need extra data_info.
+    estimator.get_data_info(ind_number_map)
+    
+    # support the training of the neural_network.
+    if X_val is not None :
+        _fit_params['X_val'] = X_val
+        _fit_params['Y_val'] = y_val
+    
     estimator.fit(X_train, y_train, **_fit_params)
     return estimator
 

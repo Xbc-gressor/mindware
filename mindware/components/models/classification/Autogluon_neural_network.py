@@ -85,7 +85,7 @@ class NNClassifier(BaseClassificationModel):
 
         self.build_model(input_shape=input_shape,output_shape=output_shape)
         
-        self._init_model(self.model)    
+        self._init_model(self.model)  
 
         if X_val is not None:
             X_val = torch.tensor(X_val)
@@ -105,13 +105,14 @@ class NNClassifier(BaseClassificationModel):
             l = nn.CrossEntropyLoss()
 
         epoch = 0
-    
+        
         self.best_model_stats = None
         best_val_loss = np.inf
         best_epoch = 0
         while epoch < self.epoch_num:
             epoch_avg_loss = 0
             num_train_samples = 0
+            self.model.train()
             for X_train, y_train in train_loader:
                 if len(X_train) < 2:
                     continue
@@ -129,6 +130,7 @@ class NNClassifier(BaseClassificationModel):
                 print('Epoch %d: Train loss %.4f.' % (epoch, epoch_avg_loss))
 
             if X_val is not None:
+                self.model.eval()
                 with torch.no_grad():
                     y_pred_ = self.model(X_val)
                     val_loss = l(y_pred_, Y_val.long().to(self.device))
@@ -153,17 +155,16 @@ class NNClassifier(BaseClassificationModel):
     
     def predict(self, X):
         if self.model is None:
-            raise NotImplementedError()
-        proba = nn.functional.softmax(self.model(torch.Tensor(X)),dim=1)
-        proba = proba.detach().cpu().numpy()
+                raise NotImplementedError()
+        self.model.eval()
+        proba = self.model.predict_proba(X)
         return np.argmax(proba, axis=1)
-    
+        
     def predict_proba(self, X):
         if self.model is None:
             raise NotImplementedError()
-        proba = nn.functional.softmax(self.model(torch.Tensor(X)),dim=1)
-        proba = proba.detach().cpu().numpy()
-        return proba
+        self.model.eval()
+        return self.model.predict_proba(X)
     
     @staticmethod
     def get_properties(dataset_properties=None):
@@ -183,7 +184,7 @@ class NNClassifier(BaseClassificationModel):
         cs = ConfigurationSpace()
         optimizer = CategoricalHyperparameter('optimizer', ['adam'], default_value='adam')
         weight_decay = UniformFloatHyperparameter('weight_decay',lower=1e-12,upper=1.0, default_value=1e-6,log=True)
-        activation = CategoricalHyperparameter('activation',['relu','tanh'], default_value='relu')
+        activation = CategoricalHyperparameter('activation',['relu'], default_value='relu')
         learning_rate = UniformFloatHyperparameter('learning_rate', lower=1e-4, upper=3e-2, default_value=3e-4, log=True)
         dropout_prob = CategoricalHyperparameter('dropout_prob', [0.1, 0.0, 0.5, 0.2, 0.3, 0.4], default_value=0.1)
         epochs_wo_improve = Constant('epochs_wo_improve',20)
@@ -191,7 +192,7 @@ class NNClassifier(BaseClassificationModel):
         hidden_size = CategoricalHyperparameter('hidden_size',[128,256,512], default_value=128)
         max_batch_size = Constant('max_batch_size',512)
         use_batchnorm = CategoricalHyperparameter('use_batchnorm', [True, False])
-        epoch_num = UnParametrizedHyperparameter("epoch_num", 150)
+        epoch_num = UnParametrizedHyperparameter("epoch_num", 500)
         max_embedding_dim = UnParametrizedHyperparameter('max_embedding_dim', 100)
         embed_exponent = UnParametrizedHyperparameter('embed_exponent', 0.56)
         embedding_size_factor = UnParametrizedHyperparameter('embedding_size_factor', 1.0)
@@ -256,7 +257,7 @@ class EmbedNet(nn.Module):
         layers.append(nn.Dropout(self.dropout_prob))
         layers.append(nn.Linear(input_shape_,self.hidden_size))
         layers.append(act_fn)
-        for i in range(self.num_layers):
+        for i in range(self.num_layers-1):
             if self.use_batchnorm:
                 layers.append(nn.BatchNorm1d(self.hidden_size))
             layers.append(nn.Dropout(self.dropout_prob))
@@ -284,4 +285,9 @@ class EmbedNet(nn.Module):
         return output_data
         
 
-
+   
+    def predict_proba(self,X):
+        with torch.no_grad():
+            proba = nn.functional.softmax(self(torch.Tensor(X)),dim=1)
+            proba = proba.detach().cpu().numpy()
+        return proba

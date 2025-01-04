@@ -63,6 +63,7 @@ class Stacking(BaseEnsembleModel):
                 self.meta_learner = LGBMRegressor(max_depth=4, learning_rate=0.05, n_estimators=70, n_jobs=1)
 
     def fit(self, data):
+        # TODO:support neural network
         # Split training data for phase 1 and phase 2
         if self.task_type in CLS_TASKS:
             kf = StratifiedKFold(n_splits=self.kfold)

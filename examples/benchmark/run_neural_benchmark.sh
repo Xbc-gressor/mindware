@@ -10,25 +10,28 @@ CURRENT_JOBS=0
 declare -a TASKS
 
 # 生成任务列表
-for i in 3; do
-    TASKS+=("python cls_neural_network.py --time_limit 600 --job_idx $i --algorithm Autogluon_neural_network")
-    TASKS+=("python cls_neural_network.py --time_limit 600 --job_idx $i --algorithm Autogluon_neural_network --encoder ord")
-    TASKS+=("python cls_neural_network.py --time_limit 600 --job_idx $i --algorithm neural_network")
+for i in 5; do
+    TASKS+=("python cls_neural_network.py --time_limit 600 --job_idx $i  --algorithm Autogluon_neural_network")
+    TASKS+=("python cls_neural_network.py --time_limit 600 --job_idx $i  --algorithm Autogluon_neural_network --encoder ord")
+    TASKS+=("python cls_neural_network.py --time_limit 600 --job_idx $i  --algorithm neural_network")
 done
 
-for i in 4,5; do
-    TASKS+=("python cls_neural_network.py --time_limit 3600 --job_idx $i --algorithm Autogluon_neural_network")
-    TASKS+=("python cls_neural_network.py --time_limit 3600 --job_idx $i --algorithm Autogluon_neural_network --encoder ord")
-    TASKS+=("python cls_neural_network.py --time_limit 3600 --job_idx $i --algorithm neural_network")
-done
+# for i in 7; do
+#     TASKS+=("python cls_neural_network.py --time_limit 3600 --job_idx $i --algorithm Autogluon_neural_network")
+#     TASKS+=("python cls_neural_network.py --time_limit 3600 --job_idx $i --algorithm Autogluon_neural_network --encoder ord")
+#     TASKS+=("python cls_neural_network.py --time_limit 3600 --job_idx $i --algorithm neural_network")
+# done
 
 #生成任务列表
 for i in 0 1 2; do
-    TASKS+=("python cls_neural_network.py --time_limit 600 --job_idx $i --algorithm Autogluon_neural_network")
-    TASKS+=("python cls_neural_network.py --time_limit 600 --job_idx $i --algorithm neural_network")
+    TASKS+=("python cls_neural_network.py --time_limit 600 --job_idx $i  --algorithm Autogluon_neural_network")
+    TASKS+=("python cls_neural_network.py --time_limit 600 --job_idx $i  --algorithm neural_network")
 done
 
-
+# for i in 3 4; do
+#     TASKS+=("python cls_neural_network.py --time_limit 3600 --job_idx $i --algorithm Autogluon_neural_network")
+#     TASKS+=("python cls_neural_network.py --time_limit 3600 --job_idx $i --algorithm neural_network")
+# done
 
 # 遍历任务列表并执行
 for TASK in "${TASKS[@]}"; do

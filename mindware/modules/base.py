@@ -8,6 +8,7 @@ import warnings
 
 from typing import Union, Callable
 from sklearn.metrics._scorer import _BaseScorer
+from sklearn.model_selection import StratifiedKFold, KFold
 
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
@@ -33,6 +34,7 @@ from mindware.components.ensemble import ensemble_list
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.components.feature_engineering.parse import parse_config
+from mindware.components.models.cv_neural_network import cv_neural_network
 
 class BaseAutoML(object):
     def __init__(self, name: str, task_type: str = None,
@@ -183,7 +185,7 @@ class BaseAutoML(object):
 
         config = self.incumbent.copy()
         algo_id = config['algorithm']
-        if algo_id != 'neural_network':
+        if 'neural_network' not in algo_id:
 
             if self.name in ['fe', 'cashfe']:
                 data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
@@ -195,14 +197,47 @@ class BaseAutoML(object):
             estimator = fetch_predict_estimator(self.task_type, algo_id, config,
                                                 data_node.data[0], data_node.data[1],
                                                 weight_balance=data_node.enable_balance,
-                                                data_balance=data_node.data_balance,
-                                                ind_number_map =self.data_node.count_cat_number())
+                                                data_balance=data_node.data_balance)
             
 
             model_path = os.path.join(self.output_dir, '%s_%s.pkl' % (
                 self.datetime, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
             with open(model_path, 'wb') as f:
                 pkl.dump([op_list, estimator, -self.incumbent_perf], f)
+
+        else:# for neural_netwrok,we use cv to refit
+            
+            if self.task_type in CLS_TASKS:
+                kf = StratifiedKFold(n_splits=5)
+            else:
+                kf = KFold(n_splits=5)
+
+            estimator = cv_neural_network()
+            if self.name in ['fe', 'cashfe']:
+                data_node, op_list = parse_config(self.data_node.copy_(), config, record=True,
+                                                  if_imbal=self.if_imbal)
+            else:
+                op_list = {}
+                data_node = self.data_node.copy_()
+
+            for train,test in kf.split(data_node.data[0],data_node.data[1]):
+                X_train, y_train, X_val, y_val = data_node.data[0][train], data_node.data[1][train], data_node.data[0][test],data_node.data[1][test]
+                estimator_ = fetch_predict_estimator(self.task_type, config['algorithm'], config,
+                                                    X_train, y_train,
+                                                    weight_balance=data_node.enable_balance,
+                                                    data_balance=data_node.data_balance,
+                                                    X_val=X_val, y_val=y_val,
+                                                    ind_number_map =data_node.count_cat_number())
+                estimator.append(estimator_)
+
+            model_path = os.path.join(self.output_dir, '%s_%s.pkl' % (
+                self.datetime, CombinedTopKModelSaver.get_configuration_id(self.incumbent)))
+            with open(model_path, 'rb') as f: # save the origin model
+                _, origin_model, _ = pkl.load(f)
+                estimator.origin_model = origin_model
+            with open(model_path, 'wb') as f:
+                pkl.dump([op_list, estimator, -self.incumbent_perf], f)
+
 
     # train with whole data
     def refit(self):
@@ -220,7 +255,7 @@ class BaseAutoML(object):
         with open(config_path, 'rb') as f:
             stats = pkl.load(f)
         for algo_id in stats.keys():
-            if algo_id == 'neural_network':
+            if 'neural_network' in algo_id:
                 continue
             model_to_eval = stats[algo_id]
             for idx, (config, perf, path) in enumerate(model_to_eval):
