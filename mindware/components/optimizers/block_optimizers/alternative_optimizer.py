@@ -15,7 +15,7 @@ class AlternativeOptimizer(BaseOptimizer):
                  per_run_time_limit=300, per_run_mem_limit=1024,
                  inner_iter_num_per_iter=10, timestamp=None,
                  sub_optimizer='smac', fe_config_space=None,
-                 output_dir='./', seed=1, n_jobs=1):
+                 output_dir='./', seed=1, n_jobs=1, topk=50):
 
         super(AlternativeOptimizer, self).__init__(evaluator=evaluator,
                                                    config_space=(cash_config_space, fe_config_space), name=name,
@@ -24,7 +24,7 @@ class AlternativeOptimizer(BaseOptimizer):
                                                    per_run_time_limit=per_run_time_limit,
                                                    per_run_mem_limit=per_run_mem_limit,
                                                    inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp,
-                                                   output_dir=output_dir, seed=seed)
+                                                   output_dir=output_dir, seed=seed, topk=topk)
 
         assert cash_config_space is not None
         assert fe_config_space is not None
@@ -80,7 +80,7 @@ class AlternativeOptimizer(BaseOptimizer):
                     per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit,
                     inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp,
                     sub_optimizer=sub_optimizer, fe_config_space=None,
-                    output_dir=self.output_dir, seed=self.seed, n_jobs=n_jobs,
+                    output_dir=self.output_dir, seed=self.seed, n_jobs=n_jobs, topk=topk
                 )
             elif arm == 'fe':
                 evaluator = copy(self.evaluator)

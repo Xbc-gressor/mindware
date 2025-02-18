@@ -26,20 +26,24 @@ parser.add_argument('--time_limit', type=int, default=1200)
 parser.add_argument('--amount_of_resource', type=int, default=100)
 args = parser.parse_args()
 
+base_dir = './data_rgs'
+
 datasets = args.datasets.split(',')
 start_id, rep = args.start_id, args.rep
 time_limit = args.time_limit
 amount_of_resource = args.amount_of_resource
-save_dir = './data/meta_res/'
+save_dir = os.path.join(base_dir, 'meta_res/')
 data_dir = args.data_dir
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 # cls_metrics = ['acc', 'f1', 'auc']
 # reg_metrics = ['mse', 'r2', 'mae']
 
-cls_metrics = ['acc']
-reg_metrics = ['mse']
+# cls_metrics = ['acc']
+# reg_metrics = ['mse']
 
+cls_metrics = ['f1', 'auc']
+reg_metrics = ['r2', 'mae']
 
 def load_data(dataset, data_dir='./', datanode_returned=False, preprocess=True, task_type=None):
     dm = DataManager()
@@ -101,12 +105,21 @@ def load_train_test_data(dataset, data_dir='./', test_size=0.2, task_type=None, 
 
 
 def evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=600, amount_of_resource=100, seed=1, task_type=None):
+    
+    save_path = save_dir + '%s-%s-%s-%d-%d.pkl' % (dataset, algo, obj_metric, run_id, time_limit)
+    if os.path.exists(save_path):
+        with open(save_path, 'rb') as f:
+            res = pickle.load(f)
+        eval_num = res[2]
+        if eval_num >= 90:
+            return
+            
     _algo = [algo]
     print('EVALUATE-%s-%s-%s: run_id=%d' % (dataset, algo, obj_metric, run_id))
     train_data, test_data, dm = load_train_test_data(dataset, data_dir=data_dir, task_type=task_type)
     if task_type in CLS_TASKS:
         task_type = BINARY_CLS if len(set(train_data.data[1])) == 2 else MULTICLASS_CLS
-    print(set(train_data.data[1]))
+    # print(set(train_data.data[1]))
 
     from mindware import CASHFE
     opt = CASHFE(
@@ -115,7 +128,7 @@ def evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=600, amo
                 data_node=train_data, evaluation='holdout', resampling_params={'test_size': 0.33},
                 optimizer='block_0', inner_iter_num_per_iter=1,
                 time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=180,
-                output_dir='./data', seed=int(seed), n_jobs=1,
+                output_dir=os.path.join(base_dir, 'data'), seed=int(seed), n_jobs=1, topk=amount_of_resource, rmfiles=True,
                 ensemble_method=None, task_id=dataset
             )
 
@@ -168,8 +181,8 @@ if __name__ == "__main__":
                     'gradient_boosting',
                     'k_nearest_neighbors',
                     'lasso_regression',
-                    'liblinear_svc',
-                    'libsvm_svc',
+                    'liblinear_svr',
+                    'libsvm_svr',
                     'lightgbm',
                     'random_forest',
                     'ridge_regression',
@@ -207,5 +220,6 @@ if __name__ == "__main__":
                         f.write('\n' + task_id)
 
     # Write down the error info.
-    with open(save_dir + 'failed-%s' % log_filename, 'w') as f:
-        f.write('\n'.join(running_info))
+    if len(running_info) > 0:
+        with open(save_dir + 'failed-%s' % log_filename, 'w') as f:
+            f.write('\n'.join(running_info))

@@ -40,11 +40,13 @@ class BaseAutoML(object):
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
-                 output_dir=None, seed=None, n_jobs=1,
+                 output_dir=None, seed=None, n_jobs=1, topk=50, rmfiles=False,
                  ensemble_method=None, ensemble_size=5, task_id='test'):
 
         self.name = name
-
+        self.metric_name = 'unknown'
+        if isinstance(metric, str):
+            self.metric_name = metric
         self.metric = get_metric(metric)
         self.data_node = data_node.copy_()
         self.evaluation = evaluation
@@ -66,6 +68,8 @@ class BaseAutoML(object):
 
         self.output_dir = output_dir
         self.n_jobs = n_jobs
+        self.topk=topk
+        self.rmfiles=rmfiles
 
         self.optimizer = None
         self.evaluator = None
@@ -124,7 +128,7 @@ class BaseAutoML(object):
                 per_run_time_limit=self.per_run_time_limit,
                 inner_iter_num_per_iter=self.inner_iter_num_per_iter,timestamp=self.timestamp,
                 sub_optimizer=sub_optimizer, fe_config_space=fe_config_space,
-                output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs,
+                output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs, topk=self.topk
             )
 
             return optimizer
@@ -161,7 +165,7 @@ class BaseAutoML(object):
             time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
             per_run_time_limit=self.per_run_time_limit,
             inner_iter_num_per_iter=self.inner_iter_num_per_iter,timestamp=self.timestamp,
-            output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs,
+            output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs, topk=self.topk,
             **opt_paras
         )
 
@@ -183,6 +187,14 @@ class BaseAutoML(object):
         self.eval_dict = self.optimizer.eval_dict
         return self.incumbent_perf
 
+    def rm_files(self):
+        self.logger.info('Start to delete files other than incumbent!')
+        incumbent_id = CombinedTopKModelSaver.get_configuration_id(self.incumbent)
+        for file in os.listdir(self.output_dir):
+            if incumbent_id in file or file.endswith('.log') or file.endswith('.json') or file.endswith('topk_config.pkl'):
+                continue
+            os.remove(os.path.join(self.output_dir, file))
+
     def run(self, refit=True):
 
         for i in range(self.amount_of_resource):
@@ -198,6 +210,9 @@ class BaseAutoML(object):
         if self.evaluation == 'cv' or refit:
             if self.refit_status != 'full':
                 self.refit_incumbent()
+
+        if self.rmfiles:
+            self.rm_files()
 
         return self.incumbent_perf
 
@@ -424,7 +439,7 @@ class BaseAutoML(object):
             'name': self.name,
             'task_type': self.task_type,
             'task_id': self.task_id,
-            'metric': str(self.metric),
+            'metric': self.metric_name,
             'optimizer': self.optimizer_name,
             'time_limit': self.time_limit,
             'amount_of_resource': self.amount_of_resource,

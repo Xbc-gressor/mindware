@@ -15,7 +15,7 @@ class BaseOptimizer(object):
                  time_limit=None, evaluation_limit=None,
                  per_run_time_limit=300, per_run_mem_limit=1024, 
                  inner_iter_num_per_iter=1, timestamp=None, 
-                 output_dir='./', seed=None):
+                 output_dir='./', seed=None, topk=50):
         self.evaluator = evaluator
         self.config_space = config_space
 
@@ -52,7 +52,7 @@ class BaseOptimizer(object):
             self.timestamp = time.time()
         self.output_dir = output_dir
         self.topk_saver = CombinedTopKModelSaver(
-            k=50, model_dir=self.output_dir,
+            k=topk, model_dir=self.output_dir,
             identifier=datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
         )
 

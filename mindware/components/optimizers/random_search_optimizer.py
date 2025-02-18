@@ -13,12 +13,12 @@ class RandomSearchOptimizer(BaseOptimizer):
                  time_limit=None, evaluation_limit=None,
                  per_run_time_limit=300, per_run_mem_limit=1024, 
                  inner_iter_num_per_iter=1, timestamp=None,
-                 output_dir='./', seed=1, n_jobs=1):
+                 output_dir='./', seed=1, n_jobs=1, topk=50):
         super(RandomSearchOptimizer, self).__init__(evaluator=evaluator, config_space=config_space, name=name, eval_type=eval_type, 
                                                     time_limit=time_limit, evaluation_limit=evaluation_limit, 
                                                     per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
                                                     inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp, 
-                                                    output_dir=output_dir, seed=seed)
+                                                    output_dir=output_dir, seed=seed, topk=topk)
 
         if n_jobs == 1:
             self.optimizer = RandomSearch(objective_function=self.evaluator,

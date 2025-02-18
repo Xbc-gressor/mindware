@@ -19,7 +19,7 @@ class BaseHPO(BaseAutoML):
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac',
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
-                 output_dir=None, seed=1, n_jobs=1,
+                 output_dir=None, seed=1, n_jobs=1, topk=50, rmfiles=False,
                  ensemble_method=None, ensemble_size=5, task_id='test'):
 
         super(BaseHPO, self).__init__(
@@ -28,7 +28,7 @@ class BaseHPO(BaseAutoML):
             evaluation=evaluation, resampling_params=resampling_params,
             optimizer=optimizer, inner_iter_num_per_iter=1,
             time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=per_run_time_limit,
-            output_dir=output_dir, seed=seed, n_jobs=n_jobs,
+            output_dir=output_dir, seed=seed, n_jobs=n_jobs, topk=topk, rmfiles=rmfiles,
             ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
         )
 

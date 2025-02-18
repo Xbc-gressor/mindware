@@ -19,12 +19,12 @@ class JointOptimizer(BaseOptimizer):
                  per_run_time_limit=300, per_run_mem_limit=1024,
                  inner_iter_num_per_iter=10, timestamp=None,
                  sub_optimizer='smac', fe_config_space=None,
-                 output_dir='./', seed=1, n_jobs=1):
+                 output_dir='./', seed=1, n_jobs=1, topk=50):
         super(JointOptimizer, self).__init__(evaluator=evaluator, config_space=(cash_config_space, fe_config_space), name=name, eval_type=eval_type, 
                                              time_limit=time_limit, evaluation_limit=evaluation_limit, 
                                              per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
                                              inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp, 
-                                             output_dir=output_dir, seed=seed)
+                                             output_dir=output_dir, seed=seed, topk=topk)
         self.eval_dict = dict()
 
         # TODO: Support asynchronous BO
@@ -65,7 +65,7 @@ class JointOptimizer(BaseOptimizer):
             time_limit=time_limit, evaluation_limit=None,
             per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit,
             inner_iter_num_per_iter=inner_iter_num_per_iter,
-            timestamp=self.timestamp, seed=self.seed, n_jobs=n_jobs
+            timestamp=self.timestamp, seed=self.seed, n_jobs=n_jobs, topk=topk
         )
 
         if self.time_limit is not None:

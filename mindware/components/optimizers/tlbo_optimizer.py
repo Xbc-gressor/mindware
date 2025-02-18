@@ -17,7 +17,7 @@ class TlboOptimizer(BaseOptimizer):
     def __init__(self, evaluator, config_space, name, surrogate_type='tlbo_rgpe_prf',
                  metric='bal_acc', time_limit=None, evaluation_limit=None,
                  per_run_time_limit=300, per_run_mem_limit=1024, output_dir='./',
-                 inner_iter_num_per_iter=1, seed=1, n_jobs=1):
+                 inner_iter_num_per_iter=1, seed=1, n_jobs=1, topk=50):
         super().__init__(evaluator, config_space, name, seed)
         self.time_limit = time_limit
         self.evaluation_num_limit = evaluation_limit

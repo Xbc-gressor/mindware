@@ -47,11 +47,10 @@ def get_fe_cs_args(**kwargs):
     if data_node is not None:
         max_zero_ratio = np.max(np.sum(data_node.data[0] == 0, axis=0) / data_node.data[0].shape[0])
         _cs_args['zero_ratio_mask'] = max_zero_ratio < (1 - test_size)
-        
         from sklearn.decomposition import FastICA
         try:
             ica = FastICA(fun='exp', algorithm='deflation', whiten=False)
-            ica.fit(data_node.data[0])
+            ica.fit(data_node.data[0][:10000, :50])
             _cs_args['exp_deflation_mask'] = True
         except:
             _cs_args['exp_deflation_mask'] = False

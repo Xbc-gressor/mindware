@@ -13,12 +13,12 @@ class MfseOptimizer(BaseOptimizer, MfseBase):
                  per_run_time_limit=600, per_run_mem_limit=1024, 
                  inner_iter_num_per_iter=1, timestamp=None,
                  R=27, eta=3, 
-                 output_dir='./', seed=1, n_jobs=1):
+                 output_dir='./', seed=1, n_jobs=1, topk=50):
         BaseOptimizer.__init__(evaluator=evaluator, config_space=config_space, name=name, eval_type=eval_type, 
                                time_limit=time_limit, evaluation_limit=evaluation_limit, 
                                per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
                                inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp, 
-                               output_dir=output_dir, seed=seed)
+                               output_dir=output_dir, seed=seed, topk=topk)
         MfseBase.__init__(self, eval_func=self.evaluator, config_space=self.config_space,
                           per_run_time_limit=per_run_time_limit, seed=seed,
                           R=R, eta=eta, n_jobs=n_jobs, output_dir=output_dir)
