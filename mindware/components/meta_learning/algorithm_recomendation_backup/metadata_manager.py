@@ -105,7 +105,7 @@ class MetaDataManager(object):
 
             self._dataset_embedding = np.asarray(_X)
             self._task_ids = data2['task_ids']
-            self._dataset_perf4algo = data2['perf4algo'][self.metric]
+            self._dataset_perf4algo = data2['perf4algo']
         else:
             for _dataset in self.builtin_datasets:
                 print('Creating embedding for dataset - %s.' % _dataset)
@@ -140,7 +140,7 @@ class MetaDataManager(object):
                 data = dict()
                 data['task_ids'] = self._task_ids
                 data['algorithms_included'] = self.builtin_algorithms
-                data['perf4algo'] = {self.metric: self._dataset_perf4algo}
+                data['perf4algo'] = self._dataset_perf4algo
                 pickle.dump(data, f)
 
         return self._dataset_embedding, self._dataset_perf4algo, self._task_ids

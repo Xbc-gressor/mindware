@@ -10,10 +10,9 @@ from mindware.components.meta_learning.algorithm_recomendation.metadata_manager 
 from mindware.components.meta_learning.algorithm_recomendation.metadata_manager import get_feature_vector
 
 _cls_builtin_algorithms = ['lightgbm', 'random_forest', 'libsvm_svc', 'extra_trees', 'liblinear_svc',
-                           'k_nearest_neighbors', 'adaboost', 'lda', 'qda', 'gradient_boosting', 'logistic_regression', 'xgboost']
-
+                           'k_nearest_neighbors', 'adaboost', 'lda', 'qda']
 _rgs_builtin_algorithms = ['lightgbm', 'random_forest', 'libsvm_svr', 'extra_trees', 'liblinear_svr',
-                           'k_nearest_neighbors', 'adaboost', 'lasso_regression', 'gradient_boosting', 'ridge_regression', 'xgboost']
+                           'k_nearest_neighbors', 'adaboost', 'lasso_regression', 'gradient_boosting']
 
 
 class BaseAdvisor(object):
@@ -35,13 +34,13 @@ class BaseAdvisor(object):
         if task_type in CLS_TASKS:
             self.algorithms = _cls_builtin_algorithms
             self.n_algo_candidates = len(_cls_builtin_algorithms)
-            if metric not in ['acc', 'f1', 'auc']:
+            if metric not in ['acc', 'bal_acc']:
                 self.logger.info('Meta information about metric-%s does not exist, use accuracy instead.' % str(metric))
                 metric = 'acc'
         elif task_type in RGS_TASKS:
             self.algorithms = _rgs_builtin_algorithms
             self.n_algo_candidates = len(_rgs_builtin_algorithms)
-            if metric not in ['mse', 'r2', 'mae']:
+            if metric not in ['mse']:
                 self.logger.info('Meta information about metric-%s does not exist, use accuracy instead.' % str(metric))
                 metric = 'mse'
         else:
@@ -76,10 +75,7 @@ class BaseAdvisor(object):
             d = pkl.load(f)
             meta_datasets = d['task_ids']
 
-        self._builtin_datasets = []
-        for t in sorted(list(meta_datasets)):
-            if t[5:] not in self.exclude_datasets:
-                self._builtin_datasets.append(t)
+        self._builtin_datasets = sorted(list(meta_datasets))
 
         self.metadata_manager = MetaDataManager(self.meta_dir, self.algorithms, self._builtin_datasets,
                                                 metric, total_resource, task_type=task_type, rep=rep)

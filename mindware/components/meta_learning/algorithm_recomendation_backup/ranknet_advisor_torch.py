@@ -8,7 +8,6 @@ from torch.utils.data import Dataset, DataLoader
 
 from mindware.utils.logging_utils import get_logger
 from mindware.components.meta_learning.algorithm_recomendation.base_advisor import BaseAdvisor
-from mindware.components.meta_learning.algorithm_recomendation.arutils import EarlyStopping
 
 
 class CategoricalHingeLoss(nn.Module):
@@ -114,26 +113,6 @@ class RankNetAdvisor(BaseAdvisor):
             nn.init.xavier_uniform_(model.weight.data)  # use xavier instead of default he_normal
             model.bias.data.zero_()
 
-
-    def _val(self, model, data_loader, loss_fun):
-
-        model.eval()
-        train_loss = 0
-        train_samples = 0
-        train_acc = 0
-        for i, (data1, data2, y_true) in enumerate(data_loader):
-            y_pred = model(data1, data2)
-            loss = loss_fun(y_pred, y_true)
-            train_loss += loss.item() * len(data1)
-            train_samples += len(data1)
-            train_acc += np.sum(y_pred.detach().numpy().round() == y_true.detach().numpy())
-
-        loss = train_loss / train_samples
-        acc = train_acc / train_samples
-
-        return loss, acc
-
-
     def fit(self, **kwargs):
         l1_size = kwargs.get('layer1_size', 256)
         l2_size = kwargs.get('layer2_size', 128)
@@ -142,79 +121,49 @@ class RankNetAdvisor(BaseAdvisor):
         epochs = 200
 
         _X, _y, _ = self.metadata_manager.load_meta_data()
-        X1_all, X2_all, y_all = self.create_pairwise_data(_X, _y)
-        from sklearn.model_selection import KFold
-        ss = KFold(n_splits=5, random_state=1, shuffle=True)
-        self.model = [None] * 5
-        fold = 0
-        for train_index, test_index in ss.split(range(len(y_all) // 2)):
-            print("========== Fold %d ==========\n" % (fold+1))
+        X1, X2, y = self.create_pairwise_data(_X, _y)
 
-            train_mask = np.zeros(y_all.shape, dtype=bool)
-            train_mask[2*train_index] = True
-            train_mask[2*train_index+1] = True
-            test_mask = np.zeros(y_all.shape, dtype=bool)
-            test_mask[2*test_index] = True
-            test_mask[2*test_index+1] = True
+        train_data = PairwiseDataset(X1, X2, y)
+        train_loader = DataLoader(
+            dataset=train_data,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=2
+        )
+        self.input_shape = X1.shape[1]
 
-            X1_train, X2_train, y_train = X1_all[train_mask], X2_all[train_mask], y_all[train_mask]
-            X1_val, X2_val, y_val = X1_all[test_mask], X2_all[test_mask], y_all[test_mask]
+        meta_learner_filename = os.path.join(self.meta_dir, "meta_learner", 'ranknet_model_%s_%s_%s.pth' % (
+            self.meta_algo, self.metric, self.hash_id))
+        if os.path.exists(meta_learner_filename):
+            # print("load model...")
+            self.model = torch.load(meta_learner_filename)
+        else:
+            # print("fit model...")
+            self.model = RankNet(X1.shape[1], (l1_size, l2_size,), (act_func, act_func,))
+            self.model.apply(self.weights_init)
+            optimizer = optim.Adam(self.model.parameters(), lr=1e-3)
 
-            print("train: X.shape:", X1_train.shape, X2_train.shape, "y.shape", y_train.shape)
-            print("val: X.shape:", X1_val.shape, X2_val.shape, "y.shape", y_val.shape)
+            loss_fun = CategoricalHingeLoss()
+            self.model.train()
 
-            train_data = PairwiseDataset(X1_train, X2_train, y_train)
-            train_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True, num_workers=2)
-            val_data = PairwiseDataset(X1_val, X2_val, y_val)
-            val_loader = DataLoader(dataset=val_data, batch_size=batch_size, shuffle=False, num_workers=2)
-            self.input_shape = X1_all.shape[1]
+            for epoch in range(epochs):
+                train_loss = 0
+                train_samples = 0
+                train_acc = 0
+                for i, (data1, data2, y_true) in enumerate(train_loader):
+                    optimizer.zero_grad()
+                    y_pred = self.model(data1, data2)
+                    loss = loss_fun(y_pred, y_true)
+                    loss.backward()
+                    optimizer.step()
+                    train_loss += loss.item() * len(data1)
+                    train_samples += len(data1)
+                    train_acc += sum(y_pred.detach().numpy().round() == y_true.detach().numpy())
+                print('Epoch{}, loss : {}, acc : {}'.format(epoch, train_loss / len(train_data),
+                                                            train_acc / len(train_data)))
 
-            meta_learner_filename = os.path.join(self.meta_dir, "meta_learner", 'ranknet_model_%s_%s_%d_%s.pth' % (
-                self.meta_algo, self.metric, fold, self.hash_id))
-            if os.path.exists(meta_learner_filename):
-                # print("load model...")
-                self.model[fold] = torch.load(meta_learner_filename)
-            else:
-                es = EarlyStopping()
-                # print("fit model...")
-                self.model[fold] = RankNet(X1_all.shape[1], (l1_size, l2_size,), (act_func, act_func,))
-                self.model[fold].apply(self.weights_init)
-                optimizer = optim.Adam(self.model[fold].parameters(), lr=1e-3)
-
-                loss_fun = CategoricalHingeLoss()
-
-                train_loss, train_acc = self._val(model=self.model[fold], data_loader=train_loader, loss_fun=loss_fun)
-                val_loss, val_acc = self._val(model=self.model[fold], data_loader=val_loader, loss_fun=loss_fun)
-
-                print('Initial, train_loss : {}, train_acc : {} | val_loss : {}, val_acc : {}'.format(train_loss, train_acc, val_loss, val_acc))
-
-                for epoch in range(epochs):
-                    self.model[fold].train()
-                    train_loss = 0
-                    train_samples = 0
-                    train_acc = 0
-                    for i, (data1, data2, y_true) in enumerate(train_loader):
-                        optimizer.zero_grad()
-                        y_pred = self.model[fold](data1, data2)
-                        loss = loss_fun(y_pred, y_true)
-                        loss.backward()
-                        optimizer.step()
-                        train_loss += loss.item() * len(data1)
-                        train_samples += len(data1)
-                        train_acc += np.sum(y_pred.detach().numpy().round() == y_true.detach().numpy())
-
-                    val_loss, val_acc = self._val(model=self.model[fold], data_loader=val_loader, loss_fun=loss_fun)
-                    print('Epoch{}, train_loss : {}, train_acc : {} | val_loss : {}, val_acc : {}'.format(epoch, train_loss / train_samples, train_acc / train_samples, val_loss, val_acc))
-                    es(val_loss=val_loss, model=self.model[fold], path=meta_learner_filename)
-
-                    if es.early_stop:
-                        print("Early stop after %d iterations!" % es.patience)
-                        break
-
-                # print("save model...")
-                # torch.save(self.model[fold], meta_learner_filename)
-
-            fold += 1
+            # print("save model...")
+            torch.save(self.model, meta_learner_filename)
 
     def predict(self, dataset_meta_feat):
         n_algo = self.n_algo_candidates
@@ -225,12 +174,6 @@ class RankNetAdvisor(BaseAdvisor):
             _X.append(list(dataset_meta_feat.copy()) + list(vector_i))
         X = np.asarray(_X)
         X = from_numpy(X).float()
-        pred = list()
-        for model in self.model:
-            model.eval()
-            _pred = model.predict(X).numpy()
-            pred.append(_pred)
-
-        pred = np.mean(pred, axis=0)
-
+        self.model.eval()
+        pred = self.model.predict(X).numpy()
         return pred.ravel()
