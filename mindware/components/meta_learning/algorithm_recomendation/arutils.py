@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 class EarlyStopping:
-    def __init__(self, patience=10, verbose=True, delta=1e-5):
+    def __init__(self, patience=30, verbose=True, delta=1e-5):
         self.patience = patience
         self.verbose = verbose
         self.counter = 0

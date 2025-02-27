@@ -31,7 +31,6 @@ class BaseAdvisor(object):
         self.task_type = task_type
         self.meta_algo = meta_algorithm
         self.rep = rep
-        self.metric = metric
         if task_type in CLS_TASKS:
             self.algorithms = _cls_builtin_algorithms
             self.n_algo_candidates = len(_cls_builtin_algorithms)
@@ -46,6 +45,7 @@ class BaseAdvisor(object):
                 metric = 'mse'
         else:
             raise ValueError('Invalid metric: %s.' % metric)
+        self.metric = metric
 
         self.total_resource = total_resource
         self.exclude_datasets = exclude_datasets
@@ -78,9 +78,9 @@ class BaseAdvisor(object):
 
         self._builtin_datasets = []
         for t in sorted(list(meta_datasets)):
-            if t[5:] not in self.exclude_datasets:
+            if self.exclude_datasets is None or t[5:] not in self.exclude_datasets:
                 self._builtin_datasets.append(t)
-
+                
         self.metadata_manager = MetaDataManager(self.meta_dir, self.algorithms, self._builtin_datasets,
                                                 metric, total_resource, task_type=task_type, rep=rep)
         self.meta_learner = None
