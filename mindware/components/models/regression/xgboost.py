@@ -22,6 +22,7 @@ class XGBoostRegressor(BaseRegressionModel):
         self.reg_alpha = float(reg_alpha)
         self.reg_lambda = float(reg_lambda)
         self.random_state = random_state
+        self.n_jobs = 4
 
         self.estimator = None
 
@@ -38,7 +39,8 @@ class XGBoostRegressor(BaseRegressionModel):
             gamma=self.gamma,
             reg_alpha=self.reg_alpha,
             reg_lambda=self.reg_lambda,
-            random_state=self.random_state
+            random_state=self.random_state,
+            n_jobs=self.n_jobs
         )
 
         estimator.fit(X, Y, sample_weight=sample_weight)

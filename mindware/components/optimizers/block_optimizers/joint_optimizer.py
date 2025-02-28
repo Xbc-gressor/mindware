@@ -18,9 +18,9 @@ class JointOptimizer(BaseOptimizer):
                  time_limit=None, evaluation_limit=None,
                  per_run_time_limit=300, per_run_mem_limit=1024,
                  inner_iter_num_per_iter=10, timestamp=None,
-                 sub_optimizer='smac', fe_config_space=None,
+                 sub_optimizer='smac', fe_config_space_dict=None,
                  output_dir='./', seed=1, n_jobs=1, topk=50):
-        super(JointOptimizer, self).__init__(evaluator=evaluator, config_space=(cash_config_space, fe_config_space), name=name, eval_type=eval_type, 
+        super(JointOptimizer, self).__init__(evaluator=evaluator, config_space=(cash_config_space, fe_config_space_dict), name=name, eval_type=eval_type, 
                                              time_limit=time_limit, evaluation_limit=evaluation_limit, 
                                              per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
                                              inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp, 
@@ -41,7 +41,7 @@ class JointOptimizer(BaseOptimizer):
         else:
             raise ValueError("Invalid optimizer %s" % sub_optimizer)
 
-        assert cash_config_space is not None or fe_config_space is not None
+        assert cash_config_space is not None or fe_config_space_dict is not None
 
         cs = ConfigurationSpace()
         if cash_config_space is not None:
@@ -51,13 +51,14 @@ class JointOptimizer(BaseOptimizer):
                 deepcopy(cash_config_space.get_conditions()))
             cs.add_forbidden_clauses(
                 deepcopy(cash_config_space.get_forbiddens()))
-        if fe_config_space is not None:
-            cs.add_hyperparameters(
-                deepcopy(fe_config_space.get_hyperparameters()))
-            cs.add_conditions(
-                deepcopy(fe_config_space.get_conditions()))
-            cs.add_forbidden_clauses(
-                deepcopy(fe_config_space.get_forbiddens()))
+        if fe_config_space_dict is not None:
+            for _fe_config_space in fe_config_space_dict.values():
+                cs.add_hyperparameters(
+                    deepcopy(_fe_config_space.get_hyperparameters()))
+                cs.add_conditions(
+                    deepcopy(_fe_config_space.get_conditions()))
+                cs.add_forbidden_clauses(
+                    deepcopy(_fe_config_space.get_forbiddens()))
 
         self.sub_bandit = optimizer_class(
             evaluator=self.evaluator, config_space=cs, name='hpofe',

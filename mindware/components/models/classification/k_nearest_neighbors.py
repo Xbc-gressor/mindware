@@ -59,10 +59,13 @@ class KNearestNeighborsClassifier(BaseClassificationModel):
 
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
+        meta_mask = kwargs.get('meta', False)
 
         # Expected n_neighbors <= n_samples
         n_samples = kwargs.get('n_samples', None)
-        n_neighbors_upper = min(100, n_samples) if n_samples is not None else 100
+        n_neighbors_upper = 100
+        if not meta_mask:
+            n_neighbors_upper = min(100, n_samples) if n_samples is not None else 100
 
         if optimizer == 'smac':
             cs = ConfigurationSpace()

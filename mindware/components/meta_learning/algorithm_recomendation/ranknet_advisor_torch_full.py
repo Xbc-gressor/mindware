@@ -61,14 +61,13 @@ class RankNetAdvisor(BaseAdvisor):
     def __init__(self,
                  rep=3,
                  metric='acc',
-                 n_algorithm=3,
                  task_type=None,
                  total_resource=1200,
                  exclude_datasets=None,
                  meta_dir=None,
                  use_gpu=True):
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
-        super().__init__(n_algorithm, task_type, metric, rep, total_resource,
+        super().__init__(task_type, metric, rep, total_resource,
                          'ranknet', exclude_datasets, meta_dir)
         self.model = None
         self.device = torch.device('cpu')

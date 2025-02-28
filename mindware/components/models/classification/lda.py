@@ -85,15 +85,17 @@ class LDA(BaseClassificationModel):
 
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
+        meta_mask = kwargs.get('meta', False)
 
         # n_components cannot be larger than min(n_features, n_classes - 1).
         n_classes = kwargs.get('n_classes', None)
         n_features = kwargs.get('n_features', None)
         n_components_upper = 250
-        if n_classes is not None:
-            n_components_upper = min(n_components_upper, n_classes - 1)
-        if n_features is not None:
-            n_components_upper = min(n_components_upper, n_features)
+        if not meta_mask:
+            if n_classes is not None:
+                n_components_upper = min(n_components_upper, n_classes - 1)
+            if n_features is not None:
+                n_components_upper = min(n_components_upper, n_features)
 
         if optimizer == 'smac':
             cs = ConfigurationSpace()

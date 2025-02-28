@@ -22,6 +22,7 @@ class XGBoostClassifier(BaseClassificationModel):
         self.reg_alpha = float(reg_alpha)
         self.reg_lambda = float(reg_lambda)
         self.random_state = random_state
+        self.n_jobs = 4
         self.estimator = None
         '''
             def __init__(self, n_estimators, learning_rate, max_depth, min_child_weight,
@@ -53,11 +54,11 @@ class XGBoostClassifier(BaseClassificationModel):
             gamma=self.gamma,
             reg_alpha=self.reg_alpha,
             reg_lambda=self.reg_lambda,
-            random_state=self.random_state
+            random_state=self.random_state,
+            n_jobs=self.n_jobs,
         )
 
         estimator.fit(X, Y, sample_weight=sample_weight)
-
         self.estimator = estimator
         return self
 

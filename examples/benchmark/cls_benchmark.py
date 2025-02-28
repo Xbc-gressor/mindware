@@ -67,6 +67,11 @@ if '__main__' == __name__:
     parser.add_argument('--time_limit', type=int, default=3600, help='time limit')
     parser.add_argument('--per_time_limit', type=int, default=600, help='time limit')
     parser.add_argument('--inner_iter_num_per_iter', type=int, default=10)
+
+    parser.add_argument('--n_algorithm', type=int, default=-1)
+    parser.add_argument('--n_preprocessor', type=int, default=-1)
+
+
     parser.add_argument('--job_idx', type=int, nargs='*', help='job index')
     parser.add_argument('--output_dir', type=str, default='./data')
     parser.add_argument('--output_file', type=str, default='results.txt')
@@ -87,7 +92,7 @@ if '__main__' == __name__:
         OPT = HPO
     else:
         raise ValueError("Not supprt Opt type:", args.Opt)
-    
+
 
     if args.job_idx is not None and len(args.job_idx) > 0:
         chosen_datasets = [chosen_datasets[idx] for idx in args.job_idx]
@@ -105,10 +110,17 @@ if '__main__' == __name__:
         test_data_node = dm.from_test_df(test_df, has_label=True)
         test_data_node = dm.preprocess_transform(test_data_node)
         
-        inc_alg = include_algorithms
+        inc_alg = include_algorithms  # include_algorithms
         if dataset in ['covertype', 'higgs', 'mv']:
             inc_alg = [alg for alg in include_algorithms if alg not in ['adaboost']]
             
+        filter_params = {}
+        if args.n_algorithm != -1:
+            inc_alg = None
+            filter_params['n_algorithm'] = args.n_algorithm
+        if args.n_preprocessor != -1:
+            filter_params['n_preprocessor'] = args.n_preprocessor
+        import numpy as np
         if args.Opt in ['cash', 'cashfe']:
             opt = OPT(
                 include_algorithms=inc_alg, sub_optimizer='smac', task_type=task_type,
@@ -117,7 +129,8 @@ if '__main__' == __name__:
                 optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
                 time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
                 output_dir=args.output_dir, seed=1, n_jobs=1,
-                ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
+                ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset,
+                filter_params=filter_params
             )
         elif args.Opt in ['fe', 'hpo']:
             opt = OPT(
@@ -130,9 +143,8 @@ if '__main__' == __name__:
                 ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset,
                 # include_preprocessors = ['fast_ica_decomposer']
             )
-            
-        print(opt.get_conf(save=True))  # 保存设置
 
+        print(opt.get_conf(save=True))  # 保存设置
         print(opt.run())
         print(opt.get_model_info(save=True))  # 保存最优模型信息
         scorer = opt.metric
@@ -143,5 +155,5 @@ if '__main__' == __name__:
         ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
 
         with open(args.output_file, 'a+') as f:
-            f.write(f'CLS: {args.Opt}-{args.optimizer}, {dataset}: {perf}, {ens_perf}\n')
+            f.write(f'CLS: {args.Opt}-{args.optimizer}, filter_m{args.n_algorithm}-p{args.n_preprocessor}, {dataset}: {perf}, {ens_perf}\n')
 

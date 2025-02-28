@@ -19,8 +19,9 @@ class BaseCASHFE(BaseAutoML):
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1, topk=50, rmfiles=False,
                  ensemble_method=None, ensemble_size=5,
-                 include_preprocessors=None, task_id='test'):
-
+                 include_preprocessors=None, task_id='test',
+                 filter_params=None):
+        
         super(BaseCASHFE, self).__init__(
             name='cashfe', task_type=task_type,
             metric=metric, data_node=data_node,
@@ -51,22 +52,40 @@ class BaseCASHFE(BaseAutoML):
             'resampling_params': resampling_params,
             'data_node': data_node
         }
-        
         from mindware.components.config_space.cs_builder import get_fe_cs_args
         cs_args = get_fe_cs_args(**cs_args)
         self.cs_args = cs_args
-    
+
+        self.filter_params = filter_params
+        # select models
+        if self.filter_params is not None and 'n_algorithm' in self.filter_params:
+            n_algo = self.filter_params['n_algorithm']
+            include_algorithms = self._recommand_models(self.task_type, task_id=self.task_id, data_node=self.data_node, metric=self.metric_name, n_algo=n_algo, include_algorithms=include_algorithms)
+
         if include_algorithms is not None and len(include_algorithms) == 1:
             from mindware.components.config_space.cs_builder import get_hpo_cs
             self.cs = get_hpo_cs(estimator_id=include_algorithms[0], task_type=self.task_type, **cs_args)
         else:
             from mindware.components.config_space.cs_builder import get_cash_cs
             self.cs = get_cash_cs(include_algorithms=include_algorithms, task_type=self.task_type, **cs_args)
+            include_algorithms = list(self.cs['algorithm'].choices)
+        # select preprocessors
         from mindware.components.config_space.cs_builder import get_fe_cs
-        fe_config_space = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal, **cs_args)
+        include_preprocessors_dict = {algo: include_preprocessors for algo in include_algorithms}
+        if self.filter_params is not None and 'n_preprocessor' in self.filter_params:
+            n_prep = self.filter_params['n_preprocessor']
+            include_preprocessors_dict = self._recommand_preps(self.task_type, task_id=self.task_id, data_node=self.data_node, metric=self.metric_name, n_prep=n_prep, include_algorithms=include_algorithms, include_preprocessors=include_preprocessors)
+            include_preprocessors = []
+            for preps in include_preprocessors_dict.values():
+                include_preprocessors.extend(preps)
+            include_preprocessors = list(set(include_preprocessors))
+        self.include_preprocessors_dict = include_preprocessors_dict
 
+        fe_config_space_dict = {}
+        for algo in include_algorithms:
+            fe_config_space_dict[algo] = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors_dict[algo], if_imbal=self.if_imbal, **cs_args)
         if self.optimizer_name != 'mab' and not self.optimizer_name.startswith('block'):
-            tmp_cs = deepcopy(fe_config_space)
+            tmp_cs = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal, **cs_args)
             self.cs.add_hyperparameters(tmp_cs.get_hyperparameters())
             self.cs.add_conditions(tmp_cs.get_conditions())
             self.cs.add_forbidden_clauses(tmp_cs.get_forbiddens())
@@ -97,9 +116,7 @@ class BaseCASHFE(BaseAutoML):
                 output_dir=self.output_dir,
                 seed=self.seed)
 
-        self.optimizer = self.build_optimizer(name='cashfe', sub_optimizer=sub_optimizer, fe_config_space=fe_config_space)
-
-        pass
+        self.optimizer = self.build_optimizer(name='cashfe', sub_optimizer=sub_optimizer, fe_config_space_dict=fe_config_space_dict)
 
     def _get_logger(self, optimizer_name):
         logger_name = 'MindWare-CASHFE-task_type%d-%s(%d)' % (self.task_type, optimizer_name, self.seed)
@@ -114,6 +131,8 @@ class BaseCASHFE(BaseAutoML):
             conf['include_algorithms'] = [self.cs['algorithm'].value]
         else:
             conf['include_algorithms'] = self.cs['algorithm'].choices
+
+        conf['include_preprocessors'] = self.include_preprocessors_dict
 
         if save:
             with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:

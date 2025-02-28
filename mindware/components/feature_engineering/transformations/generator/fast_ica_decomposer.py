@@ -76,17 +76,23 @@ class FastIcaDecomposer(Transformer):
 
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
+        meta_mask = kwargs.get('meta', False)
+
         # n_components cannot be larger than min(n_features, n_samples).
         n_samples = kwargs.get('n_samples', None)
         n_features = kwargs.get('n_features', None)
-        exp_deflation_mask = kwargs.get('exp_deflation_mask', False)
-        cube_parallel_mask = kwargs.get('cube_parallel_mask', False)
+        exp_deflation_mask = kwargs.get('exp_deflation_mask', False) | meta_mask
+        cube_parallel_mask = kwargs.get('cube_parallel_mask', False) | meta_mask
+
         
+        n_components_lower = 1
         n_components_upper = 2000
-        if n_samples is not None:
-            n_components_upper = min(n_components_upper, n_samples)
-        if n_features is not None:
-            n_components_upper = min(n_components_upper, n_features)
+        if not meta_mask:
+            n_components_lower = 10
+            if n_samples is not None:
+                n_components_upper = min(n_components_upper, n_samples)
+            if n_features is not None:
+                n_components_upper = min(n_components_upper, n_features)
             
         if optimizer == 'smac':
             cs = ConfigurationSpace()
@@ -94,7 +100,7 @@ class FastIcaDecomposer(Transformer):
                 n_components = Constant("n_components", n_components_upper)
             else:
                 n_components = UniformIntegerHyperparameter(
-                    "n_components", 10, n_components_upper, default_value=min(100, n_components_upper))
+                    "n_components", n_components_lower, n_components_upper, default_value=min(100, n_components_upper))
             algorithm = CategoricalHyperparameter('algorithm',
                                                   ['parallel', 'deflation'], 'parallel')
             if sklearn.__version__ <= '1.0.2':

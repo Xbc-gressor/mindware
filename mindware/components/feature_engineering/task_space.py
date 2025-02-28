@@ -124,6 +124,7 @@ def get_task_hyperparameter_space(task_type, include_preprocessors=None,
 
 def _get_configuration_space(builtin_transformers, trans_type=None, optimizer='smac', **cs_args):
     config_dict = dict()
+    silence = cs_args.get('silence', False)
     for tran_key in builtin_transformers:
         tran = builtin_transformers[tran_key]
         tran_id = tran.type
@@ -133,7 +134,8 @@ def _get_configuration_space(builtin_transformers, trans_type=None, optimizer='s
                     optimizer=optimizer, **cs_args)
                 config_dict[tran_key] = sub_configuration_space
             except Exception as e:
-                print("Error while build cs for %s" % tran_key, e)
+                if not silence:
+                    print("Error while build cs for %s" % tran_key, e)
                 if optimizer == 'smac':
                     config_dict[tran_key] = ConfigurationSpace()
                 elif optimizer == 'tpe':

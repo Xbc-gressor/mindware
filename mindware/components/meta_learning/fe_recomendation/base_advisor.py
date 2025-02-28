@@ -6,8 +6,10 @@ from collections import OrderedDict
 from mindware.datasets.utils import calculate_metafeatures
 from mindware.utils.logging_utils import get_logger
 from mindware.components.utils.constants import CLS_TASKS, RGS_TASKS
-from mindware.components.meta_learning.algorithm_recomendation.metadata_manager import MetaDataManager
-from mindware.components.meta_learning.algorithm_recomendation.metadata_manager import get_feature_vector
+from mindware.components.meta_learning.fe_recomendation.metadata_manager import MetaDataManager
+from mindware.components.meta_learning.fe_recomendation.metadata_manager import get_feature_vector
+from collections import Counter
+import math
 
 _cls_builtin_algorithms = ['lightgbm', 'random_forest', 'libsvm_svc', 'extra_trees', 'liblinear_svc',
                            'k_nearest_neighbors', 'adaboost', 'lda', 'qda', 'gradient_boosting', 'logistic_regression', 'xgboost']
@@ -24,9 +26,10 @@ class BaseAdvisor(object):
                  total_resource=1200,
                  meta_algorithm='lightgbm',
                  exclude_datasets=None,
+                 include_algorithms=None,
                  meta_dir=None):
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
-        self.n_algo_candidates = len(_cls_builtin_algorithms)
+
         self.task_type = task_type
         self.meta_algo = meta_algorithm
         self.rep = rep
@@ -44,6 +47,13 @@ class BaseAdvisor(object):
                 metric = 'mse'
         else:
             raise ValueError('Invalid metric: %s.' % metric)
+        
+        if include_algorithms is not None:
+            for ia in include_algorithms:
+                assert ia in self.algorithms
+
+            self.algorithms = include_algorithms
+
         self.metric = metric
 
         self.total_resource = total_resource
@@ -82,27 +92,97 @@ class BaseAdvisor(object):
         for t in sorted(list(meta_datasets)):
             if self.exclude_datasets is None or t[5:] not in self.exclude_datasets:
                 self._builtin_datasets.append(t)
-
+        self.n_dataset_candidates = len(self._builtin_datasets)
         self.metadata_manager = MetaDataManager(self.meta_dir, self.algorithms, self._builtin_datasets,
                                                 metric, total_resource, task_type=task_type, rep=rep)
         self.meta_learner = None
 
-    def fetch_algorithm_set(self, dataset, datanode=None):
+    def fetch_dataset_set(self, dataset, datanode=None):
         input_vector = get_feature_vector(dataset, task_type=self.task_type)
         if input_vector is None:
             input_dict = calculate_metafeatures(dataset=datanode, task_type=self.task_type)
             sorted_keys = sorted(input_dict.keys())
             input_vector = [input_dict[key] for key in sorted_keys]
-        preds = self.predict(input_vector)
-        idxs = np.argsort(-preds)
-        return [self.algorithms[idx] for idx in idxs]
+        sims_dict = self.predict(input_vector)
+        res_dict = {}
+        for algo in self.algorithms:
+            idxs = np.argsort(-sims_dict[algo])
+            sorted_datasets = [self._builtin_datasets[idx][5:] for idx in idxs]
+            sorted_scores = [sims_dict[algo][idx] for idx in idxs]
+            res_dict[algo] = OrderedDict(zip(sorted_datasets, sorted_scores))
+        return res_dict
+
+    def fetch_preprocessor_set(self, dataset, datanode=None):
+        sim_dict = self.fetch_dataset_set(dataset, datanode)
+
+        sim_thr = 0.6
+        da_thr = 3
+        res_dict = {}
+        for algo in sim_dict.keys():
+
+            def_dict = self.metadata_manager._def_preprocessor[algo]
+            best_dict = self.metadata_manager._best_preprocessor[algo]
+            _sim_dict = sim_dict[algo]
+            res_dict[algo] = []
+
+            dataset_idxs = []
+            sims = []
+            for key, value in _sim_dict.items():
+                if value < sim_thr and len(dataset_idxs) > da_thr:
+                    break
+
+                dataset_idx = self._builtin_datasets.index('init_' + key)
+                if len(def_dict[dataset_idx]) == 0:
+                    continue
+
+                dataset_idxs.append(dataset_idx)
+                sims.append(value)
+
+            def_pres = [def_dict[idx] for idx in dataset_idxs]
+            best_pres = [best_dict[idx] for idx in dataset_idxs if best_dict[idx] != 'empty']
+
+            # sims = np.exp(sims) / np.sum(np.exp(sims))
+
+            scores = {}
+            for i, defs in enumerate(def_pres):
+                for _def in defs:
+                    if _def not in scores:
+                        scores[_def] = 0
+                    scores[_def] += sims[i]
+
+            # 先放一个最好的进去
+            # for best_pre in best_pres:
+            #     if best_pre != 'empty':
+            #         res_dict[algo].append(best_pre)
+            #         n_preprocessor -= 1
+            #         break
+
+            # if len(best_pres)>0:
+            #     counts = Counter(best_pres).most_common()
+            #     for tmp in counts[:1]:
+            #         res_dict[algo].append(tmp[0])
+            #         n_preprocessor -= 1
+
+            if len(scores) > 0:
+                scores_list = sorted(list(scores.items()), key=lambda x: -x[1])
+                for tmp in scores_list:
+                    res_dict[algo].append(tmp[0])
+
+            for tmp in self.metadata_manager._sup_preprocessor[algo]:
+                if tmp not in res_dict[algo]:
+                    res_dict[algo].append(tmp)
+
+        return res_dict
 
     def fetch_run_results(self, dataset):
-        scores = self.metadata_manager.fetch_meta_runs(dataset)
-        idxs = np.argsort(-scores)
-        sorted_algos = [self.algorithms[idx] for idx in idxs]
-        sorted_scores = [scores[idx] for idx in idxs]
-        return OrderedDict(zip(sorted_algos, sorted_scores))
+        sims_dict = self.metadata_manager.fetch_meta_runs(dataset)
+        res_dict = {}
+        for i, algo in enumerate(self.algorithms):
+            idxs = np.argsort(-sims_dict[i])
+            sorted_datasets = [self._builtin_datasets[idx][5:] for idx in idxs]
+            sorted_scores = [sims_dict[i][idx] for idx in idxs]
+            res_dict[algo] = OrderedDict(zip(sorted_datasets, sorted_scores))
+        return res_dict
 
     def fit(self):
         raise NotImplementedError()

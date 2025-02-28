@@ -27,6 +27,8 @@ parser.add_argument('--amount_of_resource', type=int, default=100)
 args = parser.parse_args()
 
 base_dir = './data_rgs'
+if args.task == 'cls':
+    base_dir = './data_cls'
 
 datasets = args.datasets.split(',')
 start_id, rep = args.start_id, args.rep
@@ -105,7 +107,7 @@ def load_train_test_data(dataset, data_dir='./', test_size=0.2, task_type=None, 
 
 
 def evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=600, amount_of_resource=100, seed=1, task_type=None):
-    
+
     save_path = save_dir + '%s-%s-%s-%d-%d.pkl' % (dataset, algo, obj_metric, run_id, time_limit)
     if os.path.exists(save_path):
         with open(save_path, 'rb') as f:
@@ -113,7 +115,7 @@ def evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=600, amo
         eval_num = res[2]
         if eval_num >= 90:
             return
-            
+
     _algo = [algo]
     print('EVALUATE-%s-%s-%s: run_id=%d' % (dataset, algo, obj_metric, run_id))
     train_data, test_data, dm = load_train_test_data(dataset, data_dir=data_dir, task_type=task_type)

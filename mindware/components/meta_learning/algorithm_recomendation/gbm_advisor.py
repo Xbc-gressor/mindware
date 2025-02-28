@@ -7,12 +7,12 @@ from mindware.components.meta_learning.algorithm_recomendation.base_advisor impo
 
 
 class GBMAdvisor(BaseAdvisor):
-    def __init__(self, n_algorithm=3,
+    def __init__(self, 
                  task_type=None,
                  metric='acc',
                  exclude_datasets=None):
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
-        super().__init__(n_algorithm, task_type, metric=metric,
+        super().__init__(task_type, metric=metric,
                          meta_algorithm='lightgbm', exclude_datasets=exclude_datasets)
         self.model = None
 

@@ -35,8 +35,11 @@ class BaseOptimizer(object):
             for cs in self.config_space:
                 if isinstance(cs, ConfigurationSpace):
                     tmp.update(cs.get_default_configuration().get_dictionary().copy())
+                elif isinstance(cs, dict):
+                    tmp.update(cs[list(cs.keys())[0]].get_default_configuration().get_dictionary().copy())
+            self.incumbent_config = tmp
         self.eval_dict = dict()
-        
+
         assert name in ['hpo', 'hpofe', 'fe', 'cash', 'cashfe']
         self.name = name
         self.seed = np.random.random_integers(MAX_INT) if seed is None else seed

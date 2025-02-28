@@ -13,14 +13,14 @@ class ConditionalOptimizer(BaseOptimizer):
                  time_limit=None, evaluation_limit=None,
                  per_run_time_limit=300, per_run_mem_limit=1024,
                  inner_iter_num_per_iter=10, timestamp=None,
-                 sub_optimizer='smac', fe_config_space=None,
+                 sub_optimizer='smac', fe_config_space_dict=None,
                  output_dir='./', seed=1, n_jobs=1, topk=50):
 
-        super(ConditionalOptimizer, self).__init__(evaluator=evaluator, config_space=(cash_config_space, fe_config_space), name=name, eval_type=eval_type, 
+        super(ConditionalOptimizer, self).__init__(evaluator=evaluator, config_space=(cash_config_space, fe_config_space_dict), name=name, eval_type=eval_type, 
                                                    time_limit=time_limit, evaluation_limit=evaluation_limit, 
                                                    per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
                                                    inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp, 
-                                                   output_dir=output_dir, seed=seed, topk=tok)
+                                                   output_dir=output_dir, seed=seed, topk=topk)
 
         self.node_index = node_index
 
@@ -70,7 +70,7 @@ class ConditionalOptimizer(BaseOptimizer):
                 time_limit=time_limit, evaluation_limit=None,
                 per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
                 inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp, 
-                sub_optimizer=sub_optimizer, fe_config_space=deepcopy(fe_config_space),
+                sub_optimizer=sub_optimizer, fe_config_space_dict={arm: fe_config_space_dict[arm]},
                 output_dir=self.output_dir,seed=self.seed, n_jobs=n_jobs, topk=topk
             )
 

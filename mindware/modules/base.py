@@ -102,6 +102,40 @@ class BaseAutoML(object):
         self.logger = None
         self.task_id = task_id
 
+    @staticmethod
+    def _recommand_models(task_type, task_id, data_node, metric, n_algo, include_algorithms=None):
+
+        from mindware.components.meta_learning.algorithm_recomendation.ranknet_advisor_torch_weight import RankNetAdvisor as RankNetAdvisor_W
+        alad = RankNetAdvisor_W(task_type=task_type, metric=metric)  # exclude_datasets=[task_id]
+        alad.fit()
+
+        model_candidates = alad.fetch_algorithm_set(task_id, datanode=data_node)
+        include_models = list()
+        for algo in model_candidates:
+            if (include_algorithms is None or algo in include_algorithms) and len(include_models) < n_algo:
+                include_models.append(algo)
+
+        return include_models
+
+    @staticmethod
+    def _recommand_preps(task_type, task_id, data_node, metric, n_prep, include_algorithms, include_preprocessors=None):
+
+        from mindware.components.meta_learning.fe_recomendation.gbm_advisor import GBMAdvisor
+        alad_g = GBMAdvisor(task_type=task_type, metric=metric, include_algorithms=include_algorithms)  # exclude_datasets=[task_id], 
+        alad_g.fit(save_flag=True)
+
+        preprocessors = alad_g.fetch_preprocessor_set(task_id, datanode=data_node)
+        include_preps = dict()
+        for algo in preprocessors:
+            tmp_prep = list()
+            for prep in preprocessors[algo]:
+                if (include_preprocessors is None or prep in include_preprocessors) and len(tmp_prep) < n_prep:
+                    tmp_prep.append(prep)
+            tmp_prep = ['empty'] + sorted(tmp_prep)
+            include_preps[algo] = tmp_prep
+
+        return include_preps
+
     def _get_logger(self, name):
         raise NotImplementedError()
 
@@ -111,7 +145,7 @@ class BaseAutoML(object):
             tree_id = int(self.optimizer_name.split('_')[1])
             from mindware.components.optimizers.block_optimizers.block_opt_utils import get_opt_execution_tree, get_opt_node_type
             tree = get_opt_execution_tree(tree_id)
-            
+
             if self.evaluation == 'partial':
                 sub_optimizer = 'mfse'
             elif self.evaluation == 'partial_bohb':
@@ -119,7 +153,7 @@ class BaseAutoML(object):
             else:
                 sub_optimizer = kwargs.get('sub_optimizer', 'smac')
 
-            fe_config_space = kwargs.get('fe_config_space', None)
+            fe_config_space_dict = kwargs.get('fe_config_space_dict', None)
 
             optimizer = get_opt_node_type(tree, 0)(
                 node_list=tree, node_index=0,
@@ -127,7 +161,7 @@ class BaseAutoML(object):
                 time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
                 per_run_time_limit=self.per_run_time_limit,
                 inner_iter_num_per_iter=self.inner_iter_num_per_iter,timestamp=self.timestamp,
-                sub_optimizer=sub_optimizer, fe_config_space=fe_config_space,
+                sub_optimizer=sub_optimizer, fe_config_space_dict=fe_config_space_dict,
                 output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs, topk=self.topk
             )
 

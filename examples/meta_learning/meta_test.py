@@ -164,8 +164,8 @@ Fix   top6 count:4.00 | rank:31.73 | top1 recall:0.64
 
 新数据上全数据集cv测试
 MetaW top6 count:4.00 | rank:30.95 | top1 recall:0.78
-Meta  top6 count:3.91 | rank:32.06 | top1 recall:0.69
 MetaG top6 count:4.06 | rank:31.01 | top1 recall:0.69
+Meta  top6 count:3.91 | rank:32.06 | top1 recall:0.69
 MetaF top6 count:3.82 | rank:32.66 | top1 recall:0.64
 Fix   top6 count:3.96 | rank:32.34 | top1 recall:0.63
 

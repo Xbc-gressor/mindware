@@ -14,11 +14,11 @@ class AlternativeOptimizer(BaseOptimizer):
                  time_limit=None, evaluation_limit=None,
                  per_run_time_limit=300, per_run_mem_limit=1024,
                  inner_iter_num_per_iter=10, timestamp=None,
-                 sub_optimizer='smac', fe_config_space=None,
+                 sub_optimizer='smac', fe_config_space_dict=None,
                  output_dir='./', seed=1, n_jobs=1, topk=50):
 
         super(AlternativeOptimizer, self).__init__(evaluator=evaluator,
-                                                   config_space=(cash_config_space, fe_config_space), name=name,
+                                                   config_space=(cash_config_space, fe_config_space_dict), name=name,
                                                    eval_type=eval_type,
                                                    time_limit=time_limit, evaluation_limit=evaluation_limit,
                                                    per_run_time_limit=per_run_time_limit,
@@ -27,7 +27,7 @@ class AlternativeOptimizer(BaseOptimizer):
                                                    output_dir=output_dir, seed=seed, topk=topk)
 
         assert cash_config_space is not None
-        assert fe_config_space is not None
+        assert fe_config_space_dict is not None
 
         self.mode = 0
 
@@ -44,12 +44,13 @@ class AlternativeOptimizer(BaseOptimizer):
         self.evaluation_cost = dict()
         self.update_flag = dict()
 
+        tmp = list(fe_config_space_dict.keys())[0]
         # Global incumbent.
-        self.init_config = {'fe': fe_config_space.get_default_configuration().get_dictionary().copy(),
+        self.init_config = {'fe': fe_config_space_dict[tmp].get_default_configuration().get_dictionary().copy(),
                             'hpo': cash_config_space.get_default_configuration().get_dictionary().copy()}
-        self.inc = {'fe': fe_config_space.get_default_configuration().get_dictionary().copy(),
+        self.inc = {'fe': fe_config_space_dict[tmp].get_default_configuration().get_dictionary().copy(),
                     'hpo': cash_config_space.get_default_configuration().get_dictionary().copy()}
-        self.local_inc = {'fe': fe_config_space.get_default_configuration().get_dictionary().copy(),
+        self.local_inc = {'fe': fe_config_space_dict[tmp].get_default_configuration().get_dictionary().copy(),
                           'hpo': cash_config_space.get_default_configuration().get_dictionary().copy()}
         self.local_hist = {'fe': [], 'hpo': []}
         self.inc_record = {'fe': list(), 'hpo': list()}
@@ -79,7 +80,7 @@ class AlternativeOptimizer(BaseOptimizer):
                     time_limit=time_limit, evaluation_limit=None,
                     per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit,
                     inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp,
-                    sub_optimizer=sub_optimizer, fe_config_space=None,
+                    sub_optimizer=sub_optimizer, fe_config_space_dict=None,
                     output_dir=self.output_dir, seed=self.seed, n_jobs=n_jobs, topk=topk
                 )
             elif arm == 'fe':
@@ -94,7 +95,7 @@ class AlternativeOptimizer(BaseOptimizer):
                     time_limit=time_limit, evaluation_limit=None,
                     per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit,
                     inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp,
-                    sub_optimizer=sub_optimizer, fe_config_space=fe_config_space,
+                    sub_optimizer=sub_optimizer, fe_config_space_dict=fe_config_space_dict,
                     output_dir=self.output_dir, seed=self.seed, n_jobs=n_jobs,
                 )
             else:
@@ -256,7 +257,7 @@ class AlternativeOptimizer(BaseOptimizer):
                 time_limit=self.time_limit, evaluation_limit=None,
                 per_run_time_limit=self.per_run_time_limit, per_run_mem_limit=self.per_run_mem_limit,
                 inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp,
-                sub_optimizer=self.sub_optimizer, fe_config_space=None,
+                sub_optimizer=self.sub_optimizer, fe_config_space_dict=None,
                 output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs)
         elif arm_id == 'fe':
             evaluator = copy(self.evaluator)
@@ -270,7 +271,7 @@ class AlternativeOptimizer(BaseOptimizer):
                 time_limit=self.time_limit, evaluation_limit=None,
                 per_run_time_limit=self.per_run_time_limit, per_run_mem_limit=self.per_run_mem_limit,
                 inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp,
-                sub_optimizer=self.sub_optimizer, fe_config_space=self.config_space[1],
+                sub_optimizer=self.sub_optimizer, fe_config_space_dict=self.config_space[1],
                 output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs)
 
         else:
