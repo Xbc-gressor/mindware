@@ -7,6 +7,7 @@ import argparse
 from mindware.utils.data_manager import DataManager
 from mindware.components.utils.constants import *
 from mindware import CASH, CASHFE, FE, HPO
+import multiprocessing as mp
 
 NUM_THREADS = "1"
 os.environ["OMP_NUM_THREADS"] = NUM_THREADS         # export OMP_NUM_THREADS=1
@@ -52,7 +53,8 @@ include_algorithms = [
     'random_forest', 'lightgbm', 'xgboost'
 ]
 
-if '__main__' == __name__:
+if __name__ == '__main__':
+    mp.set_start_method('spawn', force=True)
 
     # 从命令行参数中解析出参数
     parser = argparse.ArgumentParser()
@@ -127,7 +129,7 @@ if '__main__' == __name__:
                 metric=metric,
                 data_node=train_data_node, evaluation=args.evaluation, resampling_params={'folds': 3},
                 optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
-                time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
+                time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
                 output_dir=args.output_dir, seed=1, n_jobs=1,
                 ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset,
                 filter_params=filter_params
@@ -155,5 +157,5 @@ if '__main__' == __name__:
         ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
 
         with open(args.output_file, 'a+') as f:
-            f.write(f'CLS: {args.Opt}-{args.optimizer}, filter_m{args.n_algorithm}-p{args.n_preprocessor}, {dataset}: {perf}, {ens_perf}\n')
+            f.write(f'CLS: {args.Opt}-{args.optimizer}-filter_m{args.n_algorithm}_p{args.n_preprocessor}, {dataset}: {perf}, {ens_perf}\n')
 

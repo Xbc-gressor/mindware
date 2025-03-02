@@ -39,11 +39,12 @@ class XGBoostClassifier(BaseClassificationModel):
                 self.random_state = None
                 self.estimator = None
         '''
+        
     def fit(self, X, Y, sample_weight=None):
         import xgboost as xgb
         from sklearn.utils.multiclass import unique_labels
         self.classes_ = unique_labels(Y)
-
+        
         estimator = xgb.XGBClassifier(
             n_estimators=self.n_estimators,
             learning_rate=self.learning_rate,
@@ -55,9 +56,8 @@ class XGBoostClassifier(BaseClassificationModel):
             reg_alpha=self.reg_alpha,
             reg_lambda=self.reg_lambda,
             random_state=self.random_state,
-            n_jobs=self.n_jobs,
+            n_jobs=self.n_jobs
         )
-
         estimator.fit(X, Y, sample_weight=sample_weight)
         self.estimator = estimator
         return self
