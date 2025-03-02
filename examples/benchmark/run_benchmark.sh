@@ -100,11 +100,11 @@ done
 
 
 # 最大并发数
-MAX_JOBS=2
+MAX_JOBS=4
 # 当前运行的作业数
 CURRENT_JOBS=0
 # 每个任务使用的核心数量
-CORES_PER_TASK=48
+CORES_PER_TASK=24
 # 总核心数量
 TOTAL_CORES=96
 

@@ -1,7 +1,8 @@
 import time
 import numpy as np
+from copy import deepcopy
 from copy import copy
-from ConfigSpace import Configuration
+from ConfigSpace import Configuration, ConfigurationSpace
 
 from mindware.components.optimizers.base_optimizer import BaseOptimizer
 from openbox.utils.constants import SUCCESS, TIMEOUT, FAILED
@@ -44,13 +45,30 @@ class AlternativeOptimizer(BaseOptimizer):
         self.evaluation_cost = dict()
         self.update_flag = dict()
 
-        tmp = list(fe_config_space_dict.keys())[0]
+        self.fe_config_space = ConfigurationSpace()
+        for _fe_config_space in fe_config_space_dict.values():
+            for hp in _fe_config_space.get_hyperparameters():
+                try:
+                    self.fe_config_space.add_hyperparameter(deepcopy(hp))
+                except:
+                    pass
+            for cd in _fe_config_space.get_conditions():
+                try:
+                    self.fe_config_space.add_condition(deepcopy(cd))
+                except:
+                    pass
+            for fb in _fe_config_space.get_forbiddens():
+                try:
+                    self.fe_config_space.add_forbidden_clause(deepcopy(fb))
+                except:
+                    pass
+                
         # Global incumbent.
-        self.init_config = {'fe': fe_config_space_dict[tmp].get_default_configuration().get_dictionary().copy(),
+        self.init_config = {'fe': self.fe_config_space.get_default_configuration().get_dictionary().copy(),
                             'hpo': cash_config_space.get_default_configuration().get_dictionary().copy()}
-        self.inc = {'fe': fe_config_space_dict[tmp].get_default_configuration().get_dictionary().copy(),
+        self.inc = {'fe': self.fe_config_space.get_default_configuration().get_dictionary().copy(),
                     'hpo': cash_config_space.get_default_configuration().get_dictionary().copy()}
-        self.local_inc = {'fe': fe_config_space_dict[tmp].get_default_configuration().get_dictionary().copy(),
+        self.local_inc = {'fe': self.fe_config_space.get_default_configuration().get_dictionary().copy(),
                           'hpo': cash_config_space.get_default_configuration().get_dictionary().copy()}
         self.local_hist = {'fe': [], 'hpo': []}
         self.inc_record = {'fe': list(), 'hpo': list()}
@@ -288,7 +306,7 @@ class AlternativeOptimizer(BaseOptimizer):
         evaluator.fixed_config = self.local_inc['fe'].copy()
         _perf = - evaluator(self.local_inc['hpo'].copy())['objectives'][0]
 
-        loc_inc_fe = Configuration(self.config_space[1], self.local_inc['fe'].copy())
+        loc_inc_fe = Configuration(self.fe_config_space, self.local_inc['fe'].copy())
         loc_inc_hpo = Configuration(self.config_space[0], self.local_inc['hpo'].copy())
 
         if _perf is not None and np.isfinite(_perf):

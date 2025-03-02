@@ -53,12 +53,21 @@ class JointOptimizer(BaseOptimizer):
                 deepcopy(cash_config_space.get_forbiddens()))
         if fe_config_space_dict is not None:
             for _fe_config_space in fe_config_space_dict.values():
-                cs.add_hyperparameters(
-                    deepcopy(_fe_config_space.get_hyperparameters()))
-                cs.add_conditions(
-                    deepcopy(_fe_config_space.get_conditions()))
-                cs.add_forbidden_clauses(
-                    deepcopy(_fe_config_space.get_forbiddens()))
+                for hp in _fe_config_space.get_hyperparameters():
+                    try:
+                        cs.add_hyperparameter(deepcopy(hp))
+                    except:
+                        pass
+                for cd in _fe_config_space.get_conditions():
+                    try:
+                        cs.add_condition(deepcopy(cd))
+                    except:
+                        pass
+                for fb in _fe_config_space.get_forbiddens():
+                    try:
+                        cs.add_forbidden_clause(deepcopy(fb))
+                    except:
+                        pass
 
         self.sub_bandit = optimizer_class(
             evaluator=self.evaluator, config_space=cs, name='hpofe',

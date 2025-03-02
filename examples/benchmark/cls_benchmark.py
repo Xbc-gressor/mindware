@@ -127,7 +127,7 @@ if '__main__' == __name__:
                 metric=metric,
                 data_node=train_data_node, evaluation=args.evaluation, resampling_params={'folds': 3},
                 optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
-                time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
+                time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
                 output_dir=args.output_dir, seed=1, n_jobs=1,
                 ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset,
                 filter_params=filter_params
