@@ -248,7 +248,7 @@ class BaseEvaluator(_BaseEvaluator):
                 CombinedTopKModelSaver.save_config([op_list, estimator, score], model_path)
 
                 self.logger.info("Model saved to %s" % model_path)
-
+                
         try:
             self.logger.info('Evaluation<%s> | Score: %.4f | Time cost: %.2f seconds | Shape: %s' %
                              (estimator_id,
