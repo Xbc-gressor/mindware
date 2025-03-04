@@ -30,21 +30,21 @@ candidate_datasets = [
     "a9a", "mnist_784", "higgs", "covertype"
 ]
 can_datasets_info = datasets_info[datasets_info['Datasets'].isin(candidate_datasets)].set_index('Datasets')
-chosen_datasets = ['kc1', 'spambase', 'cpu_act', 'ailerons', 'higgs', 'sick', 'mv', 'covertype']
+chosen_datasets = ['kc1', 'sick', 'cpu_act', 'ailerons', 'mv', 'covertype']  # 'spambase' 'higgs'
 chosen_datasets_info = can_datasets_info.loc[chosen_datasets]
 chosen_datasets_info['label_col'] = -1
-chosen_datasets_info.loc['higgs', 'label_col'] = 0
+# chosen_datasets_info.loc['higgs', 'label_col'] = 0
 
 """
            Instances  Classes  Continuous  Nominal  label_col
 Datasets                                                     
 kc1             2109        2          21        0         -1
+sick            3772        2           7       22         -1
 spambase        4600        2          57        0         -1
 cpu_act         8192        2          21        0         -1
 ailerons       13750        2          40        0         -1
-higgs          98050        2          28        0          0
-sick            3772        2           7       22         -1
 mv             40768        2           7        3         -1
+higgs          98050        2          28        0          0
 covertype     110393        7          14       40         -1
 """
 

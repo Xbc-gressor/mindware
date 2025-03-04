@@ -66,9 +66,9 @@ class Stacking(BaseEnsembleModel):
                 from lightgbm import LGBMRegressor
                 self.meta_learner = LGBMRegressor(max_depth=4, learning_rate=0.05, n_estimators=70, n_jobs=1)
 
-    def get_path(self, algo_id, model_cnt, j):
+    def get_path(self, algo_id, model_cnt, j, compress=True):
 
-        if algo_id in ['extra_trees']:
+        if compress or algo_id in ['extra_trees']:
             _path = os.path.join(self.output_dir, '%s-stacking-model%d_part%d.joblib' % (self.timestamp, model_cnt, j))
         else:
             _path = os.path.join(self.output_dir, '%s-stacking-model%d_part%d.pkl' % (self.timestamp, model_cnt, j))

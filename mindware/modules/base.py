@@ -487,5 +487,8 @@ class BaseAutoML(object):
             for key in conf['cs_args']:
                 if isinstance(conf['cs_args'][key], np.bool_):
                     conf['cs_args'][key] = bool(conf['cs_args'][key])
-
+                    
+        if hasattr(self, 'filter_params'):
+            conf['filter_params'] = self.filter_params
+            
         return conf

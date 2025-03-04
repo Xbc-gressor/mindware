@@ -46,8 +46,8 @@ class CombinedTopKModelSaver(BaseTopKModelSaver):
         return sha.hexdigest()
 
     @staticmethod
-    def get_path_by_config(output_dir, config, identifier):
-        if config['algorithm'] in ['extra_trees']:
+    def get_path_by_config(output_dir, config, identifier, compress=True):
+        if compress or config['algorithm'] in ['extra_trees']:
             return os.path.join(output_dir, '%s_%s.joblib' % (identifier, CombinedTopKModelSaver.get_configuration_id(config)))
         else:
             return os.path.join(output_dir, '%s_%s.pkl' % (identifier, CombinedTopKModelSaver.get_configuration_id(config)))

@@ -28,18 +28,18 @@ candidate_datasets = [
 
 can_datasets_info = datasets_info[datasets_info['Datasets'].isin(candidate_datasets)].set_index('Datasets')
 
-chosen_datasets = ['debutanizer', 'puma8NH', 'cpu_act', 'bank32nh', 'Moneyball', 'black_friday']
+chosen_datasets = ['Moneyball', 'debutanizer', 'puma8NH', 'cpu_act', 'bank32nh', 'black_friday']
 chosen_datasets_info = can_datasets_info.loc[chosen_datasets]
 chosen_datasets_info['label_col'] = -1
 
 """
               Instances  Continuous  Nominal  label_col
 Datasets                                               
+Moneyball          1232           8        6         -1
 debutanizer        2394           7        0         -1
 puma8NH            8192           8        0         -1
 cpu_act            8192          21        0         -1
 bank32nh           8192          32        0         -1
-Moneyball          1232           8        6         -1
 black_friday     166821           5        4         -1
 
 
