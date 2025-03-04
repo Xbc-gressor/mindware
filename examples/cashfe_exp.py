@@ -7,7 +7,7 @@ from sklearn.datasets import load_iris
 from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import train_test_split
 
-sys.path.append(os.getcwd())
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mindware.utils.data_manager import DataManager
 from mindware.modules.cashfe.base_cashfe import BaseCASHFE
 
@@ -28,22 +28,20 @@ if __name__ == '__main__':
 
     include_algorithms = [
         'adaboost', 'extra_trees', 'gradient_boosting',
-        'k_nearest_neighbors', 'liblinear_svc', 'libsvm_svc',
-        'logistic_regression', 'qda', 'random_forest',
-        'lightgbm'
+        'xgboost', 'random_forest', 'lightgbm'
     ]
     # 'lda',
     hpo = BaseCASHFE(
         include_algorithms=include_algorithms, sub_optimizer='smac',
         metric=metric,
         data_node=train_data, evaluation='holdout', resampling_params=None,
-        optimizer='mab', per_run_time_limit=600,
-        time_limit=1024, amount_of_resource=30,
+        optimizer='block_1', per_run_time_limit=600,
+        time_limit=1024, amount_of_resource=60,
+        inner_iter_num_per_iter = 10,
         output_dir='./data', seed=1, n_jobs=1,
         ensemble_method="blending", ensemble_size=5
     )
     print(hpo.run())
-    breakpoint()
     y_true = test_data.data[1]
     pred_ens = hpo.predict(test_data, ens=True)
     pred = hpo.predict(test_data, ens=False)
