@@ -73,6 +73,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_algorithm', type=int, default=-1)
     parser.add_argument('--n_preprocessor', type=int, default=-1)
 
+    parser.add_argument('--refit', action='store_true', default=False)
 
     parser.add_argument('--job_idx', type=int, nargs='*', help='job index')
     parser.add_argument('--output_dir', type=str, default='./data')
@@ -122,6 +123,10 @@ if __name__ == '__main__':
             filter_params['n_algorithm'] = args.n_algorithm
         if args.n_preprocessor != -1:
             filter_params['n_preprocessor'] = args.n_preprocessor
+            
+        per_run_time_limit = 300
+        if args.ensemble_method == 'cv':
+            per_run_time_limit *= 2
         import numpy as np
         if args.Opt in ['cash', 'cashfe']:
             opt = OPT(
@@ -129,7 +134,7 @@ if __name__ == '__main__':
                 metric=metric,
                 data_node=train_data_node, evaluation=args.evaluation, resampling_params={'folds': 3},
                 optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
-                time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
+                time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=per_run_time_limit,
                 output_dir=args.output_dir, seed=1, n_jobs=1,
                 ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset,
                 filter_params=filter_params
@@ -147,7 +152,7 @@ if __name__ == '__main__':
             )
 
         print(opt.get_conf(save=True))  # 保存设置
-        print(opt.run())
+        print(opt.run(refit=args.refit))
         print(opt.get_model_info(save=True))  # 保存最优模型信息
         scorer = opt.metric
         pred = opt.predict(test_data_node, ens=False)
