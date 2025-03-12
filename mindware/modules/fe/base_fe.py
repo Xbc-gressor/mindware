@@ -19,18 +19,21 @@ from ConfigSpace import Configuration, Constant
 
 
 class BaseFE(BaseAutoML):
+    
+    name='fe'
+    
     def __init__(self, estimator_id: str, task_type: int = None,
                  metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac',
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
-                 output_dir=None, seed=1, n_jobs=1, topk=50, rmfiles=False,
+                 output_dir='./data', seed=1, n_jobs=1, topk=50, rmfiles=False,
                  ensemble_method=None, ensemble_size=None,
                  include_preprocessors=None, model_config=None, task_id='test',
                  filter_params=None):
 
         super(BaseFE, self).__init__(
-            name='fe', task_type=task_type,
+            task_type=task_type,
             metric=metric, data_node=data_node,
             evaluation=evaluation, resampling_params=resampling_params,
             optimizer=optimizer, inner_iter_num_per_iter=1,

@@ -7,7 +7,7 @@ from ConfigSpace.hyperparameters import UniformFloatHyperparameter, UniformInteg
 
 class LightGBM(BaseClassificationModel):
     def __init__(self, n_estimators, learning_rate, num_leaves, max_depth, min_child_samples,
-                 subsample, colsample_bytree, augment_data=0, random_state=None, verbose=0):
+                 subsample, colsample_bytree, augment_data=0, random_state=None, verbose=-1):
         BaseClassificationModel.__init__(self)
         self.n_estimators = int(n_estimators)
         self.learning_rate = learning_rate

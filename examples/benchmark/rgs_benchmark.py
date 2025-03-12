@@ -8,6 +8,7 @@ from mindware.utils.data_manager import DataManager
 from mindware.components.utils.constants import *
 from mindware import CASH, CASHFE, FE, HPO
 import multiprocessing as mp
+from mindware.components.metrics.metric import get_metric
 
 NUM_THREADS = "1"
 os.environ["OMP_NUM_THREADS"] = NUM_THREADS         # export OMP_NUM_THREADS=1
@@ -69,13 +70,13 @@ if __name__ == '__main__':
 
     parser.add_argument('--n_algorithm', type=int, default=-1)
     parser.add_argument('--n_preprocessor', type=int, default=-1)
-    
-    parser.add_argument('--refit', action='store_true', default=False)
 
+    parser.add_argument('--refit', action='store_true', default=False)
+    parser.add_argument('--stats_path', type=str, default=None)
+    
     parser.add_argument('--job_idx', type=int, nargs='*', help='job index')
     parser.add_argument('--output_dir', type=str, default='./data')
     parser.add_argument('--output_file', type=str, default='results.txt')
-    parser.add_argument('--mp', type=bool, default=False)
     args = parser.parse_args()
 
     task_type = REGRESSION
@@ -93,6 +94,7 @@ if __name__ == '__main__':
         OPT = HPO
     else:
         raise ValueError("Not supprt Opt type:", args.Opt)
+
 
     if args.job_idx is not None and len(args.job_idx) > 0:
         chosen_datasets = [chosen_datasets[idx] for idx in args.job_idx]
@@ -121,43 +123,57 @@ if __name__ == '__main__':
             filter_params['n_algorithm'] = args.n_algorithm
         if args.n_preprocessor != -1:
             filter_params['n_preprocessor'] = args.n_preprocessor
+
         per_run_time_limit = 300
         if args.ensemble_method == 'cv':
             per_run_time_limit *= 2
-        import numpy as np
-        if args.Opt in ['cash', 'cashfe']:
-            opt = OPT(
-                include_algorithms=inc_alg, sub_optimizer='smac', task_type=task_type,
-                metric=metric,
-                data_node=train_data_node, evaluation=args.evaluation, resampling_params={'folds': 3},
-                optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
-                time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=per_run_time_limit,
-                output_dir=args.output_dir, seed=1, n_jobs=1,
-                ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset,
-                filter_params=filter_params
-            )
-        elif args.Opt in ['fe', 'hpo']:
-            opt = OPT(
-                estimator_id=estimator_id, task_type=task_type,
-                metric=metric,
-                data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
-                optimizer=args.optimizer, 
-                time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
-                output_dir=args.output_dir, seed=1, n_jobs=1,
-                ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset,
-                # include_preprocessors = ['fast_ica_decomposer']
-            )
 
-        print(opt.get_conf(save=True))
+        scorer = get_metric(metric)
+        if args.stats_path is None:
+            if args.Opt in ['cash', 'cashfe']:
+                opt = OPT(
+                    include_algorithms=inc_alg, sub_optimizer='smac', task_type=task_type,
+                    metric=metric,
+                    data_node=train_data_node, evaluation=args.evaluation, resampling_params={'folds': 3},
+                    optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
+                    time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=per_run_time_limit,
+                    output_dir=args.output_dir, seed=1, n_jobs=1,
+                    ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset,
+                    filter_params=filter_params
+                )
+            elif args.Opt in ['fe', 'hpo']:
+                opt = OPT(
+                    estimator_id=estimator_id, task_type=task_type,
+                    metric=metric,
+                    data_node=train_data_node, evaluation=args.evaluation, resampling_params=None,
+                    optimizer=args.optimizer, 
+                    time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
+                    output_dir=args.output_dir, seed=1, n_jobs=1,
+                    ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset,
+                    # include_preprocessors = ['fast_ica_decomposer']
+                )
 
-        print(opt.run(refit=args.refit))
-        print(opt.get_model_info(save=True))
-        scorer = opt.metric
-        pred = dm.decode_label(opt.predict(test_data_node, ens=False))
-        perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
+            print(opt.get_conf(save=True))
+            print(opt.run(refit=args.refit))
+            print(opt.get_model_info(save=True))  # 保存最优模型信息
+            pred = opt.predict(test_data_node, refit=args.refit, ens=False)
+            perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
 
-        ens_pred = dm.decode_label(opt.predict(test_data_node, ens=True))
-        ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
+            ens_pred = opt.predict(test_data_node, refit=args.refit, ens=True)
+            ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
+        else:
+            import pickle as pkl
+            with open(args.stats_path, 'rb') as f:
+                stats = pkl.load(f)
+            pred = OPT._predict_stats(task_type, metric, data_node=train_data_node, test_data=test_data_node, stats=stats, 
+                                      refit=args.refit, output_dir=args.output_dir, task_id=dataset)
+            perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
+
+            ens_pred = OPT._predict_stats(task_type, metric, data_node=train_data_node, test_data=test_data_node, stats=stats, 
+                                          ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, 
+                                          refit=args.refit, output_dir=args.output_dir, task_id=dataset)
+            ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
 
         with open(args.output_file, 'a+') as f:
-            f.write(f'{str(args.mp)} RGS: {args.Opt}-{args.optimizer}-filter_m{args.n_algorithm}_p{args.n_preprocessor}, {dataset}: {perf}, {ens_perf}\n')
+            f.write(f'RGS: {args.Opt}-{args.optimizer}-filter_m{args.n_algorithm}_p{args.n_preprocessor}, {dataset}: {perf}, {ens_perf}\n')
+

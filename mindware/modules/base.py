@@ -33,17 +33,20 @@ from mindware.components.ensemble import ensemble_list
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.components.feature_engineering.parse import parse_config
+from mindware.utils.logging_utils import setup_logger, get_logger
 
 class BaseAutoML(object):
-    def __init__(self, name: str, task_type: int = None,
+
+    name = 'abstract'
+
+    def __init__(self, task_type: int = None,
                  metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
-                 output_dir=None, seed=None, n_jobs=1, topk=50, rmfiles=False,
+                 output_dir='./data', seed=1, n_jobs=1, topk=50, rmfiles=False,
                  ensemble_method=None, ensemble_size=5, task_id='test'):
 
-        self.name = name
         self.metric_name = 'unknown'
         if isinstance(metric, str):
             self.metric_name = metric
@@ -248,14 +251,15 @@ class BaseAutoML(object):
 
         return self.incumbent_perf
 
-    def _refit_config(self, config, data_node):
+    @classmethod
+    def _refit_config(cls, config, data_node, task_type, if_imbal=False):
         algo_id = config['algorithm']
-        if self.name in ['fe', 'cashfe']:
-            data_node, op_list = parse_config(data_node, config, record=True, if_imbal=self.if_imbal)
+        if cls.name in ['fe', 'cashfe']:
+            data_node, op_list = parse_config(data_node, config, record=True, if_imbal=if_imbal)
         else:
             op_list = {}
 
-        estimator = fetch_predict_estimator(self.task_type, algo_id, config,
+        estimator = fetch_predict_estimator(task_type, algo_id, config,
                                             data_node.data[0], data_node.data[1],
                                             weight_balance=data_node.enable_balance,
                                             data_balance=data_node.data_balance)
@@ -278,7 +282,7 @@ class BaseAutoML(object):
         algo_id = config['algorithm']
         if algo_id != 'neural_network':
 
-            op_list, estimator = self._refit_config(self.incumbent, self.data_node)
+            op_list, estimator = self._refit_config(self.incumbent, self.data_node, task_type=self.task_type, if_imbal=self.if_imbal)
             CombinedTopKModelSaver._save([op_list, estimator, self.incumbent_perf], model_path)
 
     # train with whole data
@@ -366,10 +370,31 @@ class BaseAutoML(object):
         else:
             return pred
 
-    def _predict_stats(self, test_data: DataNode, stats, refit=True, ens=False, prob=False):
-        stats = stats.copy()
-
+    @classmethod
+    def _predict_stats(cls, task_type, metric: Union[str, Callable, _BaseScorer] = None, data_node: DataNode = None, test_data: DataNode = None, stats=None, 
+                       resampling_params=None,
+                       ensemble_method=None, ensemble_size=None, refit=True,  prob=False, output_dir='./data', seed=1, task_id='test'):
+        path = 'STA-(%d)-%s_%s' % (
+            seed, task_id, datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
+        )
+        output_dir = os.path.join(output_dir, path)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            
         print("Predicting with stats")
+        logger_name = 'MindWare-STA-(%d)' % (seed)
+        setup_logger(os.path.join(output_dir, '%s.log' % str(logger_name)))
+        logger = get_logger(logger_name)
+        
+        if_imbal = False
+        if task_type in CLS_TASKS:
+            if_imbal = is_imbalanced_dataset(data_node)
+    
+        stats = stats.copy()
+        metric_name = 'unknown'
+        if isinstance(metric, str):
+            metric_name = metric
+        metric = get_metric(metric)
         
         best_path = None
         best_config = None
@@ -381,21 +406,19 @@ class BaseAutoML(object):
                     best_perf = perf
                     best_config = config
                     best_path = path
-        self.incumbent_perf = best_perf
-        self.incumbent = best_config
-        if ens and self.ensemble_method is not None:
-            if self.es is None:
-                self.es = EnsembleBuilder(resampling_params=self.resampling_params,
-                                          ensemble_method=self.ensemble_method,
-                                          ensemble_size=self.ensemble_size,
-                                          task_type=self.task_type,
-                                          metric=self.metric,
-                                          output_dir=self.output_dir, seed=self.seed)
-                self.es.fit(stats=stats, datanode=self.data_node)
+        
+        if ensemble_method is not None:
+            es = EnsembleBuilder(resampling_params=resampling_params,
+                                        ensemble_method=ensemble_method,
+                                        ensemble_size=ensemble_size,
+                                        task_type=task_type,
+                                        metric=metric,
+                                        output_dir=output_dir, seed=seed)
+            es.fit(stats=stats, datanode=data_node)
             if refit:
-                self.es.refit(datanode=self.data_node)
-            pred = self.es.predict(test_data, refit)
-            if self.task_type in CLS_TASKS:
+                es.refit(datanode=data_node)
+            pred = es.predict(test_data, refit)
+            if task_type in CLS_TASKS:
                 if prob:
                     return pred
                 else:
@@ -409,19 +432,32 @@ class BaseAutoML(object):
                 raise AttributeError("No stats found!")
 
             if refit:
-                self.logger.info('Start to refit the best model!')
+                logger.info('Start to refit the best model!')
                 best_path = CombinedTopKModelSaver.get_refit_path(best_path)
                 if os.path.exists(best_path):
-                    self.logger.info("The best model has been refitted!")
+                    logger.info("The best model has been refitted!")
                     best_op_list, estimator, _ = CombinedTopKModelSaver._load(best_path)
                 else:
-                    best_op_list, estimator = self._refit_config(best_config, self.data_node)
+                    best_op_list, estimator = cls._refit_config(best_config, data_node, task_type=task_type, if_imbal=if_imbal)
             else:
                 best_op_list, estimator, _ = CombinedTopKModelSaver._load(best_path)
             test_data_node = test_data.copy_()
             test_data_node = construct_node(test_data_node, best_op_list)
 
-            if self.task_type in CLS_TASKS:
+            conf = {
+                'name': cls.name,
+                'task_type': task_type,
+                'task_id': task_id,
+                'metric': metric_name,
+                'seed': seed,
+                'if_imbal': if_imbal,
+                'ensemble_method': ensemble_method,
+                'ensemble_size': ensemble_size
+            }
+            with open(os.path.join(output_dir, 'config.json'), 'w') as f:
+                json.dump(conf, f, indent=4)
+
+            if task_type in CLS_TASKS:
                 if prob:
                     return estimator.predict_proba(test_data_node.data[0])
                 else:
@@ -488,7 +524,9 @@ class BaseAutoML(object):
             'per_run_time_limit': self.per_run_time_limit,
             'evaluation': self.evaluation,
             'seed': self.seed,
-            'if_imbal': self.if_imbal
+            'if_imbal': self.if_imbal,
+            'ensemble_method': self.ensemble_method,
+            'ensemble_size': self.ensemble_size
         }
         if hasattr(self, 'cs_args'):
             conf['cs_args'] = self.cs_args

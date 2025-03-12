@@ -14,16 +14,19 @@ import json
 
 
 class BaseHPO(BaseAutoML):
+    
+    name='hpo'
+    
     def __init__(self, estimator_id: str, task_type: str = None,
                  metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac',
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
-                 output_dir=None, seed=1, n_jobs=1, topk=50, rmfiles=False,
+                 output_dir='./data', seed=1, n_jobs=1, topk=50, rmfiles=False,
                  ensemble_method=None, ensemble_size=5, task_id='test'):
 
         super(BaseHPO, self).__init__(
-            name='hpo', task_type=task_type,
+            task_type=task_type,
             metric=metric, data_node=data_node,
             evaluation=evaluation, resampling_params=resampling_params,
             optimizer=optimizer, inner_iter_num_per_iter=1,

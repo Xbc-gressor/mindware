@@ -81,8 +81,8 @@ class FastIcaDecomposer(Transformer):
         # n_components cannot be larger than min(n_features, n_samples).
         n_samples = kwargs.get('n_samples', None)
         n_features = kwargs.get('n_features', None)
-        exp_deflation_mask = kwargs.get('exp_deflation_mask', False) | meta_mask
-        cube_parallel_mask = kwargs.get('cube_parallel_mask', False) | meta_mask
+        exp_deflation_mask = kwargs.get('exp_deflation_mask', True) | meta_mask
+        cube_parallel_mask = kwargs.get('cube_parallel_mask', True) | meta_mask
 
         
         n_components_lower = 1

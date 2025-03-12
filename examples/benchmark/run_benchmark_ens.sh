@@ -1,5 +1,41 @@
 #!/bin/bash
 
+"""
+RGS
+"""
+cls_fil=( \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_kc1_2025-03-12-06-45-15-460493/2025-03-12-06-45-15-460493_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_sick_2025-03-12-07-45-55-313896/2025-03-12-07-45-55-313896_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_cpu_act_2025-03-12-08-46-33-150779/2025-03-12-08-46-33-150779_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_ailerons_2025-03-12-09-09-57-213528/2025-03-12-09-09-57-213528_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_mv_2025-03-12-09-47-22-363231/2025-03-12-09-47-22-363231_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_covertype_2025-03-12-05-00-58-004513/2025-03-12-05-00-58-004513_topk_config.pkl" \
+)
+cls_ori=( \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_kc1_2025-03-12-06-59-15-555134/2025-03-12-06-59-15-555134_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_sick_2025-03-12-07-59-52-980092/2025-03-12-07-59-52-980092_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_cpu_act_2025-03-12-09-00-33-301429/2025-03-12-09-00-33-301429_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_ailerons_2025-03-12-09-10-33-297642/2025-03-12-09-10-33-297642_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_mv_2025-03-12-10-01-29-630397/2025-03-12-10-01-29-630397_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_covertype_2025-03-12-05-03-40-625369/2025-03-12-05-03-40-625369_topk_config.pkl" \
+)
+rgs_fil=( \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_Moneyball_2025-03-11-22-54-38-072888/2025-03-11-22-54-38-072888_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_debutanizer_2025-03-12-00-41-06-575912/2025-03-12-00-41-06-575912_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_puma8NH_2025-03-12-02-41-50-522801/2025-03-12-02-41-50-522801_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_cpu_act_2025-03-12-02-59-49-725734/2025-03-12-02-59-49-725734_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_bank32nh_2025-03-12-04-44-47-445772/2025-03-12-04-44-47-445772_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_black_friday_2025-03-11-22-54-40-162585/2025-03-11-22-54-40-162585_topk_config.pkl" \
+)
+rgs_ori=( \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_Moneyball_2025-03-11-22-54-38-029448/2025-03-11-22-54-38-029448_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_debutanizer_2025-03-12-00-55-07-596446/2025-03-12-00-55-07-596446_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_puma8NH_2025-03-12-02-56-04-170021/2025-03-12-02-56-04-170021_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_cpu_act_2025-03-12-03-02-39-989552/2025-03-12-03-02-39-989552_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_bank32nh_2025-03-12-04-57-10-412143/2025-03-12-04-57-10-412143_topk_config.pkl" \
+    "/root/mindware/examples/benchmark/norefit_data/CASHFE-block_1(1)-holdout_black_friday_2025-03-11-22-54-40-253658/2025-03-11-22-54-40-253658_topk_config.pkl" \
+)
+
 # 最大并发数
 MAX_JOBS=2
 
@@ -9,37 +45,18 @@ CURRENT_JOBS=0
 # 初始化任务列表
 declare -a TASKS
 
-# 生成任务列表
-TASKS+=("python rgs_benchmark.py --ensemble_method ensemble_selection --ensemble_size 50 --Opt cashfe --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --time_limit 14400 --job_idx 6 --output_dir ./compress_data --output_file compress_data.txt")
 
+# # 生成任务列表
+for i in 0 1 2 3 4 5; do
+    TASKS+=("python cls_benchmark.py --refit --job_idx $i --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --ensemble_method ensemble_selection --ensemble_size 10 --Opt cashfe --optimizer block_1 --output_dir ./ens_data --output_file res_ens_data.txt --stats_path ${cls_fil[$i]}")
+    TASKS+=("python cls_benchmark.py --refit --job_idx $i --optimizer block_1                                    --ensemble_method ensemble_selection --ensemble_size 10 --Opt cashfe --optimizer block_1 --output_dir ./ens_data --output_file res_ens_data.txt --stats_path ${cls_ori[$i]}")
+done
 
 # 生成任务列表
 for i in 0 1 2 3 4 5; do
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --n_preprocessor 6 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 3600 --job_idx $i")
+    TASKS+=("python rgs_benchmark.py --refit --job_idx $i --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --ensemble_method ensemble_selection --ensemble_size 10 --Opt cashfe --optimizer block_1 --output_dir ./ens_data --output_file res_ens_data.txt --stats_path ${rgs_fil[$i]}")
+    TASKS+=("python rgs_benchmark.py --refit --job_idx $i --optimizer block_1                                    --ensemble_method ensemble_selection --ensemble_size 10 --Opt cashfe --optimizer block_1 --output_dir ./ens_data --output_file res_ens_data.txt --stats_path ${rgs_ori[$i]}")
 done
-
-
-# 生成任务列表，测试为什么block1变差了
-# for i in 7; do
-#     TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 7200 --job_idx $i --output_dir ./newfe_icafix_data --output_file ./newfe_icafix_data.txt")
-# done
-
-# # # 生成任务列表
-# for i in 1; do
-#     TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 3600 --job_idx $i --output_dir ./newfe_icafix_data --output_file ./newfe_icafix_data.txt")
-# done
-
-
-# # 生成任务列表
-# for i in 1 2 3; do
-#     TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 3600 --job_idx $i --output_dir ./newfe_icafix_data --output_file ./newfe_icafix_data.txt")
-# done
 
 
 # 最大并发数

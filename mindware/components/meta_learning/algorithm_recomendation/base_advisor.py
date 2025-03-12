@@ -3,7 +3,6 @@ import hashlib
 import numpy as np
 import pickle as pkl
 from collections import OrderedDict
-from mindware.datasets.utils import calculate_metafeatures
 from mindware.utils.logging_utils import get_logger
 from mindware.components.utils.constants import CLS_TASKS, RGS_TASKS
 from mindware.components.meta_learning.algorithm_recomendation.metadata_manager import MetaDataManager
@@ -90,6 +89,7 @@ class BaseAdvisor(object):
     def fetch_algorithm_set(self, dataset, datanode=None):
         input_vector = get_feature_vector(dataset, task_type=self.task_type)
         if input_vector is None:
+            from mindware.datasets.utils import calculate_metafeatures
             input_dict = calculate_metafeatures(dataset=datanode, task_type=self.task_type)
             sorted_keys = sorted(input_dict.keys())
             input_vector = [input_dict[key] for key in sorted_keys]

@@ -58,7 +58,7 @@ class FeatureAgglomerationDecomposer(Transformer):
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         meta_mask = kwargs.get('meta', False)
         
-        zero_ratio_mask = kwargs.get('zero_ratio_mask', False) | meta_mask # if some features have too much zero, ignore cosine
+        zero_ratio_mask = kwargs.get('zero_ratio_mask', True) | meta_mask # if some features have too much zero, ignore cosine
         
         cs = ConfigurationSpace()
         n_clusters = UniformIntegerHyperparameter("n_clusters", 2, 400, default_value=25)

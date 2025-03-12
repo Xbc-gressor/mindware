@@ -13,17 +13,20 @@ from mindware.components.config_space.cs_builder import get_cash_cs
 
 
 class BaseCASH(BaseAutoML):
+    
+    name='cash'
+    
     def __init__(self, include_algorithms: List[str] = None, task_type: int = None,
                  metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac', sub_optimizer: str = 'smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
-                 output_dir=None, seed=1, n_jobs=1, topk=50, rmfiles=False,
+                 output_dir='./data', seed=1, n_jobs=1, topk=50, rmfiles=False,
                  ensemble_method=None, ensemble_size=5, task_id='test',
                  filter_params=None):
 
         super(BaseCASH, self).__init__(
-            name='cash', task_type=task_type,
+            task_type=task_type,
             metric=metric, data_node=data_node,
             evaluation=evaluation, resampling_params=resampling_params,
             optimizer=optimizer, inner_iter_num_per_iter=inner_iter_num_per_iter,

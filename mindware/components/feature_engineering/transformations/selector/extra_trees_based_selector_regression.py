@@ -112,7 +112,7 @@ class ExtraTreeBasedSelectorRegression(Transformer):
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         meta_mask = kwargs.get('meta', False)
 
-        y_neg_mask = kwargs.get('y_neg_mask', False) | meta_mask
+        y_neg_mask = kwargs.get('y_neg_mask', True) | meta_mask
         
         if optimizer == 'smac':
             cs = ConfigurationSpace()
