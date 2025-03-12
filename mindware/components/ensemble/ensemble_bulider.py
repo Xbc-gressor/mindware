@@ -9,8 +9,7 @@ ensemble_list = ['bagging', 'blending', 'stacking', 'ensemble_selection', 'cross
 
 
 class EnsembleBuilder:
-    def __init__(self, stats, data_node,
-                 ensemble_method: str,
+    def __init__(self, ensemble_method: str,
                  ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
@@ -18,41 +17,31 @@ class EnsembleBuilder:
                  output_dir=None, seed=None):
         self.model = None
         if ensemble_method == 'bagging':
-            self.model = Bagging(stats=stats,
-                                 data_node=data_node,
-                                 ensemble_size=ensemble_size,
+            self.model = Bagging(ensemble_size=ensemble_size,
                                  task_type=task_type,
                                  metric=metric,
                                  resampling_params=resampling_params,
                                  output_dir=output_dir, seed=seed)
         elif ensemble_method == 'blending':
-            self.model = Blending(stats=stats,
-                                  data_node=data_node,
-                                  ensemble_size=ensemble_size,
+            self.model = Blending(ensemble_size=ensemble_size,
                                   task_type=task_type,
                                   metric=metric,
                                   resampling_params=resampling_params,
                                   output_dir=output_dir, seed=seed)
         elif ensemble_method == 'stacking':
-            self.model = Stacking(stats=stats,
-                                  data_node=data_node,
-                                  ensemble_size=ensemble_size,
+            self.model = Stacking(ensemble_size=ensemble_size,
                                   task_type=task_type,
                                   metric=metric,
                                   resampling_params=resampling_params,
                                   output_dir=output_dir, seed=seed)
         elif ensemble_method == 'ensemble_selection':
-            self.model = EnsembleSelection(stats=stats,
-                                           data_node=data_node,
-                                           ensemble_size=ensemble_size,
+            self.model = EnsembleSelection(ensemble_size=ensemble_size,
                                            task_type=task_type,
                                            metric=metric,
                                            resampling_params=resampling_params,
                                            output_dir=output_dir, seed=seed)
         elif ensemble_method == 'cross_validation':
-            self.model = CrossValidationEnsembleModel(stats=stats,
-                                                      data_node=data_node,
-                                                      ensemble_size=ensemble_size,
+            self.model = CrossValidationEnsembleModel(ensemble_size=ensemble_size,
                                                       task_type=task_type,
                                                       metric=metric,
                                                       resampling_params=resampling_params,
@@ -60,14 +49,14 @@ class EnsembleBuilder:
         else:
             raise ValueError("%s is not supported for ensemble!" % ensemble_method)
 
-    def fit(self, data):
-        return self.model.fit(data)
+    def fit(self, stats, datanode):
+        return self.model.fit(stats, datanode)
 
-    def predict(self, data):
-        return self.model.predict(data)
+    def predict(self, data, refit=False):
+        return self.model.predict(data, refit)
 
-    def refit(self):
-        return self.model.refit()
+    def refit(self, datanode):
+        return self.model.refit(datanode)
 
     def get_ens_model_info(self):
         return self.model.get_ens_model_info()

@@ -8,22 +8,19 @@ from sklearn.metrics._scorer import _BaseScorer
 from mindware.components.ensemble.base_ensemble import BaseEnsembleModel
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
-from mindware.components.feature_engineering.parse import construct_node
+from mindware.components.feature_engineering.parse import parse_config, construct_node
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
 
 
 class Blending(BaseEnsembleModel):
-    def __init__(self, stats, data_node,
-                 ensemble_size: int,
+    def __init__(self, ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
                  output_dir=None, seed=None,
                  resampling_params=None,
                  meta_learner='lightgbm'):
-        super().__init__(stats=stats,
-                         data_node=data_node,
-                         ensemble_method='blending',
+        super().__init__(ensemble_method='blending',
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
@@ -65,13 +62,15 @@ class Blending(BaseEnsembleModel):
     def get_path(self, algo_id, model_cnt, compress=True):
 
         if compress or algo_id in ['extra_trees']:
-            _path = os.path.join(self.output_dir, '%s-blending-model%d.joblib' % (self.timestamp, model_cnt))
+            _path = os.path.join(self.output_dir, '%s-blending-model%d.joblib' % (self.datetime, model_cnt))
         else:
-            _path = os.path.join(self.output_dir, '%s-blending-model%d.pkl' % (self.timestamp, model_cnt))
+            _path = os.path.join(self.output_dir, '%s-blending-model%d.pkl' % (self.datetime, model_cnt))
 
         return _path
 
-    def fit(self, data):
+    def fit(self, stats, datanode):
+        super(Blending, self).fit(stats, datanode)
+        self._choose_base_models(datanode)
         # Split training data for phase 1 and phase 2
         test_size = 0.2
 
@@ -85,13 +84,12 @@ class Blending(BaseEnsembleModel):
             for idx, (config, _, path) in enumerate(model_to_eval):
 
                 if self.base_model_mask[model_cnt] == 1:
-                    op_list, model, _ = CombinedTopKModelSaver._load(path)
+                    _path = self.get_path(algo_id, model_cnt)
 
-                    _node = data.copy_()
+                    if os.path.exists(_path):
+                        continue
 
-                    _node = construct_node(_node, op_list, mode='train')
-
-                    X, y = _node.data
+                    X, y = datanode.data
                     
                     if self.task_type in CLS_TASKS:
                         ss = BaseCLSEvaluator._get_spliter(resampling_strategy='holdout', test_size=test_size, random_state=self.seed)
@@ -103,11 +101,21 @@ class Blending(BaseEnsembleModel):
                         x_p1, y_p1 = X[train_index], y[train_index]
                         x_p2, y_p2 = X[val_index], y[val_index]
 
+                    train_node = datanode.copy_(no_data=True)
+                    val_node = datanode.copy_(no_data=True)
+                    train_node.data = [x_p1, y_p1]
+                    val_node.data = [x_p2, y_p2]
+
+                    train_node, op_list = parse_config(train_node, config, record=True, if_imbal=self.if_imbal)
+                    val_node = construct_node(val_node.copy_(), op_list)
+
+                    x_p1, y_p1 = train_node.data
+                    x_p2, y_p2 = val_node.data
+
                     estimator = fetch_predict_estimator(self.task_type, algo_id, config, x_p1, y_p1,
-                                                        weight_balance=_node.enable_balance,
-                                                        data_balance=_node.data_balance)
-                    _path = self.get_path(algo_id, model_cnt)
-                    CombinedTopKModelSaver._save(items=estimator, save_path=_path)
+                                                        weight_balance=train_node.enable_balance,
+                                                        data_balance=train_node.data_balance)
+                    CombinedTopKModelSaver._save(items=[op_list, estimator, None], save_path=_path)
 
                     if self.task_type in CLS_TASKS:
                         pred = estimator.predict_proba(x_p2)
@@ -139,7 +147,7 @@ class Blending(BaseEnsembleModel):
 
         return self
 
-    def get_feature(self, data):
+    def get_feature(self, datanode):
         # Predict the labels via blending
         feature_p2 = None
         model_cnt = 0
@@ -148,12 +156,10 @@ class Blending(BaseEnsembleModel):
             model_to_eval = self.stats[algo_id]
             for idx, (config, _, path) in enumerate(model_to_eval):
                 if self.base_model_mask[model_cnt] == 1:
-                    op_list, model, _ = CombinedTopKModelSaver._load(path)
-                    _node = data.copy_()
-
-                    _node = construct_node(_node, op_list)
                     _path = self.get_path(algo_id, model_cnt)
-                    estimator = CombinedTopKModelSaver._load(_path)
+                    op_list, estimator, _ = CombinedTopKModelSaver._load(_path)
+                    _node = datanode.copy_()
+                    _node = construct_node(_node, op_list)
                     if self.task_type in CLS_TASKS:
                         pred = estimator.predict_proba(_node.data[0])
                         n_dim = np.array(pred).shape[1]
@@ -162,7 +168,7 @@ class Blending(BaseEnsembleModel):
                             n_dim = 1
                         # Initialize training matrix for phase 2
                         if feature_p2 is None:
-                            num_samples = len(data.data[0])
+                            num_samples = len(datanode.data[0])
                             feature_p2 = np.zeros((num_samples, self.ensemble_size * n_dim))
                         if n_dim == 1:
                             feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = pred[:, 1:2]
@@ -173,7 +179,7 @@ class Blending(BaseEnsembleModel):
                         n_dim = 1
                         # Initialize training matrix for phase 2
                         if feature_p2 is None:
-                            num_samples = len(data.data[0])
+                            num_samples = len(datanode.data[0])
                             feature_p2 = np.zeros((num_samples, self.ensemble_size * n_dim))
                         feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = pred
                     suc_cnt += 1
@@ -182,7 +188,7 @@ class Blending(BaseEnsembleModel):
 
         return feature_p2
 
-    def predict(self, data):
+    def predict(self, data, refit=False):
         feature_p2 = self.get_feature(data)
         # Get predictions from meta-learner
         if self.task_type in CLS_TASKS:
@@ -207,5 +213,35 @@ class Blending(BaseEnsembleModel):
         ens_info['meta_learner'] = self.meta_method
         return ens_info
 
-    def refit(self):
-        self.logger.debug("Start to refit all models needed by ensemble, no need with blending!")
+    def refit(self, datanode):
+        self.logger.debug("Start to refit all models needed by ensemble!")
+        test_size = 0.2
+
+        # Train basic models using a part of training data
+        model_cnt = 0
+        for algo_id in self.stats.keys():
+            model_to_eval = self.stats[algo_id]
+            for idx, (config, _, path) in enumerate(model_to_eval):
+
+                if self.base_model_mask[model_cnt] == 1:
+                    save_path = CombinedTopKModelSaver.get_refit_path(path)
+                    if os.path.exists(save_path):
+                        self.logger.info("Already Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], save_path))
+                        model_cnt += 1
+                        continue
+
+                    self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], path))
+
+                    _node = datanode.copy_()
+
+                    _node, op_list = parse_config(_node, config, record=True, if_imbal=self.if_imbal)
+
+                    x_p1, y_p1 = _node.data
+
+                    estimator = fetch_predict_estimator(self.task_type, algo_id, config, x_p1, y_p1,
+                                                        weight_balance=_node.enable_balance,
+                                                        data_balance=_node.data_balance)
+                    CombinedTopKModelSaver._save(items=[op_list, estimator, None], save_path=save_path)
+
+
+

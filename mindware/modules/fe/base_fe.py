@@ -19,14 +19,15 @@ from ConfigSpace import Configuration, Constant
 
 
 class BaseFE(BaseAutoML):
-    def __init__(self, estimator_id: str, task_type: str = None,
+    def __init__(self, estimator_id: str, task_type: int = None,
                  metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
                  optimizer='smac',
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1, topk=50, rmfiles=False,
                  ensemble_method=None, ensemble_size=None,
-                 include_preprocessors=None, model_config=None, task_id='test'):
+                 include_preprocessors=None, model_config=None, task_id='test',
+                 filter_params=None):
 
         super(BaseFE, self).__init__(
             name='fe', task_type=task_type,
@@ -66,7 +67,15 @@ class BaseFE(BaseAutoML):
         from mindware.components.config_space.cs_builder import get_fe_cs_args
         cs_args = get_fe_cs_args(**cs_args)
         self.cs_args = cs_args
-        self.cs = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal, **cs_args)
+
+        self.filter_params = filter_params
+        include_preprocessors_dict = {estimator_id: include_preprocessors}
+        if self.filter_params is not None and 'n_preprocessor' in self.filter_params:
+            n_prep = self.filter_params['n_preprocessor']
+            include_preprocessors_dict = self._recommand_preps(self.task_type, task_id=self.task_id, data_node=self.data_node, metric=self.metric_name, n_prep=n_prep, include_algorithms=[estimator_id], include_preprocessors=include_preprocessors)
+
+        self.include_preprocessors_dict = include_preprocessors_dict
+        self.cs = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors_dict[estimator_id], if_imbal=self.if_imbal, **cs_args)
 
         if model_config is None:
             if self.estimator_id in _candidates:
@@ -122,6 +131,8 @@ class BaseFE(BaseAutoML):
 
         conf = super(BaseFE, self).get_conf()
         conf['estimator_id'] = self.estimator_id
+
+        conf['include_preprocessors'] = self.include_preprocessors_dict
 
         if save:
             with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:

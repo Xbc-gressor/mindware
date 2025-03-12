@@ -18,14 +18,13 @@ from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
 class BaseEnsembleModel(object):
     """Base class for model ensemble"""
 
-    def __init__(self, stats, data_node,
-                 ensemble_method: str,
+    def __init__(self, ensemble_method: str,
                  ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
                  resampling_params=None,
                  output_dir=None, seed=None):
-        self.stats = stats
+        self.stats = None
         self.ensemble_method = ensemble_method
         self.ensemble_size = ensemble_size
         self.task_type = task_type
@@ -33,18 +32,24 @@ class BaseEnsembleModel(object):
         self.resampling_params = resampling_params
         self.output_dir = output_dir
         self.seed = seed
-        self.node = data_node
 
         self.predictions = []
         self.train_labels = None
-        self.timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
+        self.datetime = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
         logger_name = 'EnsembleBuilder'
         self.logger = get_logger(logger_name)
         
         self.if_imbal = False
-        if self.task_type in CLS_TASKS:
-            self.if_imbal = is_imbalanced_dataset(self.node)
+        self.base_model_mask = None
 
+    def _is_imbal(self, data_node):
+
+        self.if_imbal = False
+        if self.task_type in CLS_TASKS:
+            self.if_imbal = is_imbalanced_dataset(data_node)
+
+    def _choose_base_models(self, data_node):
+        self.predictions = []
         test_size = 0.33
         if self.resampling_params is not None and 'test_size' in self.resampling_params:
             test_size = self.resampling_params['test_size']
@@ -53,7 +58,7 @@ class BaseEnsembleModel(object):
             model_to_eval = self.stats[algo_id]
             for idx, (_, _, path) in enumerate(model_to_eval):
                 op_list, model, _ = CombinedTopKModelSaver._load(path)
-                _node = self.node.copy_()
+                _node = data_node.copy_()
                 _node = construct_node(_node, op_list)
                 X, y = _node.data
 
@@ -83,10 +88,11 @@ class BaseEnsembleModel(object):
         if len(self.predictions) < self.ensemble_size:
             self.ensemble_size = len(self.predictions)
 
-        if ensemble_method == 'ensemble_selection':
+        if self.ensemble_method == 'ensemble_selection':
+            self.shape = self.predictions[0].shape
             return
 
-        if task_type in CLS_TASKS:
+        if self.task_type in CLS_TASKS:
             self.base_model_mask = choose_base_models_classification(
                 np.array(self.predictions), self.ensemble_size
             )
@@ -96,15 +102,16 @@ class BaseEnsembleModel(object):
             )
         self.ensemble_size = sum(self.base_model_mask)
 
-    def fit(self, data):
-        raise NotImplementedError
+    def fit(self, stats, datanode):
+        self.stats = stats.copy()
+        self._is_imbal(datanode)
 
-    def predict(self, data):
+    def predict(self, data, refit=False):
         raise NotImplementedError
 
     def get_ens_model_info(self):
         raise NotImplementedError
 
     # TODO: Refit
-    def refit(self):
+    def refit(self, datanode):
         raise NotImplementedError

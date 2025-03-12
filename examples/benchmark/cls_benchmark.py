@@ -74,6 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_preprocessor', type=int, default=-1)
 
     parser.add_argument('--refit', action='store_true', default=False)
+    parser.add_argument('--stats_path', type=str, default=None)
 
     parser.add_argument('--job_idx', type=int, nargs='*', help='job index')
     parser.add_argument('--output_dir', type=str, default='./data')
@@ -152,14 +153,24 @@ if __name__ == '__main__':
             )
 
         print(opt.get_conf(save=True))  # 保存设置
-        print(opt.run(refit=args.refit))
-        print(opt.get_model_info(save=True))  # 保存最优模型信息
         scorer = opt.metric
-        pred = opt.predict(test_data_node, ens=False)
-        perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
+        if args.stats_path is None:
+            print(opt.run(refit=args.refit))
+            print(opt.get_model_info(save=True))  # 保存最优模型信息
+            pred = opt.predict(test_data_node, refit=args.refit, ens=False)
+            perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
 
-        ens_pred = opt.predict(test_data_node, ens=True)
-        ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
+            ens_pred = opt.predict(test_data_node, refit=args.refit, ens=True)
+            ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
+        else:
+            import pickle as pkl
+            with open(args.stats_path, 'rb') as f:
+                stats = pkl.load(f)
+            pred = opt._predict_stats(test_data_node, stats=stats, refit=args.refit, ens=False)
+            perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
+
+            ens_pred = opt._predict_stats(test_data_node, stats=stats, refit=args.refit, ens=True)
+            ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
 
         with open(args.output_file, 'a+') as f:
             f.write(f'CLS: {args.Opt}-{args.optimizer}-filter_m{args.n_algorithm}_p{args.n_preprocessor}, {dataset}: {perf}, {ens_perf}\n')

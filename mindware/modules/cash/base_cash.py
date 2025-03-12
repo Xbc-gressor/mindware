@@ -13,13 +13,14 @@ from mindware.components.config_space.cs_builder import get_cash_cs
 
 
 class BaseCASH(BaseAutoML):
-    def __init__(self, include_algorithms: List[str] = None, sub_optimizer: str = 'smac', task_type: str = None,
+    def __init__(self, include_algorithms: List[str] = None, task_type: int = None,
                  metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
-                 optimizer='smac', inner_iter_num_per_iter=1,
+                 optimizer='smac', sub_optimizer: str = 'smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1, topk=50, rmfiles=False,
-                 ensemble_method=None, ensemble_size=5, task_id='test'):
+                 ensemble_method=None, ensemble_size=5, task_id='test',
+                 filter_params=None):
 
         super(BaseCASH, self).__init__(
             name='cash', task_type=task_type,
@@ -54,6 +55,13 @@ class BaseCASH(BaseAutoML):
         from mindware.components.config_space.cs_builder import get_cs_args
         cs_args = get_cs_args(**cs_args)
         self.cs_args = cs_args
+
+        self.filter_params = filter_params
+        # select models
+        if self.filter_params is not None and 'n_algorithm' in self.filter_params:
+            n_algo = self.filter_params['n_algorithm']
+            include_algorithms = self._recommand_models(self.task_type, task_id=self.task_id, data_node=self.data_node, metric=self.metric_name, n_algo=n_algo, include_algorithms=include_algorithms)
+
         if include_algorithms is not None and len(include_algorithms) == 1:
             from mindware.components.config_space.cs_builder import get_hpo_cs
             self.cs = get_hpo_cs(estimator_id=include_algorithms[0], task_type=self.task_type, **cs_args)

@@ -8,23 +8,20 @@ from sklearn.metrics._scorer import _BaseScorer
 from mindware.components.ensemble.base_ensemble import BaseEnsembleModel
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
-from mindware.components.feature_engineering.parse import construct_node
+from mindware.components.feature_engineering.parse import parse_config, construct_node
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
 
 
 class Stacking(BaseEnsembleModel):
-    def __init__(self, stats, data_node,
-                 ensemble_size: int,
+    def __init__(self, ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
                  resampling_params=None,
                  output_dir=None, seed=None,
                  meta_learner='lightgbm',
                  kfold=5):
-        super().__init__(stats=stats,
-                         data_node=data_node,
-                         ensemble_method='stacking',
+        super().__init__(ensemble_method='stacking',
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
@@ -69,12 +66,14 @@ class Stacking(BaseEnsembleModel):
     def get_path(self, algo_id, model_cnt, j, compress=True):
 
         if compress or algo_id in ['extra_trees']:
-            _path = os.path.join(self.output_dir, '%s-stacking-model%d_part%d.joblib' % (self.timestamp, model_cnt, j))
+            _path = os.path.join(self.output_dir, '%s-stacking-model%d_part%d.joblib' % (self.datetime, model_cnt, j))
         else:
-            _path = os.path.join(self.output_dir, '%s-stacking-model%d_part%d.pkl' % (self.timestamp, model_cnt, j))
+            _path = os.path.join(self.output_dir, '%s-stacking-model%d_part%d.pkl' % (self.datetime, model_cnt, j))
         return _path
 
-    def fit(self, data):
+    def fit(self, stats, datanode):
+        super(Stacking, self).fit(stats, datanode)
+        self._choose_base_models(datanode)
         # Split training data for phase 1 and phase 2
                             
         if self.task_type in CLS_TASKS:
@@ -91,19 +90,33 @@ class Stacking(BaseEnsembleModel):
             model_to_eval = self.stats[algo_id]
             for idx, (config, _, path) in enumerate(model_to_eval):
                 if self.base_model_mask[model_cnt] == 1:
-                    op_list, model, _ = CombinedTopKModelSaver._load(path)
-                    _node = data.copy_()
+                    # op_list, model, _ = CombinedTopKModelSaver._load(path)
+                    # _node = datanode.copy_()
+                    #
+                    # _node = construct_node(_node, op_list, mode='train')
 
-                    _node = construct_node(_node, op_list, mode='train')
-
-                    X, y = _node.data
+                    X, y = datanode.data
                     for j, (train, test) in enumerate(kf.split(X, y)):
-                        x_p1, x_p2, y_p1, _ = X[train], X[test], y[train], y[test]
-                        estimator = fetch_predict_estimator(self.task_type, algo_id, config, x_p1, y_p1,
-                                                            weight_balance=data.enable_balance,
-                                                            data_balance=data.data_balance)
+
                         _path = self.get_path(algo_id, model_cnt, j)
-                        CombinedTopKModelSaver._save(items=estimator, save_path=_path)
+                        if os.path.exists(_path):
+                            continue
+
+                        train_node = datanode.copy_(no_data=True)
+                        val_node = datanode.copy_(no_data=True)
+                        train_node.data = [X[train], y[train]]
+                        val_node.data = [X[test], y[test]]
+
+                        train_node, op_list = parse_config(train_node, config, record=True, if_imbal=self.if_imbal)
+                        val_node = construct_node(val_node.copy_(), op_list)
+
+                        x_p1, y_p1 = train_node.data
+                        x_p2, _ = val_node.data
+
+                        estimator = fetch_predict_estimator(self.task_type, algo_id, config, x_p1, y_p1,
+                                                            weight_balance=datanode.enable_balance,
+                                                            data_balance=datanode.data_balance)
+                        CombinedTopKModelSaver._save(items=[op_list, estimator, None], save_path=_path)
 
                         if self.task_type in CLS_TASKS:
                             pred = estimator.predict_proba(x_p2)
@@ -142,15 +155,13 @@ class Stacking(BaseEnsembleModel):
             model_to_eval = self.stats[algo_id]
             for idx, (config, _, path) in enumerate(model_to_eval):
                 if self.base_model_mask[model_cnt] == 1:
-                    op_list, model, _ = CombinedTopKModelSaver._load(path)
-                    _node = data.copy_()
-
-                    _node = construct_node(_node, op_list)
 
                     for j in range(self.kfold):
                         _path = self.get_path(algo_id, model_cnt, j)
-                        CombinedTopKModelSaver._save(items=estimator, save_path=_path)
-                        estimator = CombinedTopKModelSaver._load(_path)
+                        op_list, estimator, _ = CombinedTopKModelSaver._load(_path)
+                        _node = data.copy_()
+                        _node = construct_node(_node, op_list)
+
                         if self.task_type in CLS_TASKS:
                             pred = estimator.predict_proba(_node.data[0])
                             n_dim = np.array(pred).shape[1]
@@ -181,7 +192,7 @@ class Stacking(BaseEnsembleModel):
                 model_cnt += 1
         return feature_p2
 
-    def predict(self, data):
+    def predict(self, data, refit=False):
         feature_p2 = self.get_feature(data)
         # Get predictions from meta-learner
         if self.task_type in CLS_TASKS:
@@ -206,5 +217,5 @@ class Stacking(BaseEnsembleModel):
         ens_info['meta_learner'] = self.meta_method
         return ens_info
 
-    def refit(self):
+    def refit(self, datanode):
         self.logger.debug("Start to refit all models needed by ensemble, no need with stacking!")

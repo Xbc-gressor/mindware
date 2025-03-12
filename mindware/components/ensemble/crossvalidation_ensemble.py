@@ -11,17 +11,15 @@ from mindware.components.feature_engineering.parse import construct_node
 from mindware.components.utils.constants import CLS_TASKS
 
 class CrossValidationEnsembleModel(BaseEnsembleModel):
-    def __init__(self, stats,
-                 ensemble_size: int,
+    def __init__(self, ensemble_size: int,
                  task_type: int,
                  metric: Union[str, Callable, _BaseScorer],
-                 data_node,
                  resampling_params=None,
                  output_dir=None, seed=None):
         self.metric = get_metric(metric)
         self.encoder = OneHotEncoder()
-        super().__init__(stats=stats, ensemble_size=ensemble_size, ensemble_method='cross_validation',
-                         task_type=task_type, metric=self.metric, data_node=data_node, 
+        super().__init__(ensemble_size=ensemble_size, ensemble_method='cross_validation',
+                         task_type=task_type, metric=self.metric,
                          resampling_params=resampling_params, output_dir=output_dir, seed=seed)
         self.cv_folds = 10
         self.best_model_idx = None
@@ -59,13 +57,15 @@ class CrossValidationEnsembleModel(BaseEnsembleModel):
 
                 self.models.append(model)
 
-    def fit(self, data):
+    def fit(self, stats, datanode):
+        super(CrossValidationEnsembleModel, self).fit(stats, datanode)
+        self._choose_base_models(datanode)
         if len(self.train_labels.shape) == 1 and self.task_type in CLS_TASKS:
             reshape_y = np.reshape(self.train_labels, (len(self.train_labels), 1))
             self.encoder.fit(reshape_y)
 
         self._load_models()  # 加载模型
-        X, y = data.data  # 获取数据和标签
+        X, y = datanode.data  # 获取数据和标签
 
         # 根据任务类型初始化最佳分数
         best_score = float('inf') if self.task_type not in CLS_TASKS else -float('inf')
@@ -138,7 +138,7 @@ class CrossValidationEnsembleModel(BaseEnsembleModel):
         score = self.metric._score_func(y_true, pred) * self.metric._sign
         return score
 
-    def predict(self, data):
+    def predict(self, data, refit=False):
         if len(self.models) == 0:
             raise ValueError("The model has not been trained yet. Call `fit` before `predict`.")
 

@@ -1,6 +1,6 @@
 from collections import Counter
 import numpy as np
-import pickle as pkl
+import os
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics._scorer import _BaseScorer, _PredictScorer, _ThresholdScorer
 
@@ -15,8 +15,7 @@ from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 
 class EnsembleSelection(BaseEnsembleModel):
     def __init__(
-            self, stats, data_node,
-            ensemble_size: int,
+            self, ensemble_size: int,
             task_type: int,
             metric: _BaseScorer,
             resampling_params=None,
@@ -24,9 +23,7 @@ class EnsembleSelection(BaseEnsembleModel):
             sorted_initialization: bool = False,
             mode: str = 'fast'
     ):
-        super().__init__(stats=stats,
-                         data_node=data_node,
-                         ensemble_method='ensemble_selection',
+        super().__init__(ensemble_method='ensemble_selection',
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
@@ -36,7 +33,7 @@ class EnsembleSelection(BaseEnsembleModel):
         self.sorted_initialization = sorted_initialization
         self.mode = mode
         self.encoder = OneHotEncoder()
-        self.shape = self.predictions[0].shape
+        self.shape = None
         self.random_state = np.random.RandomState(1)
 
     def calculate_score(self, pred, y_true):
@@ -48,7 +45,10 @@ class EnsembleSelection(BaseEnsembleModel):
         score = self.metric._score_func(y_true, pred) * self.metric._sign
         return score
 
-    def fit(self, data):
+    def fit(self, stats, datanode):
+        super(EnsembleSelection, self).fit(stats, datanode)
+        self._choose_base_models(datanode)
+
         if len(self.train_labels.shape) == 1 and self.task_type in CLS_TASKS:
             reshape_y = np.reshape(self.train_labels, (len(self.train_labels), 1))
             self.encoder.fit(reshape_y)
@@ -205,13 +205,15 @@ class EnsembleSelection(BaseEnsembleModel):
         indices = np.argsort(perf)[perf.shape[0] - n_best:]
         return indices
 
-    def predict(self, data):
+    def predict(self, data, refit=False):
         predictions = []
         cur_idx = 0
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
             for idx, (_, _, path) in enumerate(model_to_eval):
                 if cur_idx in self.model_idx:
+                    if refit:
+                        path = CombinedTopKModelSaver.get_refit_path(path)
                     op_list, estimator, _ = CombinedTopKModelSaver._load(path)
                     _node = data.copy_()
                     _node = construct_node(_node, op_list)
@@ -296,7 +298,7 @@ class EnsembleSelection(BaseEnsembleModel):
         ens_info['ensemble_weights'] = [w for w in self.weights_ if w > 0]
         return ens_info
 
-    def refit(self):
+    def refit(self, datanode):
         self.logger.debug("Start to refit all models needed by ensemble!")
         # Refit models on whole training data
         model_cnt = 0
@@ -305,6 +307,13 @@ class EnsembleSelection(BaseEnsembleModel):
             for idx, (config, _, model_path) in enumerate(model_to_eval):
                 # X, y = self.node.data
                 if self.weights_[model_cnt] != 0:
+
+                    save_path = CombinedTopKModelSaver.get_refit_path(model_path)
+                    if os.path.exists(save_path):
+                        self.logger.info("Already Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], save_path))
+                        model_cnt += 1
+                        continue
+
                     self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], model_path))
                     op_list, estimator, perf = CombinedTopKModelSaver._load(model_path)
 
@@ -312,9 +321,9 @@ class EnsembleSelection(BaseEnsembleModel):
                     # _node = construct_node(_node, op_list)
 
                     if op_list == {}:
-                        _node = self.node.copy_()
+                        _node = datanode.copy_()
                     else:
-                        _node, op_list = parse_config(self.node.copy_(), config, record=True,
+                        _node, op_list = parse_config(datanode.copy_(), config, record=True,
                                                       if_imbal=self.if_imbal)
 
                     estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
@@ -322,5 +331,5 @@ class EnsembleSelection(BaseEnsembleModel):
                                                         weight_balance=_node.enable_balance,
                                                         data_balance=_node.data_balance)
 
-                    CombinedTopKModelSaver._save((op_list, estimator, perf), model_path)
+                    CombinedTopKModelSaver._save((op_list, estimator, perf), save_path)
                 model_cnt += 1

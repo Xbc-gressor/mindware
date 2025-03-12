@@ -12,10 +12,10 @@ from mindware.components.feature_engineering.transformation_graph import DataNod
 
 
 class BaseCASHFE(BaseAutoML):
-    def __init__(self, include_algorithms: List[str] = None, sub_optimizer: str = 'smac', task_type: str = None,
+    def __init__(self, include_algorithms: List[str] = None, task_type: int = None,
                  metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
-                 optimizer='smac', inner_iter_num_per_iter=1,
+                 optimizer='smac', sub_optimizer: str = 'smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1, topk=50, rmfiles=False,
                  ensemble_method=None, ensemble_size=5,

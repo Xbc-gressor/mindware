@@ -4,8 +4,8 @@ import joblib
 import hashlib
 
 
-def load_combined_transformer_estimator(model_dir, config, timestamp):
-    model_path = CombinedTopKModelSaver.get_path_by_config(model_dir, config, timestamp)
+def load_combined_transformer_estimator(model_dir, config, timestamp, refit=False):
+    model_path = CombinedTopKModelSaver.get_path_by_config(model_dir, config, timestamp, refit=refit)
     op_list, model, _ = CombinedTopKModelSaver._load(model_path)
     return op_list, model
 
@@ -46,11 +46,20 @@ class CombinedTopKModelSaver(BaseTopKModelSaver):
         return sha.hexdigest()
 
     @staticmethod
-    def get_path_by_config(output_dir, config, identifier, compress=True):
+    def get_refit_path(ori_path):
+        dir_path, filename = os.path.split(ori_path)
+        new_filename = 'refit_' + filename
+        return os.path.join(dir_path, new_filename)
+
+    @staticmethod
+    def get_path_by_config(output_dir, config, identifier, compress=True, refit=False):
+        prefix = 'refit_' if refit else ''
         if compress or config['algorithm'] in ['extra_trees']:
-            return os.path.join(output_dir, '%s_%s.joblib' % (identifier, CombinedTopKModelSaver.get_configuration_id(config)))
+            path = os.path.join(output_dir, '%s%s_%s.joblib' % (prefix, identifier, CombinedTopKModelSaver.get_configuration_id(config)))
         else:
-            return os.path.join(output_dir, '%s_%s.pkl' % (identifier, CombinedTopKModelSaver.get_configuration_id(config)))
+            path = os.path.join(output_dir, '%s%s_%s.pkl' % (prefix, identifier, CombinedTopKModelSaver.get_configuration_id(config)))
+
+        return os.path.abspath(path)
     
     @staticmethod
     def _save(items, save_path: str):

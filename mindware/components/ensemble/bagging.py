@@ -14,25 +14,25 @@ from functools import reduce
 
 
 class Bagging(BaseEnsembleModel):
-    def __init__(self, stats, data_node,
+    def __init__(self,
                  ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
                  resampling_params=None,
                  output_dir=None, seed=None):
-        super().__init__(stats=stats,
-                         data_node=data_node,
-                         ensemble_method='bagging',
+        super().__init__(ensemble_method='bagging',
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
                          resampling_params=resampling_params,
                          output_dir=output_dir, seed=seed)
 
-    def fit(self, datanode):
+    def fit(self, stats, datanode):
+        super().fit(stats, datanode)
+        self._choose_base_models(datanode)
         return self
 
-    def predict(self, data):
+    def predict(self, data, refit=False):
         model_pred_list = []
         final_pred = []
         # Get predictions from each model
@@ -42,6 +42,8 @@ class Bagging(BaseEnsembleModel):
             for idx, (_, _, path) in enumerate(model_to_eval):
 
                 if self.base_model_mask[model_cnt] == 1:
+                    if refit:
+                        path = CombinedTopKModelSaver.get_refit_path(path)
                     op_list, model, _ = CombinedTopKModelSaver._load(path)
                     _node = data.copy_()
                     _node = construct_node(_node, op_list)
@@ -74,7 +76,7 @@ class Bagging(BaseEnsembleModel):
         ens_info['config'] = ens_config
         return ens_info
 
-    def refit(self):
+    def refit(self, datanode):
         self.logger.debug("Start to refit all models needed by ensemble!")
         # Refit models on whole training data
         model_cnt = 0
@@ -83,13 +85,20 @@ class Bagging(BaseEnsembleModel):
             for idx, (config, _, model_path) in enumerate(model_to_eval):
                 # X, y = self.node.data
                 if self.base_model_mask[model_cnt] == 1:
-                    self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], model_path))
+
+                    save_path = CombinedTopKModelSaver.get_refit_path(model_path)
+                    if os.path.exists(save_path):
+                        self.logger.info("Already Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], save_path))
+                        model_cnt += 1
+                        continue
+
+                    self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], save_path))
                     op_list, estimator, perf = CombinedTopKModelSaver._load(model_path)
 
                     if op_list == {}:
-                        _node = self.node.copy_()
+                        _node = datanode.copy_()
                     else:
-                        _node, op_list = parse_config(self.node.copy_(), config, record=True,
+                        _node, op_list = parse_config(datanode.copy_(), config, record=True,
                                                       if_imbal=self.if_imbal)
 
                     estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
@@ -97,6 +106,6 @@ class Bagging(BaseEnsembleModel):
                                                         weight_balance=_node.enable_balance,
                                                         data_balance=_node.data_balance)
 
-                    CombinedTopKModelSaver._save(items=[op_list, estimator, perf], save_path=model_path)
+                    CombinedTopKModelSaver._save(items=[op_list, estimator, perf], save_path=save_path)
 
                 model_cnt += 1
