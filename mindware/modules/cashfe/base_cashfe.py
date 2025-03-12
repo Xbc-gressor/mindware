@@ -19,8 +19,9 @@ class BaseCASHFE(BaseAutoML):
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1,
                  ensemble_method=None, ensemble_size=5,
-                 include_preprocessors=None, task_id='test'):
-
+                 include_preprocessors=None, task_id='test', reshuffle=False):
+        self.reshuffle = reshuffle
+        self.late_reshuffle = late_reshuffle
         super(BaseCASHFE, self).__init__(
             name='cashfe', task_type=task_type,
             metric=metric, data_node=data_node,
@@ -79,7 +80,9 @@ class BaseCASHFE(BaseAutoML):
                 timestamp=self.timestamp,
                 output_dir=self.output_dir,
                 seed=self.seed,
-                if_imbal=self.if_imbal)
+                if_imbal=self.if_imbal,
+                reshuffle=self.reshuffle,
+                )
         else:
             from mindware.modules.cashfe.cashfe_evaluator import CASHFERGSEvaluator
             self.evaluator = CASHFERGSEvaluator(

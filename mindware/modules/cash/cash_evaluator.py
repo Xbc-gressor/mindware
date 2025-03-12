@@ -26,13 +26,13 @@ class CASHCLSEvaluator(BaseCLSEvaluator):
             self, fixed_config=None, scorer=None, data_node=None, task_type=CLASSIFICATION,
             resampling_strategy='cv', resampling_params=None,
             timestamp=None, output_dir=None, seed=1,
-            if_imbal=False
+            if_imbal=False, reshuffle=False
     ):
         super().__init__(
             fixed_config, scorer, data_node, task_type,
             resampling_strategy, resampling_params,
             timestamp, output_dir, seed,
-            if_imbal
+            if_imbal, reshuffle=reshuffle
         )
 
 
@@ -40,12 +40,14 @@ class CASHRGSEvaluator(BaseRGSEvaluator):
     def __init__(
             self, fixed_config=None, scorer=None, data_node=None, task_type=REGRESSION,
             resampling_strategy='cv', resampling_params=None,
-            timestamp=None, output_dir=None, seed=1
+            timestamp=None, output_dir=None, seed=1, reshuffle=False,
+            late_reshuffle=False
     ):
         super().__init__(
             fixed_config, scorer, data_node, task_type,
             resampling_strategy, resampling_params,
-            timestamp, output_dir, seed
+            timestamp, output_dir, seed, reshuffle = reshuffle,
+            late_reshuffle = late_reshuffle
         )
 
 

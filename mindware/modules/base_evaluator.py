@@ -23,10 +23,13 @@ class BaseEvaluator(_BaseEvaluator):
             self, fixed_config=None, scorer=None, data_node=None, task_type=0,
             resampling_strategy='cv', resampling_params=None,
             timestamp=None, output_dir=None, seed=1,
-            if_imbal=False
+            if_imbal=False, early_stopping=False, reshuffle=False
     ):
         self.resampling_strategy = resampling_strategy
         self.resampling_params = resampling_params
+        
+        self.reshuffle = reshuffle
+        self.early_stopping = early_stopping
 
         self.fixed_config = fixed_config
         self.scorer = scorer if scorer is not None else balanced_accuracy_scorer
@@ -66,14 +69,24 @@ class BaseEvaluator(_BaseEvaluator):
 
         raise NotImplementedError
 
-    def __call__(self, config, **kwargs):
+    def __call__(self, config,  **kwargs):
         
         self.train_node = self.data_node.copy_(no_data=True)
         self.val_node = self.data_node.copy_(no_data=True)
-
         start_time = time.time()
         return_dict = dict()
-        self.seed = 1
+        if self.reshuffle == 'reshuffle':
+            self.seed = kwargs.get('seed')
+        elif self.reshuffle == 'late_reshuffle':
+            rounds = kwargs.get('rounds')
+            if rounds > 100:
+                self.seed = kwargs.get('seed')
+            else:
+                self.seed = 1
+        else:
+            # 只要reshuffle不为True就进入
+            self.seed = 1
+        print(self.seed)
         downsample_ratio = kwargs.get('resource_ratio', 1.0)
 
         # Convert Configuration into dictionary
@@ -142,7 +155,8 @@ class BaseEvaluator(_BaseEvaluator):
 
                 if 'cv' in self.resampling_strategy:
                     if self.resampling_params is None or 'folds' not in self.resampling_params:
-                        folds = 5
+                        # Default 10 folds.？我先这样修改看
+                        folds = 10
                     else:
                         folds = self.resampling_params['folds']
 
@@ -173,9 +187,6 @@ class BaseEvaluator(_BaseEvaluator):
 
                     _, estimator = self._get_estimator_getter()(config_dict, estimator_id)
 
-                    # if self.onehot_encoder is None:
-                    #     self.onehot_encoder = self._get_onehot_encoder(_y_train)
-
                     _score = validation(estimator, self.scorer, _x_train, _y_train, _x_val, _y_val,
                                         random_state=self.seed,
                                         onehot=self.onehot_encoder if isinstance(self.scorer,
@@ -183,7 +194,6 @@ class BaseEvaluator(_BaseEvaluator):
                                         fit_params=fit_params)
                     scores.append(_score)
                 score = np.mean(scores)
-
         elif 'partial' in self.resampling_strategy:
             # Prepare data node.
             with warnings.catch_warnings():
@@ -263,7 +273,9 @@ class BaseEvaluator(_BaseEvaluator):
 
         # Turn it into a minimization problem.
         return_dict['objectives'] = [-score]
-
+        # cv方法存一下
+        if self.resampling_strategy == 'cv':
+            return_dict['extra_info'] = {'validation_metrics': [-score for score in scores]}
         return return_dict
 
 
@@ -273,13 +285,13 @@ class BaseCLSEvaluator(BaseEvaluator):
             self, fixed_config=None, scorer=None, data_node=None, task_type=0,
             resampling_strategy='cv', resampling_params=None,
             timestamp=None, output_dir=None, seed=1,
-            if_imbal=False
+            if_imbal=False, reshuffle=False
     ):
         super().__init__(
             fixed_config, scorer, data_node, task_type,
             resampling_strategy, resampling_params,
             timestamp, output_dir, seed,
-            if_imbal
+            if_imbal, reshuffle=reshuffle
         )
 
     def get_fit_params(self, y, estimator):
@@ -322,13 +334,15 @@ class BaseRGSEvaluator(BaseEvaluator):
     def __init__(
             self, fixed_config=None, scorer=None, data_node=None, task_type=0,
             resampling_strategy='cv', resampling_params=None,
-            timestamp=None, output_dir=None, seed=1,
+            timestamp=None, output_dir=None, seed=1, reshuffle=False,
+            late_reshuffle=False
     ):
         super().__init__(
             fixed_config, scorer, data_node, task_type,
             resampling_strategy, resampling_params,
             timestamp, output_dir, seed,
-            if_imbal=False
+            if_imbal=False, reshuffle=reshuffle,
+            late_reshuffle=late_reshuffle
         )
 
     def get_fit_params(self, y, estimator):

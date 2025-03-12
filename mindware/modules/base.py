@@ -34,6 +34,7 @@ from mindware.components.evaluators.base_evaluator import fetch_predict_estimato
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.components.feature_engineering.parse import parse_config
 
+from openbox.utils.early_stop import EarlyStopAlgorithm
 class BaseAutoML(object):
     def __init__(self, name: str, task_type: str = None,
                  metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
@@ -120,11 +121,11 @@ class BaseAutoML(object):
             optimizer = get_opt_node_type(tree, 0)(
                 node_list=tree, node_index=0,
                 evaluator=self.evaluator, cash_config_space=self.cs, name=name, eval_type=self.evaluation,
-                time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
+                time_limit=self.time_limit, evaluation_limit=self.amount_of_resource, 
                 per_run_time_limit=self.per_run_time_limit,
                 inner_iter_num_per_iter=self.inner_iter_num_per_iter,timestamp=self.timestamp,
                 sub_optimizer=sub_optimizer, fe_config_space=fe_config_space,
-                output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs,
+                output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs
             )
 
             return optimizer
@@ -158,7 +159,7 @@ class BaseAutoML(object):
 
         optimizer = optimizer_class(
             evaluator=self.evaluator, config_space=self.cs, name=name, eval_type=self.evaluation,
-            time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
+            time_limit=self.time_limit, evaluation_limit=self.amount_of_resource, resampling_params=self.resampling_params, evaluation=self.evaluation,
             per_run_time_limit=self.per_run_time_limit,
             inner_iter_num_per_iter=self.inner_iter_num_per_iter,timestamp=self.timestamp,
             output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs,
@@ -173,7 +174,8 @@ class BaseAutoML(object):
 
         self.optimizer.inner_iter_num_per_iter = trial_num
 
-        self.optimizer.iterate(budget=self.time_limit + self.timestamp - time.time())
+        if self.optimizer.iterate(budget=self.time_limit + self.timestamp - time.time()) == False:
+            return False
         if time.time() - self.timestamp > self.time_limit:
             self.timeout_flag = True
         self.early_stop_flag = self.optimizer.early_stopped_flag
@@ -184,11 +186,11 @@ class BaseAutoML(object):
         return self.incumbent_perf
 
     def run(self, refit=True):
-
         for i in range(self.amount_of_resource):
             if not (self.early_stop_flag or self.timeout_flag):
-                self.iterate()
-
+                if self.iterate() == False:
+                    break
+                    
         if self.ensemble_method is not None:
             if self.evaluation == 'cv':
                 self.refit(partial=True)

@@ -5,9 +5,8 @@ from openbox.optimizer.generic_smbo import SMBO as BO
 from openbox.utils.constants import SUCCESS
 from mindware.components.optimizers.base_optimizer import BaseOptimizer, MAX_INT
 
-
 class SMACOptimizer(BaseOptimizer):
-    def __init__(self, evaluator, config_space, name, eval_type, 
+    def __init__(self, evaluator, config_space, name, eval_type, resampling_params, evaluation, 
                  time_limit=None, evaluation_limit=None,
                  per_run_time_limit=300, per_run_mem_limit=1024, 
                  inner_iter_num_per_iter=1, timestamp=None, 
@@ -17,11 +16,11 @@ class SMACOptimizer(BaseOptimizer):
                                             per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
                                             inner_iter_num_per_iter=inner_iter_num_per_iter, timestamp=timestamp, 
                                             output_dir=output_dir, seed=seed)
-
+        # 先改成gp
         if n_jobs == 1:
             self.optimizer = BO(objective_function=self.evaluator,
                                 config_space=config_space,
-                                surrogate_type='prf',
+                                surrogate_type='gp',
                                 acq_type='ei',
                                 max_runs=int(1e10),
                                 task_id='Default',
@@ -41,6 +40,9 @@ class SMACOptimizer(BaseOptimizer):
 
         self.trial_cnt = 0
         self.exp_output = dict()
+        self.amount_of_resource = evaluation_limit
+        self.resampling_params = resampling_params
+        self.evaluation = evaluation
         # Estimate the size of the hyperparameter space.
         hp_num = len(self.config_space.get_hyperparameters())
         if hp_num == 0:
@@ -137,7 +139,21 @@ class SMACOptimizer(BaseOptimizer):
         if self.time_limit is not None and time.time() - self.timestamp > self.time_limit or \
                 self.evaluation_num_limit is not None and len(self.perfs) >= self.evaluation_num_limit:
             self.timeout_flag = True
-            
+        # 考虑是否要早停，注意这里只考虑HPO
+        if self.name == 'hpo':
+            from openbox.utils.early_stop import EarlyStopAlgorithm
+            ealy_stop = EarlyStopAlgorithm(min_iter = self.resampling_params['min_iter'])
+            advisor = self.optimizer.config_advisor
+            configs = advisor.sample_random_configs(advisor.config_space, 1000)
+            history = advisor.history
+            if 'folds' in self.resampling_params:
+                if ealy_stop.check_regret_stop(history, advisor, self.evaluation, self.resampling_params['folds'], configs):
+                    return False
+            else:
+                if ealy_stop.check_regret_stop(history, advisor, self.evaluation, 10, configs):
+                    return False
+
+
         # incumbent_perf: the large the better
         return self.incumbent_perf, iteration_cost, self.incumbent_config
 

@@ -19,8 +19,8 @@ class BaseCASH(BaseAutoML):
                  optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1,
-                 ensemble_method=None, ensemble_size=5, task_id='test'):
-
+                 ensemble_method=None, ensemble_size=5, task_id='test', reshuffle=False):
+        self.reshuffle = reshuffle
         super(BaseCASH, self).__init__(
             name='cash', task_type=task_type,
             metric=metric, data_node=data_node,
@@ -71,7 +71,9 @@ class BaseCASH(BaseAutoML):
                 timestamp=self.timestamp,
                 output_dir=self.output_dir,
                 seed=self.seed,
-                if_imbal=self.if_imbal)
+                if_imbal=self.if_imbal,
+                reshuffle=self.reshuffle,
+                )
         else:
             from mindware.modules.cash.cash_evaluator import CASHRGSEvaluator
             self.evaluator = CASHRGSEvaluator(
@@ -82,7 +84,10 @@ class BaseCASH(BaseAutoML):
                 resampling_params=self.resampling_params,
                 timestamp=self.timestamp,
                 output_dir=self.output_dir,
-                seed=self.seed)
+                seed=self.seed,
+                reshuffle=self.reshuffle,
+                late_reshuffle=self.late_reshuffle
+                )
 
         self.optimizer = self.build_optimizer(name='cash', sub_optimizer=sub_optimizer)
 

@@ -1,0 +1,129 @@
+CLS: hpo-smac, estimator:xgboost, 2024-12-30 23:04:44, xgboost, reshuffle:True, late_reshuffle:True, 100, spambase: 0.9500542888165038, 0.9522258414766558
+CLS: hpo-smac, estimator:xgboost, 2024-12-30 23:30:38, xgboost, reshuffle:True, late_reshuffle:True, 100, spambase: 0.9511400651465798, 0.9522258414766558
+CLS: hpo-smac, estimator:xgboost, 2024-12-30 23:33:54, xgboost, reshuffle:True, late_reshuffle:True, 600, spambase: 0.9543973941368078, 0.9543973941368078
+CLS: hpo-smac, estimator:xgboost, 2024-12-30 23:34:49, xgboost, reshuffle:True, late_reshuffle:True, 600, spambase: 0.9543973941368078, 0.9511400651465798
+
+
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 02:54:11, xgboost, reshuffle:True, late_reshuffle:True, 3600, spambase: 0.9576547231270358, 0.9543973941368078
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 03:26:22, xgboost, reshuffle:True, late_reshuffle:True, 3600, spambase: 0.9554831704668838, 0.9533116178067318
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 03:45:47, xgboost, reshuffle:True, late_reshuffle:True, 3600, spambase: 0.9522258414766558, 0.9543973941368078
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 04:03:55, xgboost, reshuffle:True, late_reshuffle:True, 3600, cpu_act: 0.9353264185478951, 0.9359365466748018
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 04:28:01, xgboost, reshuffle:True, late_reshuffle:True, 3600, cpu_act: 0.9304453935326419, 0.9347162904209884
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 04:45:31, xgboost, reshuffle:True, late_reshuffle:True, 3600, cpu_act: 0.9322757779133618, 0.9347162904209884
+
+
+
+
+
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 12:42:23, xgboost, reshuffle:True, late_reshuffle:True, 3600, kc1: 0.8744075829383886, 0.8696682464454977
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 12:42:23, xgboost, reshuffle:True, late_reshuffle:False, 3600, kc1: 0.8791469194312796, 0.8815165876777251
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 13:42:53, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8720379146919431, 0.8744075829383886
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 13:42:58, xgboost, reshuffle:True, late_reshuffle:True, 3600, spambase: 0.9533116178067318, 0.9500542888165038
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 14:43:53, xgboost, reshuffle:False, late_reshuffle:False, 3600, spambase: 0.9543973941368078, 0.9533116178067318
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 14:43:52, xgboost, reshuffle:True, late_reshuffle:False, 3600, spambase: 0.9467969598262758, 0.9554831704668838
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 15:46:02, xgboost, reshuffle:True, late_reshuffle:False, 3600, cpu_act: 0.9316656497864552, 0.9328859060402684
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 15:45:59, xgboost, reshuffle:True, late_reshuffle:True, 3600, cpu_act: 0.9310555216595485, 0.9365466748017084
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 17:09:44, xgboost, reshuffle:True, late_reshuffle:True, 3600, ailerons: 0.8952727272727272, 0.888
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 17:09:24, xgboost, reshuffle:False, late_reshuffle:False, 3600, cpu_act: 0.9316656497864552, 0.9322757779133618
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 18:33:53, xgboost, reshuffle:True, late_reshuffle:False, 3600, ailerons: 0.893090909090909, 0.8967272727272727
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 19:02:37, xgboost, reshuffle:False, late_reshuffle:False, 3600, ailerons: 0.8898181818181818, 0.8894545454545455
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 19:58:37, xgboost, reshuffle:True, late_reshuffle:True, 3600, sick: 0.9854304635761589, 0.9894039735099338
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 20:32:21, xgboost, reshuffle:True, late_reshuffle:False, 3600, sick: 0.9801324503311258, 0.9854304635761589
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 21:22:59, xgboost, reshuffle:False, late_reshuffle:False, 3600, sick: 0.9854304635761589, 0.9867549668874173
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 21:35:46, xgboost, reshuffle:True, late_reshuffle:True, 3600, mv: 0.9975472160902624, 0.9975472160902624
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 22:32:27, xgboost, reshuffle:True, late_reshuffle:False, 3600, mv: 0.9971792985038018, 0.9974245768947756
+CLS: hpo-smac, estimator:xgboost, 2024-12-31 22:36:06, xgboost, reshuffle:False, late_reshuffle:False, 3600, mv: 0.9976698552857494, 0.9975472160902624
+
+
+
+
+100轮之后再reshuffle --late_reshuffle
+
+
+CLS: cash-smac, estimator:xgboost, 2025-01-02 02:14:36, xgboost, reshuffle:True, late_reshuffle:False, 3600, kc1: 0.8625592417061612, 0.8696682464454977
+CLS: cash-smac, estimator:xgboost, 2025-01-02 02:14:36, xgboost, reshuffle:True, late_reshuffle:True, 3600, kc1: 0.8507109004739336, 0.8791469194312796
+CLS: cash-smac, estimator:xgboost, 2025-01-02 02:35:45, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8507109004739336, 0.8696682464454977
+
+
+CLS: cash-smac, estimator:xgboost, 2025-01-02 02:40:06, xgboost, reshuffle:True, late_reshuffle:True, 3600, spambase: 0.9543973941368078, 0.9565689467969598
+CLS: cash-smac, estimator:xgboost, 2025-01-02 03:13:10, xgboost, reshuffle:True, late_reshuffle:False, 3600, spambase: 0.9554831704668838, 0.9587404994571118
+CLS: cash-smac, estimator:xgboost, 2025-01-02 03:20:11, xgboost, reshuffle:False, late_reshuffle:False, 3600, spambase: 0.9511400651465798, 0.9565689467969598
+
+
+CLS: cash-smac, estimator:xgboost, 2025-01-02 03:56:42, xgboost, reshuffle:True, late_reshuffle:True, 3600, cpu_act: 0.9255643685173887, 0.9328859060402684
+CLS: cash-smac, estimator:xgboost, 2025-01-02 04:08:18, xgboost, reshuffle:True, late_reshuffle:False, 3600, cpu_act: 0.9377669310555217, 0.9334960341671751
+CLS: cash-smac, estimator:xgboost, 2025-01-02 04:53:09, xgboost, reshuffle:False, late_reshuffle:False, 3600, cpu_act: 0.9322757779133618, 0.9341061622940817
+
+
+CLS: cash-smac, estimator:xgboost, 2025-01-02 05:00:59, xgboost, reshuffle:True, late_reshuffle:True, 3600, ailerons: 0.8927272727272727, 0.8912727272727273
+CLS: cash-smac, estimator:xgboost, 2025-01-02 05:50:21, xgboost, reshuffle:True, late_reshuffle:False, 3600, ailerons: 0.8934545454545455, 0.8909090909090909
+CLS: cash-smac, estimator:xgboost, 2025-01-02 05:53:40, xgboost, reshuffle:False, late_reshuffle:False, 3600, ailerons: 0.8865454545454545, 0.8883636363636364
+
+CLS: cash-smac, estimator:xgboost, 2025-01-02 06:42:36, xgboost, reshuffle:True, late_reshuffle:True, 3600, sick: 0.9509933774834437, 0.9867549668874173
+CLS: cash-smac, estimator:xgboost, 2025-01-02 06:47:49, xgboost, reshuffle:True, late_reshuffle:False, 3600, sick: 0.9841059602649007, 0.9867549668874173
+CLS: cash-smac, estimator:xgboost, 2025-01-02 07:09:59, xgboost, reshuffle:False, late_reshuffle:False, 3600, sick: 0.9894039735099338, 0.9867549668874173
+
+
+CLS: cash-smac, estimator:xgboost, 2025-01-02 07:13:00, xgboost, reshuffle:True, late_reshuffle:True, 3600, mv: 0.9975472160902624, 0.9976698552857494
+CLS: cash-smac, estimator:xgboost, 2025-01-02 07:37:51, xgboost, reshuffle:True, late_reshuffle:False, 3600, mv: 0.9974245768947756, 0.9976698552857494
+CLS: cash-smac, estimator:xgboost, 2025-01-02 08:17:49, xgboost, reshuffle:False, late_reshuffle:False, 3600, mv: 0.9977924944812362, 0.9977924944812362
+
+是否是复杂任务启用reshuffle，简单任务就不启用或者延迟启用呢？
+可以看到基本都是一直reshuffle效果比late（100轮之后）reshuffle好
+kc1:0.8791469194312796(True True ens)最优
+spambase: 0.9587404994571118 (True False ens)
+cpu_act: 0.9377669310555217 (True False)
+ailerons: 0.8934545454545455(True False)
+sick:  0.9894039735099338 (False False)
+mv: 0.9977924944812362(False,False)
+
+
+
+
+
+
+
+
+CLS: hpo-smac, estimator:xgboost, 2025-01-07 21:30:40, xgboost, reshuffle:False, late_reshuffle:False, 3600, spambase: 0.9533116178067318, 0.9522258414766558
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 17:14:00, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8625592417061612, 0.8744075829383886
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 17:22:47, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8625592417061612, 0.8744075829383886
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 18:25:44, xgboost, reshuffle:False, late_reshuffle:False, 3600, cpu_act: 0.9328859060402684, 0.9341061622940817
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 18:27:35, xgboost, reshuffle:False, late_reshuffle:False, 3600, ailerons: 0.8912727272727273, 0.8916363636363637
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 18:31:12, xgboost, reshuffle:False, late_reshuffle:False, 3600, ailerons: 0.8912727272727273, 0.8923636363636364
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 19:23:11, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8672985781990521, 0.8649289099526066
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 19:35:32, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8578199052132701, 0.8601895734597157
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 19:37:49, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8578199052132701, 0.8601895734597157
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 20:16:54, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8578199052132701, 0.8625592417061612
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 21:05:12, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8578199052132701, 0.8601895734597157
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 21:06:44, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8578199052132701, 0.8625592417061612
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 21:13:42, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8578199052132701, 0.8601895734597157
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 21:16:22, xgboost, reshuffle:False, late_reshuffle:False, 3600, sick: 0.9867549668874173, 0.9854304635761589
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 21:30:37, xgboost, reshuffle:False, late_reshuffle:False, 3600, ailerons: 0.8963636363636364, 0.8905454545454545
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 21:39:02, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8838862559241706, 0.8720379146919431
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 22:17:12, xgboost, reshuffle:False, late_reshuffle:False, 3600, sick: 0.9867549668874173, 0.9854304635761589
+CLS: hpo-smac, estimator:xgboost, 2025-01-09 22:31:02, xgboost, reshuffle:False, late_reshuffle:False, 3600, higgs: 0.7306986231514533, 0.7343702192758796
+
+
+
+
+
+
+
+
+
+
+
+
+CLS: hpo-smac, estimator:xgboost, 2025-02-18 01:39:02, xgboost, reshuffle:False, late_reshuffle:False, 3600, spambase: 0.9576547231270358, 0.9543973941368078
+CLS: hpo-smac, estimator:xgboost, 2025-02-19 17:36:12, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8720379146919431, 0.8672985781990521 10折
+CLS: hpo-smac, estimator:xgboost, 2025-02-19 17:43:50, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8838862559241706, 0.8720379146919431 20折
+CLS: hpo-smac, estimator:xgboost, 2025-02-19 17:59:34, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8649289099526066, 0.8649289099526066 30折
+CLS: hpo-smac, estimator:xgboost, 2025-02-19 18:02:51, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8744075829383886, 0.8649289099526066 40折
+CLS: hpo-smac, estimator:xgboost, 2025-02-19 18:09:30, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8720379146919431, 0.8696682464454977 25折
+CLS: hpo-smac, estimator:xgboost, 2025-02-19 18:12:15, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8838862559241706, 0.8720379146919431 20折
+CLS: hpo-smac, estimator:xgboost, 2025-02-19 18:21:41, xgboost, reshuffle:False, late_reshuffle:False, 3600, covertype: 0.8868608179718285, 0.8850491417183749 20折但是没有触发早停
+
+以上min_iter都是30CLS: hpo-smac, estimator:xgboost, 2025-02-19 20:16:20, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8672985781990521, 0.8672985781990521
+CLS: hpo-smac, estimator:xgboost, 2025-02-19 20:18:46, xgboost, reshuffle:False, late_reshuffle:False, 3600, kc1: 0.8838862559241706, 0.8720379146919431
+CLS: hpo-smac, estimator:xgboost, 2025-02-19 20:22:08, xgboost, reshuffle:False, late_reshuffle:False, 3600, covertype: 0.8863626070021288, 0.8883101589745912
+CLS: hpo-smac, estimator:xgboost, 2025-02-19 22:10:16, xgboost, reshuffle:False, late_reshuffle:False, 7200, covertype: 0.8879931156302369, 0.8868608179718285

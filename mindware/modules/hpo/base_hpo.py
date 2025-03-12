@@ -20,8 +20,8 @@ class BaseHPO(BaseAutoML):
                  optimizer='smac',
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1,
-                 ensemble_method=None, ensemble_size=5, task_id='test'):
-
+                 ensemble_method=None, ensemble_size=5, task_id='test', reshuffle=False):
+        self.reshuffle = reshuffle
         super(BaseHPO, self).__init__(
             name='hpo', task_type=task_type,
             metric=metric, data_node=data_node,
@@ -33,9 +33,9 @@ class BaseHPO(BaseAutoML):
         )
 
         if optimizer not in ['smac', 'tpe', 'random_search']:
-            raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
+            raise ValueError('Invalid optimizer: %s for HPO!' % optimizer)
         if evaluation not in ['holdout', 'cv', 'partial', 'partial_bohb']:
-            raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
+            raise ValueError('Invalid evaluation: %s for HPO!' % evaluation)
 
         self.estimator_id = estimator_id
 
@@ -67,7 +67,9 @@ class BaseHPO(BaseAutoML):
                 timestamp=self.timestamp,
                 output_dir=self.output_dir,
                 seed=self.seed,
-                if_imbal=self.if_imbal)
+                if_imbal=self.if_imbal,
+                reshuffle=self.reshuffle,
+                )
         else:
             from mindware.modules.hpo.hpo_evaluator import HPORGSEvaluator
             self.evaluator = HPORGSEvaluator(
@@ -78,7 +80,8 @@ class BaseHPO(BaseAutoML):
                 resampling_params=self.resampling_params,
                 timestamp=self.timestamp,
                 output_dir=self.output_dir,
-                seed=self.seed)
+                seed=self.seed
+                )
 
         self.optimizer = self.build_optimizer(name='hpo')
 

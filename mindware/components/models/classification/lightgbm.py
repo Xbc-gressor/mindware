@@ -58,7 +58,7 @@ class LightGBM(BaseClassificationModel):
                                         subsample=self.subsample,
                                         colsample_bytree=self.colsample_bytree,
                                         random_state=self.random_state,
-                                        n_jobs=self.n_jobs,
+                                        # n_jobs=self.n_jobs,
                                         verbose=self.verbose)
 
         if self.augment_data == 1:

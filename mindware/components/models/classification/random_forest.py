@@ -86,7 +86,7 @@ class RandomForest(
                 max_leaf_nodes=self.max_leaf_nodes,
                 min_impurity_decrease=self.min_impurity_decrease,
                 random_state=self.random_state,
-                n_jobs=self.n_jobs,
+                # n_jobs=self.n_jobs,
                 class_weight=self.class_weight,
                 warm_start=True)
         else:

@@ -13,7 +13,7 @@ from mindware.utils.constant import MAX_INT
 
 
 class MabOptimizer(BaseOptimizer):
-    def __init__(self, evaluator, config_space, name, eval_type,
+    def __init__(self, evaluator, config_space, name, eval_type, resampling_params,  evaluation,
                  time_limit=None, evaluation_limit=None,
                  per_run_time_limit=300, per_run_mem_limit=1024, 
                  inner_iter_num_per_iter=10, timestamp=None,
@@ -31,7 +31,8 @@ class MabOptimizer(BaseOptimizer):
         self.rewards = dict()
         self.sub_bandits = dict()
         self.evaluation_cost = dict()
-
+        self.resampling_params = resampling_params
+        self.evaluation = evaluation
         self.arm_cost_stats = dict()
         for _arm in self.arms:
             self.arm_cost_stats[_arm] = list()
