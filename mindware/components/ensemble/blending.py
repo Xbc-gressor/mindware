@@ -14,18 +14,23 @@ from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
 
 
 class Blending(BaseEnsembleModel):
-    def __init__(self, ensemble_size: int,
-                 task_type: int,
+    def __init__(self, stats, valid_data,
+                 ensemble_size: int,
+                 task_type: int, if_imbal: bool,
                  metric: _BaseScorer,
                  output_dir=None, seed=None,
                  meta_learner='lightgbm',
-                 predictions=None):
-        super().__init__(ensemble_method='blending',
+                 predictions=None, base_model_mask=None):
+        super().__init__(stats, valid_data,
+                         ensemble_method='blending',
                          ensemble_size=ensemble_size,
-                         task_type=task_type,
+                         task_type=task_type, if_imbal=if_imbal,
                          metric=metric,
                          output_dir=output_dir, seed=seed,
                          predictions=predictions)
+
+        self.base_model_mask = base_model_mask
+
         try:
             from lightgbm import LGBMClassifier
         except:
@@ -68,9 +73,7 @@ class Blending(BaseEnsembleModel):
 
         return _path
 
-    def fit(self, stats, datanode):
-        super(Blending, self).fit(stats, datanode)
-        self._choose_base_models(datanode)
+    def fit(self):
         # Split training data for phase 1 and phase 2
         test_size = 0.2
 
@@ -84,38 +87,10 @@ class Blending(BaseEnsembleModel):
             for idx, (config, _, path) in enumerate(model_to_eval):
 
                 if self.base_model_mask[model_cnt] == 1:
-                    _path = self.get_path(algo_id, model_cnt)
+                    op_list, estimator, _ = CombinedTopKModelSaver._load(path)
 
-                    if os.path.exists(_path):
-                        continue
-
-                    X, y = datanode.data
-                    
-                    if self.task_type in CLS_TASKS:
-                        ss = BaseCLSEvaluator._get_spliter(resampling_strategy='holdout', test_size=test_size, random_state=self.seed)
-                    else:
-                        ss = BaseRGSEvaluator._get_spliter(resampling_strategy='holdout', test_size=test_size, random_state=self.seed)
-
-                    x_p1, x_p2, y_p1, y_p2 = None, None, None, None
-                    for train_index, val_index in ss.split(X, y):
-                        x_p1, y_p1 = X[train_index], y[train_index]
-                        x_p2, y_p2 = X[val_index], y[val_index]
-
-                    train_node = datanode.copy_(no_data=True)
-                    val_node = datanode.copy_(no_data=True)
-                    train_node.data = [x_p1, y_p1]
-                    val_node.data = [x_p2, y_p2]
-
-                    train_node, op_list = parse_config(train_node, config, record=True, if_imbal=self.if_imbal)
-                    val_node = construct_node(val_node.copy_(), op_list)
-
-                    x_p1, y_p1 = train_node.data
+                    val_node = construct_node(self.valid_data.copy_(), op_list)
                     x_p2, y_p2 = val_node.data
-
-                    estimator = fetch_predict_estimator(self.task_type, algo_id, config, x_p1, y_p1,
-                                                        weight_balance=train_node.enable_balance,
-                                                        data_balance=train_node.data_balance)
-                    CombinedTopKModelSaver._save(items=[op_list, estimator, None], save_path=_path)
 
                     if self.task_type in CLS_TASKS:
                         pred = estimator.predict_proba(x_p2)
@@ -147,7 +122,7 @@ class Blending(BaseEnsembleModel):
 
         return self
 
-    def get_feature(self, datanode):
+    def get_feature(self, datanode, refit):
         # Predict the labels via blending
         feature_p2 = None
         model_cnt = 0
@@ -156,7 +131,9 @@ class Blending(BaseEnsembleModel):
             model_to_eval = self.stats[algo_id]
             for idx, (config, _, path) in enumerate(model_to_eval):
                 if self.base_model_mask[model_cnt] == 1:
-                    _path = self.get_path(algo_id, model_cnt)
+                    _path = path
+                    if refit:
+                        _path = CombinedTopKModelSaver.get_refit_path(path)
                     op_list, estimator, _ = CombinedTopKModelSaver._load(_path)
                     _node = datanode.copy_()
                     _node = construct_node(_node, op_list)
@@ -188,8 +165,8 @@ class Blending(BaseEnsembleModel):
 
         return feature_p2
 
-    def predict(self, data, refit=False):
-        feature_p2 = self.get_feature(data)
+    def predict(self, data, refit=True):
+        feature_p2 = self.get_feature(data, refit)
         # Get predictions from meta-learner
         if self.task_type in CLS_TASKS:
             final_pred = self.meta_learner.predict_proba(feature_p2)
@@ -212,36 +189,3 @@ class Blending(BaseEnsembleModel):
         ens_info['config'] = ens_config
         ens_info['meta_learner'] = self.meta_method
         return ens_info
-
-    def refit(self, datanode):
-        self.logger.debug("Start to refit all models needed by ensemble!")
-        test_size = 0.2
-
-        # Train basic models using a part of training data
-        model_cnt = 0
-        for algo_id in self.stats.keys():
-            model_to_eval = self.stats[algo_id]
-            for idx, (config, _, path) in enumerate(model_to_eval):
-
-                if self.base_model_mask[model_cnt] == 1:
-                    save_path = CombinedTopKModelSaver.get_refit_path(path)
-                    if os.path.exists(save_path):
-                        self.logger.info("Already Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], save_path))
-                        model_cnt += 1
-                        continue
-
-                    self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], path))
-
-                    _node = datanode.copy_()
-
-                    _node, op_list = parse_config(_node, config, record=True, if_imbal=self.if_imbal)
-
-                    x_p1, y_p1 = _node.data
-
-                    estimator = fetch_predict_estimator(self.task_type, algo_id, config, x_p1, y_p1,
-                                                        weight_balance=_node.enable_balance,
-                                                        data_balance=_node.data_balance)
-                    CombinedTopKModelSaver._save(items=[op_list, estimator, None], save_path=save_path)
-
-
-

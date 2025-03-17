@@ -15,27 +15,27 @@ from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 
 class EnsembleSelection(BaseEnsembleModel):
     def __init__(
-            self, ensemble_size: int,
-            task_type: int,
+            self, stats, valid_data,
+            ensemble_size: int,
+            task_type: int, if_imbal: bool,
             metric: _BaseScorer,
             output_dir=None, seed=None,
             sorted_initialization: bool = False,
             mode: str = 'fast',
             predictions=None,
     ):
-        super().__init__(ensemble_method='ensemble_selection',
-                         ensemble_size=ensemble_size,
-                         task_type=task_type,
-                         metric=metric,
-                         output_dir=output_dir, seed=seed,
-                         predictions=predictions)
-        self.model_idx = list()
+        super().__init__(stats, valid_data,
+                        ensemble_method='ensemble_selection',
+                        ensemble_size=ensemble_size,
+                        task_type=task_type, if_imbal=if_imbal,
+                        metric=metric,
+                        output_dir=output_dir, seed=seed,
+                        predictions=predictions)
+        self.base_model_mask = None
         self.sorted_initialization = sorted_initialization
         self.mode = mode
         self.encoder = OneHotEncoder()
-        self.shape = None
         self.random_state = np.random.RandomState(1)
-
         self.shape = self.predictions[0].shape
 
     def calculate_score(self, pred, y_true):
@@ -47,9 +47,7 @@ class EnsembleSelection(BaseEnsembleModel):
         score = self.metric._score_func(y_true, pred) * self.metric._sign
         return score
 
-    def fit(self, stats, datanode):
-        super(EnsembleSelection, self).fit(stats, datanode)
-        self._choose_base_models(datanode)
+    def fit(self):
 
         if len(self.train_labels.shape) == 1 and self.task_type in CLS_TASKS:
             reshape_y = np.reshape(self.train_labels, (len(self.train_labels), 1))
@@ -68,13 +66,17 @@ class EnsembleSelection(BaseEnsembleModel):
         self._calculate_weights()
         self.identifiers_ = None
 
+        model_idx = []
         model_cnt = 0
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
             for _, _ in enumerate(model_to_eval):
                 if self.weights_[model_cnt] != 0:
-                    self.model_idx.append(model_cnt)
+                    model_idx.append(model_cnt)
                 model_cnt += 1
+
+        self.base_model_mask = np.full(len(self.predictions), False)
+        self.base_model_mask[model_idx] = True
 
         return self
 
@@ -207,13 +209,13 @@ class EnsembleSelection(BaseEnsembleModel):
         indices = np.argsort(perf)[perf.shape[0] - n_best:]
         return indices
 
-    def predict(self, data, refit=False):
+    def predict(self, data, refit=True):
         predictions = []
         cur_idx = 0
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
             for idx, (_, _, path) in enumerate(model_to_eval):
-                if cur_idx in self.model_idx:
+                if self.base_model_mask[cur_idx]:
                     if refit:
                         path = CombinedTopKModelSaver.get_refit_path(path)
                     op_list, estimator, _ = CombinedTopKModelSaver._load(path)
@@ -225,11 +227,11 @@ class EnsembleSelection(BaseEnsembleModel):
                         predictions.append(estimator.predict_proba(X_test))
                     else:
                         predictions.append(estimator.predict(X_test))
-                else:
-                    if len(self.shape) == 1:
-                        predictions.append(np.zeros(len(data.data[0])))
-                    else:
-                        predictions.append(np.zeros((len(data.data[0]), self.shape[1])))
+                # else:
+                #     if len(self.shape) == 1:
+                #         predictions.append(np.zeros(len(data.data[0])))
+                #     else:
+                #         predictions.append(np.zeros((len(data.data[0]), self.shape[1])))
                 cur_idx += 1
         predictions = np.asarray(predictions)
 
@@ -299,39 +301,3 @@ class EnsembleSelection(BaseEnsembleModel):
         ens_info['config'] = ens_config
         ens_info['ensemble_weights'] = [w for w in self.weights_ if w > 0]
         return ens_info
-
-    def refit(self, datanode):
-        self.logger.debug("Start to refit all models needed by ensemble!")
-        # Refit models on whole training data
-        model_cnt = 0
-        for algo_id in self.stats:
-            model_to_eval = self.stats[algo_id]
-            for idx, (config, _, model_path) in enumerate(model_to_eval):
-                # X, y = self.node.data
-                if self.weights_[model_cnt] != 0:
-
-                    save_path = CombinedTopKModelSaver.get_refit_path(model_path)
-                    if os.path.exists(save_path):
-                        self.logger.info("Already Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], save_path))
-                        model_cnt += 1
-                        continue
-
-                    self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], model_path))
-                    op_list, estimator, perf = CombinedTopKModelSaver._load(model_path)
-
-                    # _node = self.node.copy_()
-                    # _node = construct_node(_node, op_list)
-
-                    if op_list == {}:
-                        _node = datanode.copy_()
-                    else:
-                        _node, op_list = parse_config(datanode.copy_(), config, record=True,
-                                                      if_imbal=self.if_imbal)
-
-                    estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
-                                                        _node.data[0], _node.data[1],
-                                                        weight_balance=_node.enable_balance,
-                                                        data_balance=_node.data_balance)
-
-                    CombinedTopKModelSaver._save((op_list, estimator, perf), save_path)
-                model_cnt += 1

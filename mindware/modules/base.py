@@ -34,6 +34,7 @@ from mindware.components.evaluators.base_evaluator import fetch_predict_estimato
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.components.feature_engineering.parse import parse_config
 from mindware.utils.logging_utils import setup_logger, get_logger
+from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
 
 class BaseAutoML(object):
 
@@ -136,6 +137,29 @@ class BaseAutoML(object):
             include_preps[algo] = tmp_prep
 
         return include_preps
+
+    @staticmethod
+    def _get_valid_data(task_type, data_node, resampling_params=None, seed=1):
+
+        test_size = 0.33
+        if resampling_params is not None and 'test_size' in resampling_params:
+            test_size = resampling_params['test_size']
+
+        valid_data = data_node.copy_(no_data=True)
+        X, y = data_node.data
+        if task_type in CLS_TASKS:
+            ss = BaseCLSEvaluator._get_spliter(resampling_strategy='holdout', test_size=test_size, random_state=seed)
+        else:
+            ss = BaseRGSEvaluator._get_spliter(resampling_strategy='holdout', test_size=test_size, random_state=seed)
+
+        x_p2, y_p2 = None, None
+        for train_index, val_index in ss.split(X, y):
+            x_p2, y_p2 = X[val_index], y[val_index]
+
+        valid_data.data = [x_p2, y_p2]
+
+        return valid_data
+
 
     def _get_logger(self, optimizer_name):
         raise NotImplementedError()
@@ -348,14 +372,14 @@ class BaseAutoML(object):
             with open(config_path, 'rb') as f:
                 stats = pkl.load(f)
 
+            valid_data = self._get_valid_data(task_type=self.task_type, data_node=self.data_node, resampling_params=self.resampling_params, seed=self.seed)
             # Ensembling all intermediate/ultimate models found in above optimization process.
-            self.es = EnsembleBuilder(resampling_params=self.resampling_params,
-                                      ensemble_method=self.ensemble_method,
-                                      ensemble_size=self.ensemble_size,
-                                      task_type=self.task_type,
+            self.es = EnsembleBuilder(stats=stats, valid_data=valid_data,
+                                      task_type=self.task_type, if_imbal=self.if_imbal,
                                       metric=self.metric,
                                       output_dir=self.output_dir, seed=self.seed)
-            self.es.fit(stats=stats, datanode=self.data_node)
+            self.es.build_ensemble(ensemble_method=self.ensemble_method, ensemble_size=self.ensemble_size)
+            self.es.fit()
 
             if refit and self.refit_status != 'full':
                 self.es.refit(datanode=self.data_node)
@@ -408,13 +432,13 @@ class BaseAutoML(object):
                     best_path = path
         
         if ensemble_method is not None:
-            es = EnsembleBuilder(resampling_params=resampling_params,
-                                        ensemble_method=ensemble_method,
-                                        ensemble_size=ensemble_size,
-                                        task_type=task_type,
-                                        metric=metric,
-                                        output_dir=output_dir, seed=seed)
-            es.fit(stats=stats, datanode=data_node)
+            valid_data = cls._get_valid_data(task_type=task_type, data_node=data_node, resampling_params=resampling_params, seed=seed)
+            es = EnsembleBuilder(stats=stats, valid_data=valid_data,
+                                  task_type=task_type, if_imbal=if_imbal,
+                                  metric=metric,
+                                  output_dir=output_dir, seed=seed)
+            es.build_ensemble(ensemble_method=ensemble_method, ensemble_size=ensemble_size)
+            es.fit()
             if refit:
                 es.refit(datanode=data_node)
             pred = es.predict(test_data, refit)

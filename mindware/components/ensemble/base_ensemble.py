@@ -1,18 +1,12 @@
 from sklearn.metrics._scorer import _BaseScorer
-from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
-import numpy as np
-import pickle as pkl
 import time
 import datetime
+import os
 
-from mindware.components.utils.constants import CLS_TASKS
-from mindware.components.ensemble.unnamed_ensemble import choose_base_models_classification, \
-    choose_base_models_regression
-from mindware.components.feature_engineering.parse import construct_node
+from mindware.components.feature_engineering.parse import parse_config
+from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
 from mindware.utils.logging_utils import get_logger
-from mindware.utils.functions import is_imbalanced_dataset
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
-from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
 
 
 class BaseEnsembleModel(object):
@@ -41,7 +35,9 @@ class BaseEnsembleModel(object):
         
         self.if_imbal = if_imbal
         self.predictions = predictions
+
         self.base_model_mask = None
+        self.train_labels = valid_data.data[1]
 
     def fit(self):
         raise NotImplementedError
@@ -54,4 +50,35 @@ class BaseEnsembleModel(object):
 
     # TODO: Refit
     def refit(self, datanode):
-        raise NotImplementedError
+        self.logger.debug("Start to refit all models needed by ensemble!")
+        # Refit models on whole training data
+        model_cnt = 0
+        for algo_id in self.stats:
+            model_to_eval = self.stats[algo_id]
+            for idx, (config, _, model_path) in enumerate(model_to_eval):
+                # X, y = self.node.data
+                if self.base_model_mask[model_cnt] == 1:
+
+                    save_path = CombinedTopKModelSaver.get_refit_path(model_path)
+                    if os.path.exists(save_path):
+                        self.logger.info("Already Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], save_path))
+                        model_cnt += 1
+                        continue
+
+                    self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], save_path))
+                    op_list, estimator, perf = CombinedTopKModelSaver._load(model_path)
+
+                    if op_list == {}:
+                        _node = datanode.copy_()
+                    else:
+                        _node, op_list = parse_config(datanode.copy_(), config, record=True,
+                                                      if_imbal=self.if_imbal)
+
+                    estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
+                                                        _node.data[0], _node.data[1],
+                                                        weight_balance=_node.enable_balance,
+                                                        data_balance=_node.data_balance)
+
+                    CombinedTopKModelSaver._save(items=[op_list, estimator, perf], save_path=save_path)
+
+                model_cnt += 1

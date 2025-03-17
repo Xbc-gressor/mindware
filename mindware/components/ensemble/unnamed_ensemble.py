@@ -25,7 +25,84 @@ def choose_base_models_regression(predictions, labels, num_model):
 def choose_base_models_classification(predictions, num_model, interval=20):
     num_class = predictions.shape[2]
     num_total_models = predictions.shape[0]
-    base_mask = [0] * len(predictions)
+    base_mask = np.full(len(predictions), False)
+    bucket = np.arange(interval + 1) / interval
+    bucket[0] -= 1e-8
+    bucket[-1] += 1e-8
+    distribution = []
+    for prediction in predictions:
+        freq_array = []
+        for i in range(num_class):
+            class_i = prediction[:, i]
+            group = pd.cut(class_i, bucket, right=False)
+            counts = group.value_counts()
+            freq = list(counts / counts.sum())
+            freq_array += freq
+
+        # TODO: Debug inf output
+        # print(prediction)
+        # print(freq_array)
+        distribution.append(freq_array)  # Shape: (num_total_models,20*num_class)
+
+    distribution = np.array(distribution)
+
+    # Apply the clustering algorithm
+    model = AgglomerativeClustering(n_clusters=num_model, linkage="complete")
+    cluster = model.fit(distribution)
+    """
+    Select models which are the most nearest to the clustering center
+    selected_models = []
+    """
+    for cluster_label in range(num_model):
+        cluster_center = np.zeros(distribution.shape[1])
+        count = 0
+        """
+         Averaging the distribution which belong the same clustering class
+          and then get the corresponding distribution center
+        """
+        for i in range(num_total_models):
+            if cluster.labels_[i] == cluster_label:
+                count += 1
+                cluster_center += distribution[i]
+        cluster_center = cluster_center / count
+        distances = np.sqrt(np.sum(np.asarray(cluster_center - distribution) ** 2, axis=1))
+        selected_model = distances.argmin()
+        base_mask[selected_model] = 1
+
+    return base_mask
+
+
+def choose_base_models_regression_perf(predictions, labels, num_model):
+    base_mask = np.full(len(predictions), False)
+    dif = predictions - labels
+    dist = dif @ dif.T
+    total_dist = np.sum(dist, 1)
+    '''Select the model which has large distance to other models'''
+    selected_models = total_dist.argsort()[:num_model]
+    for model in selected_models:
+        base_mask[model] = 1
+    return base_mask
+
+"""
+-2660.9949651269903
+-579.7416534461673
+-2957.45642505375
+-2979610.9434735323
+-2056.276903489847
+-1882.0478841526744
+
+-665.2799462789294
+-666.0857024906005
+-687.8812964743407
+-579.7416534461673
+-909.2843086157991
+
+"""
+
+def choose_base_models_classification_perf(predictions, num_model, interval=20):
+    num_class = predictions.shape[2]
+    num_total_models = predictions.shape[0]
+    base_mask = np.full(len(predictions), False)
     bucket = np.arange(interval + 1) / interval
     bucket[0] -= 1e-8
     bucket[-1] += 1e-8

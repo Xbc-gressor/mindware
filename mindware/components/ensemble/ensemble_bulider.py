@@ -11,7 +11,7 @@ import numpy as np
 from mindware.utils.logging_utils import get_logger
 
 from mindware.components.ensemble.unnamed_ensemble import choose_base_models_classification, \
-    choose_base_models_regression
+    choose_base_models_regression, choose_base_models_regression_perf
 
 ensemble_list = ['bagging', 'blending', 'stacking', 'ensemble_selection', 'cross_validation']
 
@@ -34,9 +34,9 @@ class EnsembleBuilder:
 
         self.predictions = []
         self.model = None
+        self.if_imbal = if_imbal
 
         self.build_predictions()
-        self.if_imbal = if_imbal
 
         logger_name = 'EnsembleBuilder'
         self.logger = get_logger(logger_name)
@@ -50,17 +50,18 @@ class EnsembleBuilder:
                              "Set the ensemble size to the number of models.")
             ensemble_size = len(self.predictions)
 
+        base_model_mask = None
         if ensemble_method not in ["ensemble_selection"]:
             y_valid = self.valid_data.data[1]
             if self.task_type in CLS_TASKS:
-                self.base_model_mask = choose_base_models_classification(
+                base_model_mask = choose_base_models_classification(
                     np.array(self.predictions), ensemble_size
                 )
             else:
-                self.base_model_mask = choose_base_models_regression(
+                base_model_mask = choose_base_models_regression(
                     np.array(self.predictions), np.array(y_valid), ensemble_size
                 )
-            ensemble_size = sum(self.base_model_mask)
+            ensemble_size = sum(base_model_mask)
 
         if ensemble_method == 'bagging':
             self.model = Bagging(stats=self.stats, valid_data=self.valid_data,
@@ -68,21 +69,21 @@ class EnsembleBuilder:
                                  task_type=self.task_type, if_imbal=self.if_imbal,
                                  metric=self.metric,
                                  output_dir=self.output_dir, seed=self.seed,
-                                 predictions=self.predictions, base_model_mask=self.base_model_mask)
+                                 predictions=self.predictions, base_model_mask=base_model_mask)
         elif ensemble_method == 'blending':
             self.model = Blending(stats=self.stats, valid_data=self.valid_data,
                                   ensemble_size=ensemble_size,
                                   task_type=self.task_type, if_imbal=self.if_imbal,
                                   metric=self.metric,
                                   output_dir=self.output_dir, seed=self.seed,
-                                  predictions=self.predictions, base_model_mask=self.base_model_mask)
-        elif ensemble_method == 'stacking':
-            self.model = Stacking(stats=self.stats, valid_data=self.valid_data,
-                                  ensemble_size=ensemble_size,
-                                  task_type=self.task_type, if_imbal=self.if_imbal,
-                                  metric=self.metric,
-                                  output_dir=self.output_dir, seed=self.seed,
-                                  predictions=self.predictions, base_model_mask=self.base_model_mask)
+                                  predictions=self.predictions, base_model_mask=base_model_mask)
+        # elif ensemble_method == 'stacking':
+        #     self.model = Stacking(stats=self.stats, valid_data=self.valid_data,
+        #                           ensemble_size=ensemble_size,
+        #                           task_type=self.task_type, if_imbal=self.if_imbal,
+        #                           metric=self.metric,
+        #                           output_dir=self.output_dir, seed=self.seed,
+        #                           predictions=self.predictions, base_model_mask=self.base_model_mask)
         elif ensemble_method == 'ensemble_selection':
             self.model = EnsembleSelection(stats=self.stats, valid_data=self.valid_data,
                                            ensemble_size=ensemble_size,
@@ -90,13 +91,13 @@ class EnsembleBuilder:
                                            metric=self.metric,
                                            output_dir=self.output_dir, seed=self.seed,
                                            predictions=self.predictions)
-        elif ensemble_method == 'cross_validation':
-            self.model = CrossValidationEnsembleModel(stats=self.stats, valid_data=self.valid_data,
-                                                      ensemble_size=ensemble_size,
-                                                      task_type=self.task_type, if_imbal=self.if_imbal,
-                                                      metric=self.metric,
-                                                      output_dir=self.output_dir, seed=self.seed,
-                                                      predictions=self.predictions)
+        # elif ensemble_method == 'cross_validation':
+        #     self.model = CrossValidationEnsembleModel(stats=self.stats, valid_data=self.valid_data,
+        #                                               ensemble_size=ensemble_size,
+        #                                               task_type=self.task_type, if_imbal=self.if_imbal,
+        #                                               metric=self.metric,
+        #                                               output_dir=self.output_dir, seed=self.seed,
+        #                                               predictions=self.predictions)
         else:
             raise ValueError("%s is not supported for ensemble!" % ensemble_method)
 
@@ -111,11 +112,6 @@ class EnsembleBuilder:
                 _node = construct_node(_node, op_list)
                 X_valid, y_valid = _node.data
 
-                if self.train_labels is not None:
-                    assert np.all(self.train_labels == y_valid)
-                else:
-                    self.train_labels = y_valid
-
                 if self.task_type in CLS_TASKS:
                     y_valid_pred = model.predict_proba(X_valid)
                 else:
@@ -124,8 +120,8 @@ class EnsembleBuilder:
 
                 model_cnt += 1
 
-    def fit(self, stats, datanode):
-        return self.model.fit(stats, datanode)
+    def fit(self):
+        return self.model.fit()
 
     def predict(self, data, refit=False):
         return self.model.predict(data, refit)
