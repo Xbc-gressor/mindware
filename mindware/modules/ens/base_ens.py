@@ -161,7 +161,6 @@ class BaseAutoML(object):
 
         return self.incumbent_perf
 
-
     def predict_config(self, test_data: DataNode, config, refit=True):
 
         pred = self._predict_config(test_data, config=config, refit=refit)

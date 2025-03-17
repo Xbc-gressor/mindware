@@ -14,13 +14,14 @@ class CrossValidationEnsembleModel(BaseEnsembleModel):
     def __init__(self, ensemble_size: int,
                  task_type: int,
                  metric: Union[str, Callable, _BaseScorer],
-                 resampling_params=None,
-                 output_dir=None, seed=None):
+                 output_dir=None, seed=None,
+                 predictions=None):
         self.metric = get_metric(metric)
         self.encoder = OneHotEncoder()
         super().__init__(ensemble_size=ensemble_size, ensemble_method='cross_validation',
                          task_type=task_type, metric=self.metric,
-                         resampling_params=resampling_params, output_dir=output_dir, seed=seed)
+                         output_dir=output_dir, seed=seed,
+                         predictions=predictions)
         self.cv_folds = 10
         self.best_model_idx = None
         self.model_weights = []  # 用于存储每个模型的权重

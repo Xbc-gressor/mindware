@@ -17,16 +17,16 @@ class Stacking(BaseEnsembleModel):
     def __init__(self, ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
-                 resampling_params=None,
                  output_dir=None, seed=None,
                  meta_learner='lightgbm',
-                 kfold=5):
+                 kfold=5,
+                 predictions=None):
         super().__init__(ensemble_method='stacking',
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
-                         resampling_params=resampling_params,
-                         output_dir=output_dir, seed=seed)
+                         output_dir=output_dir, seed=seed,
+                         predictions=predictions)
 
         self.kfold = kfold
         try:

@@ -18,14 +18,14 @@ class Blending(BaseEnsembleModel):
                  task_type: int,
                  metric: _BaseScorer,
                  output_dir=None, seed=None,
-                 resampling_params=None,
-                 meta_learner='lightgbm'):
+                 meta_learner='lightgbm',
+                 predictions=None):
         super().__init__(ensemble_method='blending',
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
-                         resampling_params=resampling_params,
-                         output_dir=output_dir, seed=seed)
+                         output_dir=output_dir, seed=seed,
+                         predictions=predictions)
         try:
             from lightgbm import LGBMClassifier
         except:

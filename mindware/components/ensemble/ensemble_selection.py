@@ -18,23 +18,25 @@ class EnsembleSelection(BaseEnsembleModel):
             self, ensemble_size: int,
             task_type: int,
             metric: _BaseScorer,
-            resampling_params=None,
             output_dir=None, seed=None,
             sorted_initialization: bool = False,
-            mode: str = 'fast'
+            mode: str = 'fast',
+            predictions=None,
     ):
         super().__init__(ensemble_method='ensemble_selection',
                          ensemble_size=ensemble_size,
                          task_type=task_type,
                          metric=metric,
-                         resampling_params=resampling_params,
-                         output_dir=output_dir, seed=seed)
+                         output_dir=output_dir, seed=seed,
+                         predictions=predictions)
         self.model_idx = list()
         self.sorted_initialization = sorted_initialization
         self.mode = mode
         self.encoder = OneHotEncoder()
         self.shape = None
         self.random_state = np.random.RandomState(1)
+
+        self.shape = self.predictions[0].shape
 
     def calculate_score(self, pred, y_true):
         if isinstance(self.metric, _ThresholdScorer):
