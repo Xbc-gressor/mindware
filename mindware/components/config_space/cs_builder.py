@@ -9,7 +9,8 @@ from mindware.components.utils.class_loader import get_combined_candidtates
 from mindware.components.models.classification import _classifiers, _addons as _cls_addons
 from mindware.components.models.regression import _regressors, _addons as _rgs_addons
 
-from ConfigSpace import ConfigurationSpace, Constant, CategoricalHyperparameter
+from ConfigSpace import ConfigurationSpace, Constant, CategoricalHyperparameter, UniformIntegerHyperparameter, UniformFloatHyperparameter
+from ConfigSpace.forbidden import ForbiddenInClause, ForbiddenAndConjunction, ForbiddenEqualsClause
 
 import numpy as np
 
@@ -121,5 +122,17 @@ def get_fe_cs(task_type=CLASSIFICATION, include_image=False,
     else:
         cs = get_rgs_fe_cs(task_type, include_image=include_image, include_text=include_text,
                            include_preprocessors=include_preprocessors, **cs_args)
+
+    return cs
+
+
+def get_ens_cs():
+    cs = ConfigurationSpace()
+    ensemble_method = CategoricalHyperparameter('ensemble_method', ['bagging', 'blending', 'ensemble_selection'])
+    ensemble_size = UniformIntegerHyperparameter('ensemble_size', 2, 50)
+
+    lamda = UniformIntegerHyperparameter("lamda", 0, 100, q=5, default_value=0)
+
+    cs.add_hyperparameters([ensemble_method, ensemble_size, lamda])
 
     return cs

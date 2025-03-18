@@ -24,11 +24,11 @@ from mindware.utils.functions import is_imbalanced_dataset
 from mindware.components.utils.constants import type_dict
 
 from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
-from mindware.components.utils.topk_saver import CombinedTopKModelSaver
+from mindware.modules.base import BaseAutoML
 from mindware.utils.logging_utils import setup_logger, get_logger
 
 
-class BaseAutoML(object):
+class BaseEns(object):
     def __init__(self, task_type: str = None, stats=None,
                  metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
                  evaluation: str = 'holdout', resampling_params=None,
@@ -94,6 +94,19 @@ class BaseAutoML(object):
         self.logger = None
         self.task_id = task_id
 
+        self.es = None
+        from mindware.modules.ens.ens_evaluator import EnsEvaluator
+        self.evaluator = EnsEvaluator(
+            scorer=self.metric, stats=self.stats, task_type=self.task_type,
+            data_node=data_node,
+            resampling_strategy=self.evaluation,
+            resampling_params=self.resampling_params,
+            timestamp=self.timestamp,
+            output_dir=self.output_dir,
+            seed=self.seed,
+            if_imbal=self.if_imbal
+        )
+
     def _get_logger(self, optimizer_name):
         logger_name = 'MindWare-ENS-%s(%d)' % (optimizer_name, self.seed)
         setup_logger(os.path.join(self.output_dir, '%s.log' % str(logger_name)))
@@ -121,7 +134,7 @@ class BaseAutoML(object):
             time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
             per_run_time_limit=self.per_run_time_limit,
             inner_iter_num_per_iter=self.inner_iter_num_per_iter,timestamp=self.timestamp,
-            output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs, topk=self.topk,
+            output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs, topk=self.topk
         )
 
         return optimizer
@@ -142,50 +155,38 @@ class BaseAutoML(object):
         self.eval_dict = self.optimizer.eval_dict
         return self.incumbent_perf
 
-    def rm_files(self):
-        self.logger.info('Start to delete files other than incumbent!')
-        incumbent_id = CombinedTopKModelSaver.get_configuration_id(self.incumbent)
-        for file in os.listdir(self.output_dir):
-            if incumbent_id in file or file.endswith('.log') or file.endswith('.json') or file.endswith('topk_config.pkl'):
-                continue
-            os.remove(os.path.join(self.output_dir, file))
-
-    def run(self):
+    def run(self, refit):
 
         for i in range(self.amount_of_resource):
             if not (self.early_stop_flag or self.timeout_flag):
                 self.iterate()
 
-        if self.rmfiles:
-            self.rm_files()
-
         return self.incumbent_perf
 
-    def predict_config(self, test_data: DataNode, config, refit=True):
+    def _predict(self, test_data: DataNode, refit=True, ens=True):
 
-        pred = self._predict_config(test_data, config=config, refit=refit)
+        valid_data = BaseAutoML._get_valid_data(task_type=self.task_type, data_node=self.data_node, resampling_params=self.resampling_params, seed=self.seed)
+        if self.es is None:
+            self.es = EnsembleBuilder(stats=self.stats, valid_data=valid_data,
+                                      task_type=self.task_type, if_imbal=self.if_imbal,
+                                      metric=self.metric,
+                                      output_dir=self.output_dir, seed=self.seed)
+            self.es.build_ensemble(**self.incumbent)
+            self.es.fit()
+        if refit:
+            self.es.refit(self.data_node)
+
+        return self.es.predict(test_data, refit)
+
+    def predict(self, test_data: DataNode, refit=True, ens=True):
+        pred = self._predict(test_data, refit=refit, ens=ens)
 
         if self.task_type in CLS_TASKS:
             return np.argmax(pred, axis=-1)
         else:
             return pred
 
-    def _predict_config(self, test_data: DataNode, config, refit=True):
-
-        es = EnsembleBuilder(ensemble_method=config['ensemble_method'],
-                             ensemble_size=config['ensemble_size'],
-                             task_type=self.task_type,
-                             metric=self.metric,
-                             output_dir=self.output_dir, seed=self.seed)
-        es.fit(stats=self.stats, datanode=self.data_node)
-
-        if refit:
-            es.refit(self.data_node)
-
-        return es.predict(test_data, refit=refit)
-
-    def predict_proba_config(self, test_data: DataNode, config, refit=True):
+    def predict_proba(self, test_data: DataNode, refit=True, ens=True):
         if self.task_type not in CLS_TASKS:
             raise AttributeError("predict_proba is not supported in regression")
-        return self._predict_config(test_data, config, refit=refit)
-
+        return self._predict(test_data, refit=refit, ens=ens)

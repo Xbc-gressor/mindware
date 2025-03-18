@@ -84,8 +84,9 @@ def choose_base_models_regression_perf(predictions, labels, num_model):
     return base_mask
 
 """
--2660.9949651269903
 -579.7416534461673
+
+-2660.9949651269903
 -2957.45642505375
 -2979610.9434735323
 -2056.276903489847
@@ -96,7 +97,6 @@ def choose_base_models_regression_perf(predictions, labels, num_model):
 -687.8812964743407
 -579.7416534461673
 -909.2843086157991
-
 """
 
 def choose_base_models_classification_perf(predictions, num_model, interval=20):

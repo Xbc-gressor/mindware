@@ -82,3 +82,10 @@ class BaseEnsembleModel(object):
                     CombinedTopKModelSaver._save(items=[op_list, estimator, perf], save_path=save_path)
 
                 model_cnt += 1
+
+
+
+    @staticmethod
+    def get_hyperparameter_search_space():
+
+        raise NotImplementedError

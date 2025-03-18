@@ -54,7 +54,8 @@ class BaseEvaluator(_BaseEvaluator):
 
         raise NotImplementedError
 
-    def _get_spliter(self, resampling_strategy, **kwargs):
+    @staticmethod
+    def _get_spliter(resampling_strategy, **kwargs):
 
         raise NotImplementedError
 
@@ -73,7 +74,6 @@ class BaseEvaluator(_BaseEvaluator):
 
         start_time = time.time()
         return_dict = dict()
-        self.seed = 1
         downsample_ratio = kwargs.get('resource_ratio', 1.0)
 
         # Convert Configuration into dictionary
@@ -294,8 +294,9 @@ class BaseCLSEvaluator(BaseEvaluator):
         if 'cv' in resampling_strategy:
             folds = kwargs.pop('n_splits')
             shuffle = kwargs.pop('shuffle')
+            random_state = kwargs.pop('random_state') if shuffle else None
             from sklearn.model_selection import StratifiedKFold
-            return StratifiedKFold(n_splits=folds, shuffle=shuffle)
+            return StratifiedKFold(n_splits=folds, shuffle=shuffle, random_state=random_state)
         elif 'holdout' in resampling_strategy or 'partial' in resampling_strategy:
             test_size = kwargs.pop('test_size')
             random_state = kwargs.pop('random_state')

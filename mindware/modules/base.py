@@ -160,6 +160,20 @@ class BaseAutoML(object):
 
         return valid_data
 
+    @classmethod
+    def _refit_config(cls, config, data_node, task_type, if_imbal=False):
+        algo_id = config['algorithm']
+        if cls.name in ['fe', 'cashfe']:
+            data_node, op_list = parse_config(data_node, config, record=True, if_imbal=if_imbal)
+        else:
+            op_list = {}
+
+        estimator = fetch_predict_estimator(task_type, algo_id, config,
+                                            data_node.data[0], data_node.data[1],
+                                            weight_balance=data_node.enable_balance,
+                                            data_balance=data_node.data_balance)
+
+        return op_list, estimator
 
     def _get_logger(self, optimizer_name):
         raise NotImplementedError()
@@ -191,7 +205,6 @@ class BaseAutoML(object):
             )
 
             return optimizer
-
 
         opt_paras = {}
         if self.optimizer_name == 'mab':
@@ -274,21 +287,6 @@ class BaseAutoML(object):
             self.rm_files()
 
         return self.incumbent_perf
-
-    @classmethod
-    def _refit_config(cls, config, data_node, task_type, if_imbal=False):
-        algo_id = config['algorithm']
-        if cls.name in ['fe', 'cashfe']:
-            data_node, op_list = parse_config(data_node, config, record=True, if_imbal=if_imbal)
-        else:
-            op_list = {}
-
-        estimator = fetch_predict_estimator(task_type, algo_id, config,
-                                            data_node.data[0], data_node.data[1],
-                                            weight_balance=data_node.enable_balance,
-                                            data_balance=data_node.data_balance)
-
-        return op_list, estimator
 
     def refit_incumbent(self):
 

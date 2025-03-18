@@ -22,7 +22,7 @@ class EnsembleBuilder:
                  task_type: int,
                  metric: _BaseScorer,
                  output_dir=None, seed=None,
-                 if_imbal=False
+                 if_imbal=False, _predict = True
                  ):
         self.model = None
         self.stats = stats
@@ -36,7 +36,9 @@ class EnsembleBuilder:
         self.model = None
         self.if_imbal = if_imbal
 
-        self.build_predictions()
+        self.predictions = None
+        if _predict:
+            self.predictions = self.build_predictions(stats, valid_data, task_type)
 
         logger_name = 'EnsembleBuilder'
         self.logger = get_logger(logger_name)
@@ -101,24 +103,27 @@ class EnsembleBuilder:
         else:
             raise ValueError("%s is not supported for ensemble!" % ensemble_method)
 
-    def build_predictions(self):
-        self.predictions = []
+    @staticmethod
+    def build_predictions(stats, valid_data, task_type):
+        predictions = []
         model_cnt = 0
-        for algo_id in self.stats.keys():
-            model_to_eval = self.stats[algo_id]
+        for algo_id in stats.keys():
+            model_to_eval = stats[algo_id]
             for idx, (_, _, path) in enumerate(model_to_eval):
                 op_list, model, _ = CombinedTopKModelSaver._load(path)
-                _node = self.valid_data.copy_()
+                _node = valid_data.copy_()
                 _node = construct_node(_node, op_list)
                 X_valid, y_valid = _node.data
 
-                if self.task_type in CLS_TASKS:
+                if task_type in CLS_TASKS:
                     y_valid_pred = model.predict_proba(X_valid)
                 else:
                     y_valid_pred = model.predict(X_valid)
-                self.predictions.append(y_valid_pred)
+                predictions.append(y_valid_pred)
 
                 model_cnt += 1
+
+        return predictions
 
     def fit(self):
         return self.model.fit()
