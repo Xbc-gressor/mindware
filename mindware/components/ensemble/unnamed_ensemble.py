@@ -21,32 +21,35 @@ def choose_base_models_regression(predictions, labels, num_model, ratio = 4):
     # for model in selected_models:
     #     base_mask[model] = 1
     n = len(predictions)  # 矩阵维度
-    Z = cp.Variable((n, n), symmetric=True)  # 对称矩阵变量
     z = cp.Variable(n)                      # 向量变量
     # y - f_h(x)
-    dif = np.abs(labels - predictions)
+    dif = labels - predictions
     G = dif @ dif.T 
     G = G / len(labels)
     # 还要对G做一下scale，放到一个scale上，我先直接lambda吧
-    G = G + ratio * np.diag(G)
+    diag_array = np.diag(G)
+    G = G + ratio * np.diag(diag_array)
 
     G_lst = []
     for i in range(n):
         G_lst.append(G[i][i])
     G_lst.sort()
 
+    if not np.allclose(G, G.T, atol=1e-8):  # 设置容差
+        print("G 不是对称的!")
+
     # G_ij 为div i,j G_ii 为mse，再调用SDP求解器
-    objective = cp.Minimize(cp.trace(G @ Z))
+    objective = cp.Minimize(cp.quad_form(z, G))
     constraints = [
-    cp.trace(Z) == num_model,  # 线性约束 1
-    Z >> 0,                 # 半正定性约束
-    # Z >> cp.reshape(z, (n, 1)) @ cp.reshape(z, (1, n))
+    cp.sum(z) == num_model,  # 线性约束 1
+    z >= 0,                 # 半正定性约束
+    z <= 1
 ]
     problem = cp.Problem(objective, constraints)
     # 求解问题
     problem.solve(solver=cp.SCS)  # 使用 SCS 求解器（也可以选择 MOSEK 等）
-    diagonal = np.diag(Z.value)
-    top_k_indices = np.argsort(diagonal)[-num_model:]
+    z_value = np.array(z.value)
+    top_k_indices = np.argsort(z_value)[-num_model:]
     z = np.zeros(n, dtype=int)
     z[top_k_indices] = 1    
     for i in range(n):
@@ -54,6 +57,46 @@ def choose_base_models_regression(predictions, labels, num_model, ratio = 4):
             print((i,G[i][i]))
     return z
 
+
+
+
+
+
+
+
+#     n = len(predictions)  # 矩阵维度
+#     Z = cp.Variable((n, n), symmetric=True)  # 对称矩阵变量
+#     z = cp.Variable(n)                      # 向量变量
+#     # y - f_h(x)
+#     dif = np.abs(labels - predictions)
+#     G = dif @ dif.T 
+#     G = G / len(labels)
+#     # 还要对G做一下scale，放到一个scale上，我先直接lambda吧
+#     G = G + ratio * np.diag(np.diag(G))
+
+#     G_lst = []
+#     for i in range(n):
+#         G_lst.append(G[i][i])
+#     G_lst.sort()
+
+#     # G_ij 为div i,j G_ii 为mse，再调用SDP求解器
+#     objective = cp.Minimize(cp.trace(G @ Z))
+#     constraints = [
+#     cp.trace(Z) == num_model,  # 线性约束 1
+#     Z >> 0,                 # 半正定性约束
+#     # Z >> cp.reshape(z, (n, 1)) @ cp.reshape(z, (1, n))
+# ]
+#     problem = cp.Problem(objective, constraints)
+#     # 求解问题
+#     problem.solve(solver=cp.SCS)  # 使用 SCS 求解器（也可以选择 MOSEK 等）
+#     diagonal = np.diag(Z.value)
+#     top_k_indices = np.argsort(diagonal)[-num_model:]
+#     z = np.zeros(n, dtype=int)
+#     z[top_k_indices] = 1    
+#     for i in range(n):
+#         if z[i] == 1:
+#             print((i,G[i][i]))
+#     return z
 
 def choose_base_models_classification(predictions, num_model, interval=20):
     num_class = predictions.shape[2]

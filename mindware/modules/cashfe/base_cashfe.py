@@ -21,7 +21,6 @@ class BaseCASHFE(BaseAutoML):
                  ensemble_method=None, ensemble_size=5,
                  include_preprocessors=None, task_id='test', reshuffle=False):
         self.reshuffle = reshuffle
-        self.late_reshuffle = late_reshuffle
         super(BaseCASHFE, self).__init__(
             name='cashfe', task_type=task_type,
             metric=metric, data_node=data_node,
