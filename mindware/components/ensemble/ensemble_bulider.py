@@ -118,6 +118,8 @@ class EnsembleBuilder:
                 if task_type in CLS_TASKS:
                     y_valid_pred = model.predict_proba(X_valid)
                 else:
+                    if algo_id == 'xgboost':
+                        breakpoint()
                     y_valid_pred = model.predict(X_valid)
                 predictions.append(y_valid_pred)
 

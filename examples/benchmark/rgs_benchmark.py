@@ -165,6 +165,12 @@ if __name__ == '__main__':
             import pickle as pkl
             with open(args.stats_path, 'rb') as f:
                 stats = pkl.load(f)
+            dir_name = os.path.dirname(args.stats_path)
+            for key in stats.keys():
+                for i in range(len(stats[key])):
+                    tmp = stats[key][i]
+                    stats[key][i] = (tmp[0], tmp[1], os.path.join(dir_name, os.path.basename(tmp[2])))
+            
             pred = OPT._predict_stats(task_type, metric, data_node=train_data_node, test_data=test_data_node, stats=stats, 
                                       refit=args.refit, output_dir=args.output_dir, task_id=dataset)
             perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
@@ -175,5 +181,5 @@ if __name__ == '__main__':
             ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
 
         with open(args.output_file, 'a+') as f:
-            f.write(f'RGS: {args.Opt}-{args.optimizer}-filter_m{args.n_algorithm}_p{args.n_preprocessor}, {dataset}: {perf}, {ens_perf}\n')
+            f.write(f'RGS: {args.Opt}-{args.optimizer}-{args.ensemble_method}{args.ensemble_size}-filter_m{args.n_algorithm}_p{args.n_preprocessor}, {dataset}: {perf}, {ens_perf}\n')
 

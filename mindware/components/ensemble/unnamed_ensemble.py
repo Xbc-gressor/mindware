@@ -1,25 +1,87 @@
 import numpy as np
 import pandas as pd
+import cvxpy as cp
 import scipy.spatial
 from sklearn.metrics._scorer import _BaseScorer
 from mindware.components.utils.constants import CLS_TASKS
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import accuracy_score
 
+def outliers_mask_iqr(data):
+    q1 = np.percentile(data, 25)
+    q3 = np.percentile(data, 75)
+    iqr = q3 - q1
+    upper_bound = q3 + 1.5 * iqr
+    mask = data < upper_bound
+    return mask
 
-def choose_base_models_regression(predictions, labels, num_model):
-    base_mask = [0] * len(predictions)
-    dif = predictions - labels
-    dif[dif > 0] = 1
-    dif[dif < 0] = -1
-    '''Calculate the distance between each model'''
-    dist = scipy.spatial.distance.cdist(dif, dif)
-    total_dist = np.sum(dist, 1)
-    '''Select the model which has large distance to other models'''
-    selected_models = total_dist.argsort()[-num_model:]
-    for model in selected_models:
-        base_mask[model] = 1
-    return base_mask
+def choose_base_models_regression(predictions, labels, num_model, ratio = 0.49):
+    n = len(predictions)  # 矩阵维度
+    # y - f_h(x)
+    dif = labels - predictions
+    _G = dif @ dif.T 
+    _G = _G / len(labels)
+    mask = outliers_mask_iqr(np.diag(_G))
+    _G = _G[mask][:, mask]
+    G = _G
+    # G_min = 0
+    # G_max = np.max(G)
+    # G = (G - G_min) / (G_max - G_min)
+    # G = (G - np.mean(G)) / np.std(G)
+    
+    # G_max = np.max(np.diag(_G))
+    # G = np.zeros_like(_G)
+    # for i in range(G.shape[0]):
+    #     for j in range(G.shape[1]):
+    #         if i == j:
+    #             G[i, j] = _G[i, j] / G_max
+    #         else:
+    #             G[i, j] = 0.5 * (_G[i, j] / _G[i, i] + _G[i, j] / _G[j, j])
+    
+    I = np.eye(G.shape[0])
+    G = ratio * (G * (1 - I)) + (1 - ratio) * (G * I) + 1e-5 * I
+
+    if not np.allclose(G, G.T, atol=1e-8):  # 设置容差
+        print("G 不是对称的!")
+
+    # G_ij 为div i,j G_ii 为mse，再调用SDP求解器
+    z = cp.Variable(len(G))    # 向量变量
+    objective = cp.Minimize(cp.quad_form(z, G))
+    constraints = [
+        cp.sum(z) == num_model,  # 线性约束 1
+        z >= 0,                 # 半正定性约束
+        z <= 1
+    ]
+    problem = cp.Problem(objective, constraints)
+    # 求解问题
+    problem.solve(solver=cp.CLARABEL)  # 使用 SCS 求解器（也可以选择 MOSEK 等）
+    z_value = np.array(z.value)
+    top_k_indices = np.argsort(z_value)[-num_model:]
+    
+    mask_idx = np.where(mask)[0]
+    for i in top_k_indices:
+        print((mask_idx[i],G[i][i]))
+            
+    top_k_indices = mask_idx[top_k_indices]
+    z = np.zeros(n, dtype=int)
+    z[top_k_indices] = 1    
+
+    return z
+
+
+# def choose_base_models_regression(predictions, labels, num_model):
+#     base_mask = [0] * len(predictions)
+#     dif = predictions - labels
+#     dif[dif > 0] = 1
+#     dif[dif < 0] = -1
+#     '''Calculate the distance between each model'''
+#     dist = scipy.spatial.distance.cdist(dif, dif)
+#     total_dist = np.sum(dist, 1)
+#     '''Select the model which has large distance to other models'''
+#     selected_models = total_dist.argsort()[-num_model:]
+#     for model in selected_models:
+#         base_mask[model] = 1
+#     return base_mask
 
 
 def choose_base_models_classification(predictions, num_model, interval=20):
