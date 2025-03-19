@@ -1,25 +1,58 @@
 import numpy as np
 import pandas as pd
 import scipy.spatial
+import cvxpy as cp
 from sklearn.metrics._scorer import _BaseScorer
 from mindware.components.utils.constants import CLS_TASKS
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import accuracy_score
 
 
-def choose_base_models_regression(predictions, labels, num_model):
-    base_mask = [0] * len(predictions)
-    dif = predictions - labels
-    dif[dif > 0] = 1
-    dif[dif < 0] = -1
-    '''Calculate the distance between each model'''
-    dist = scipy.spatial.distance.cdist(dif, dif)
-    total_dist = np.sum(dist, 1)
-    '''Select the model which has large distance to other models'''
-    selected_models = total_dist.argsort()[-num_model:]
-    for model in selected_models:
-        base_mask[model] = 1
-    return base_mask
+def choose_base_models_regression(predictions, labels, num_model, ratio = 4):
+    # base_mask = [0] * len(predictions)
+    # dif = predictions - labels
+    # dif[dif > 0] = 1
+    # dif[dif < 0] = -1
+    # '''Calculate the distance between each model'''
+    # dist = scipy.spatial.distance.cdist(dif, dif)
+    # total_dist = np.sum(dist, 1)
+    # '''Select the model which has large distance to other models'''
+    # selected_models = total_dist.argsort()[-num_model:]
+    # for model in selected_models:
+    #     base_mask[model] = 1
+    n = len(predictions)  # 矩阵维度
+    Z = cp.Variable((n, n), symmetric=True)  # 对称矩阵变量
+    z = cp.Variable(n)                      # 向量变量
+    # y - f_h(x)
+    dif = np.abs(labels - predictions)
+    G = dif @ dif.T 
+    G = G / len(labels)
+    # 还要对G做一下scale，放到一个scale上，我先直接lambda吧
+    G = G + ratio * np.diag(G)
+
+    G_lst = []
+    for i in range(n):
+        G_lst.append(G[i][i])
+    G_lst.sort()
+
+    # G_ij 为div i,j G_ii 为mse，再调用SDP求解器
+    objective = cp.Minimize(cp.trace(G @ Z))
+    constraints = [
+    cp.trace(Z) == num_model,  # 线性约束 1
+    Z >> 0,                 # 半正定性约束
+    # Z >> cp.reshape(z, (n, 1)) @ cp.reshape(z, (1, n))
+]
+    problem = cp.Problem(objective, constraints)
+    # 求解问题
+    problem.solve(solver=cp.SCS)  # 使用 SCS 求解器（也可以选择 MOSEK 等）
+    diagonal = np.diag(Z.value)
+    top_k_indices = np.argsort(diagonal)[-num_model:]
+    z = np.zeros(n, dtype=int)
+    z[top_k_indices] = 1    
+    for i in range(n):
+        if z[i] == 1:
+            print((i,G[i][i]))
+    return z
 
 
 def choose_base_models_classification(predictions, num_model, interval=20):

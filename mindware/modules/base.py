@@ -42,10 +42,10 @@ class BaseAutoML(object):
                  optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=None, n_jobs=1,
-                 ensemble_method=None, ensemble_size=5, task_id='test'):
+                 ensemble_method=None, ensemble_size=5, task_id='test', ratio = 0.5):
 
         self.name = name
-
+        self.ratio = ratio
         self.metric = get_metric(metric)
         self.data_node = data_node.copy_()
         self.evaluation = evaluation
@@ -303,7 +303,7 @@ class BaseAutoML(object):
                                       ensemble_size=self.ensemble_size,
                                       task_type=self.task_type,
                                       metric=self.metric,
-                                      output_dir=self.output_dir, seed=self.seed)
+                                      output_dir=self.output_dir, seed=self.seed, ratio = self.ratio)
             self.es.fit(data=self.data_node)
 
             if refit and self.refit_status != 'full':

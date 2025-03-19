@@ -24,7 +24,7 @@ class BaseEnsembleModel(object):
                  task_type: int,
                  metric: _BaseScorer,
                  resampling_params=None,
-                 output_dir=None, seed=None):
+                 output_dir=None, seed=None, ratio=0.5):
         self.stats = stats
         self.ensemble_method = ensemble_method
         self.ensemble_size = ensemble_size
@@ -34,7 +34,7 @@ class BaseEnsembleModel(object):
         self.output_dir = output_dir
         self.seed = seed
         self.node = data_node
-
+        self.ratio = ratio
         self.predictions = []
         self.train_labels = None
         self.timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
@@ -92,7 +92,7 @@ class BaseEnsembleModel(object):
             )
         else:
             self.base_model_mask = choose_base_models_regression(
-                np.array(self.predictions), np.array(y_valid), self.ensemble_size
+                np.array(self.predictions), np.array(y_valid), self.ensemble_size, self.ratio
             )
         self.ensemble_size = sum(self.base_model_mask)
 

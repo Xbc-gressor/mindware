@@ -19,7 +19,7 @@ class BaseCASH(BaseAutoML):
                  optimizer='smac', inner_iter_num_per_iter=1,
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir=None, seed=1, n_jobs=1,
-                 ensemble_method=None, ensemble_size=5, task_id='test', reshuffle=False):
+                 ensemble_method=None, ensemble_size=5, task_id='test', reshuffle=False, ratio = 0.5):
         self.reshuffle = reshuffle
         super(BaseCASH, self).__init__(
             name='cash', task_type=task_type,
@@ -28,7 +28,7 @@ class BaseCASH(BaseAutoML):
             optimizer=optimizer, inner_iter_num_per_iter=inner_iter_num_per_iter,
             time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=per_run_time_limit,
             output_dir=output_dir, seed=seed, n_jobs=n_jobs,
-            ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id
+            ensemble_method=ensemble_method, ensemble_size=ensemble_size, task_id=task_id, ratio = ratio
         )
 
         if optimizer not in ['smac', 'tpe', 'random_search', 'mab', 'block_0', 'block_1']:
@@ -86,7 +86,6 @@ class BaseCASH(BaseAutoML):
                 output_dir=self.output_dir,
                 seed=self.seed,
                 reshuffle=self.reshuffle,
-                late_reshuffle=self.late_reshuffle
                 )
 
         self.optimizer = self.build_optimizer(name='cash', sub_optimizer=sub_optimizer)

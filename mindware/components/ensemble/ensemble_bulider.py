@@ -14,7 +14,7 @@ class EnsembleBuilder:
                  ensemble_size: int,
                  task_type: int,
                  metric: _BaseScorer,
-                 resampling_params=None,
+                 resampling_params=None, ratio = 0.5,
                  output_dir=None, seed=None):
         self.model = None
         if ensemble_method == 'bagging':
@@ -32,7 +32,7 @@ class EnsembleBuilder:
                                   task_type=task_type,
                                   metric=metric,
                                   resampling_params=resampling_params,
-                                  output_dir=output_dir, seed=seed)
+                                  output_dir=output_dir, seed=seed, ratio=ratio)
         elif ensemble_method == 'stacking':
             self.model = Stacking(stats=stats,
                                   data_node=data_node,

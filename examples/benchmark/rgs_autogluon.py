@@ -63,7 +63,7 @@ for dataset in chosen_datasets:
     # scorer = make_scorer(accuracy_score)
     # perf = scorer._score_func(test_df, y_pred) * scorer._sign
 
-    leader_info = predictor.leaderboard(train_df)
+    leader_info = predictor.leaderboard(test_df)
     with open(OUTPUT_FILE, 'a+') as f:
         f.write(f'Autogluon RGS: {formatted_start_time}, {dataset}: {perf_dct}\n')
         f.write(f'leaderboard:{leader_info}\n')

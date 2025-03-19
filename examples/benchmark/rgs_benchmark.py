@@ -16,7 +16,7 @@ os.environ["VECLIB_MAXIMUM_THREADS"] = NUM_THREADS  # export VECLIB_MAXIMUM_THRE
 os.environ["NUMEXPR_NUM_THREADS"] = NUM_THREADS     # export NUMEXPR_NUM_THREADS=1
 
 # datasets_dir = '/Users/xubeideng/Documents/icloud/Scientific Research/AutoML/sub_automl_data/'
-datasets_dir = '/root/automl_data/sub_automl_data/'
+datasets_dir = r'/home/liuwei/automl_data/sub_automl_data/'
 # 读取 Excel 文件中的特定 sheet
 datasets_info = pd.read_excel(os.path.join(datasets_dir, '数据集.xlsx'), sheet_name='REG_SORT')
 candidate_datasets = [
@@ -54,25 +54,27 @@ if '__main__' == __name__:
     # 从命令行参数中解析出参数
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_test_split_seed', type=int, default=1)
-    parser.add_argument('--Opt', type=str, default='cashfe', help='cash or cashfe')
+    parser.add_argument('--Opt', type=str, default='cash', help='cash or cashfe')
     parser.add_argument('--estimator_id', type=str, default='xgboost', help='for fe and hpo')
     parser.add_argument('--optimizer', type=str, default='smac', help='smac or mab')
     parser.add_argument('--x_encode', type=str, default=None, help='normalize, minmax')
-    parser.add_argument('--ensemble_method', type=str, default='ensemble_selection', help='ensemble_selection or blending')
-    parser.add_argument('--ensemble_size', type=int, default=50, help='ensemble size')
+    parser.add_argument('--ensemble_method', type=str, default='blending', help='ensemble_selection or blending')
+    parser.add_argument('--ensemble_size', type=int, default=10, help='ensemble size')
     parser.add_argument('--evaluation', type=str, default='holdout', help='evaluation')
-    parser.add_argument('--time_limit', type=int, default=3600, help='time limit')
+    parser.add_argument('--time_limit', type=int, default=60, help='time limit')
     parser.add_argument('--per_time_limit', type=int, default=600, help='time limit')
     parser.add_argument('--inner_iter_num_per_iter', type=int, default=10)
     parser.add_argument('--job_idx', type=int, nargs='*', help='job index')
     parser.add_argument('--output_dir', type=str, default='./data')
     parser.add_argument('--output_file', type=str, default='results.txt')
+    parser.add_argument('--ratio', type=float, default=0.5)
+
     args = parser.parse_args()
 
     task_type = REGRESSION
     metric = 'mse'
     estimator_id = args.estimator_id
-
+    
     if args.Opt == 'cash':
         # 'lda',
         OPT = CASH
@@ -114,7 +116,7 @@ if '__main__' == __name__:
                 optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
                 time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=300,
                 output_dir=args.output_dir, seed=1, n_jobs=1,
-                ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset
+                ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=dataset, ratio = args.ratio
             )
         elif args.Opt in ['fe', 'hpo']:
             opt = OPT(
@@ -132,7 +134,7 @@ if '__main__' == __name__:
         print(opt.get_conf(save=True))
 
         print(opt.run())
-        print(opt.get_model_info(save=True))
+        # print(opt.get_model_info(save=True))
         scorer = opt.metric
         pred = dm.decode_label(opt.predict(test_data_node, ens=False))
         perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
