@@ -139,7 +139,7 @@ class BaseAutoML(object):
         return include_preps
 
     @staticmethod
-    def _get_valid_data(task_type, data_node, resampling_params=None, seed=1):
+    def _get_valid_data(task_type, data_node, resampling_params=None, seed=1, train=False):
 
         test_size = 0.33
         if resampling_params is not None and 'test_size' in resampling_params:
@@ -154,6 +154,8 @@ class BaseAutoML(object):
 
         x_p2, y_p2 = None, None
         for train_index, val_index in ss.split(X, y):
+            if train:
+                val_index = train_index
             x_p2, y_p2 = X[val_index], y[val_index]
 
         valid_data.data = [x_p2, y_p2]
@@ -347,7 +349,7 @@ class BaseAutoML(object):
 
                         train_node.data = [X, y]
 
-                    op_list, estimator = self._refit_config(config, data_node=train_node)
+                    op_list, estimator = self._refit_config(config, data_node=train_node, task_type=self.task_type, if_imbal=self.if_imbal)
 
                     CombinedTopKModelSaver._save([op_list, estimator, perf], path)
                 except:
@@ -392,6 +394,30 @@ class BaseAutoML(object):
         else:
             return pred
 
+
+    @classmethod
+    def _fix_model(cls, task_type, data_node: DataNode = None, stats=None, resampling_params=None, seed=1, if_imbal=False):
+        metric = get_metric('mse')
+        for algo_id in stats.keys():
+            if algo_id not in ['xgboost']:
+                continue
+            model_to_eval = stats[algo_id]
+            for idx, (config, perf, path) in enumerate(model_to_eval):
+                # _, _, perf = CombinedTopKModelSaver._load(path)
+                train_node = cls._get_valid_data(task_type=task_type, data_node=data_node, resampling_params=resampling_params, seed=seed, train=True)
+                valid_node = cls._get_valid_data(task_type=task_type, data_node=data_node, resampling_params=resampling_params, seed=seed)
+
+                op_list, estimator = cls._refit_config(config, data_node=train_node, task_type=task_type, if_imbal=if_imbal)
+                
+                valid_node = construct_node(valid_node, op_list)
+                
+                pred = estimator.predict(valid_node.data[0])
+                new_perf = metric._score_func(pred, valid_node.data[1]) * metric._sign
+                
+                CombinedTopKModelSaver._save([op_list, estimator, new_perf], path)
+                
+                
+
     @classmethod
     def _predict_stats(cls, task_type, metric: Union[str, Callable, _BaseScorer] = None, data_node: DataNode = None, test_data: DataNode = None, stats=None, 
                        resampling_params=None,
@@ -411,6 +437,8 @@ class BaseAutoML(object):
         if_imbal = False
         if task_type in CLS_TASKS:
             if_imbal = is_imbalanced_dataset(data_node)
+            
+        # cls._fix_model(task_type=task_type, data_node=data_node, stats=stats, resampling_params=resampling_params, seed=seed, if_imbal=if_imbal)
     
         stats = stats.copy()
         metric_name = 'unknown'
