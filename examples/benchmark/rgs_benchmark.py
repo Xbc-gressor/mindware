@@ -63,6 +63,7 @@ if __name__ == '__main__':
     parser.add_argument('--x_encode', type=str, default=None, help='normalize, minmax')
     parser.add_argument('--ensemble_method', type=str, default='ensemble_selection', help='ensemble_selection or blending')
     parser.add_argument('--ensemble_size', type=int, default=50, help='ensemble size')
+    parser.add_argument('--ratio', type=float, default=0.4, help='ensemble size')
     parser.add_argument('--evaluation', type=str, default='holdout', help='evaluation')
     parser.add_argument('--time_limit', type=int, default=3600, help='time limit')
     parser.add_argument('--per_time_limit', type=int, default=600, help='time limit')
@@ -134,7 +135,7 @@ if __name__ == '__main__':
                 opt = OPT(
                     include_algorithms=inc_alg, sub_optimizer='smac', task_type=task_type,
                     metric=metric,
-                    data_node=train_data_node, evaluation=args.evaluation, resampling_params={'folds': 3},
+                    data_node=train_data_node, evaluation=args.evaluation, resampling_params={'folds': 3, 'ratio': args.ratio},
                     optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
                     time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=per_run_time_limit,
                     output_dir=args.output_dir, seed=1, n_jobs=1,

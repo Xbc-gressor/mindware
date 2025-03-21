@@ -46,6 +46,7 @@ class EnsembleBuilder:
     def build_ensemble(self, **kwargs):
         ensemble_method = kwargs['ensemble_method']
         ensemble_size = kwargs['ensemble_size']
+        ratio = kwargs.get('ratio', 0.4)
 
         if len(self.predictions) < ensemble_size:
             self.logger.info("The number of models is less than the ensemble size. "
@@ -61,7 +62,7 @@ class EnsembleBuilder:
                 )
             else:
                 base_model_mask = choose_base_models_regression(
-                    np.array(self.predictions), np.array(y_valid), ensemble_size
+                    np.array(self.predictions), np.array(y_valid), ensemble_size, ratio=ratio
                 )
             ensemble_size = sum(base_model_mask)
 

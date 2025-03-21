@@ -136,7 +136,7 @@ if __name__ == '__main__':
                 opt = OPT(
                     include_algorithms=inc_alg, sub_optimizer='smac', task_type=task_type,
                     metric=metric,
-                    data_node=train_data_node, evaluation=args.evaluation, resampling_params={'folds': 3},
+                    data_node=train_data_node, evaluation=args.evaluation, resampling_params={'folds': 3, 'ratio': args.ratio},
                     optimizer=args.optimizer, inner_iter_num_per_iter=args.inner_iter_num_per_iter,
                     time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=per_run_time_limit,
                     output_dir=args.output_dir, seed=1, n_jobs=1,
