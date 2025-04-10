@@ -38,15 +38,15 @@ declare -a TASKS
 
 
 # # 生成任务列表
-# for i in 5; do
+for i in 5; do
 #     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --n_preprocessor 6 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     TASKS+=("python cls_benchmark.py --refit --Opt cashfe --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --time_limit 14400 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
+    TASKS+=("python cls_benchmark.py --refit --Opt cashfe --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --time_limit 14400 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
 #     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
 #     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
 #     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     TASKS+=("python cls_benchmark.py --refit --Opt cashfe --optimizer block_1 --time_limit 14400 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
+    TASKS+=("python cls_benchmark.py --refit --Opt cashfe --optimizer block_1 --time_limit 14400 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
 #     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 14400 --job_idx $i")
-# done
+done
 
 # 生成任务列表
 for i in 4; do
@@ -55,42 +55,42 @@ for i in 4; do
     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --time_limit 3600 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --time_limit 3600 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 3600 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-    # TASKS+=("python cls_benchmark.py --refit --Opt cashfe --optimizer block_1 --time_limit 7200 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
+    TASKS+=("python cls_benchmark.py --refit --Opt cashfe --optimizer block_1 --time_limit 7200 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 3600 --job_idx $i")
 done
 
-# # 生成任务列表
-# for i in 0 1 2 3 4; do
-#     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --n_preprocessor 6 --time_limit 3600 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     TASKS+=("python cls_benchmark.py --refit --Opt cashfe --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --time_limit 3600 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
-#     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --time_limit 3600 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --time_limit 3600 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 3600 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     TASKS+=("python cls_benchmark.py --refit --Opt cashfe --optimizer block_1 --time_limit 3600 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
-#     # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 3600 --job_idx $i")
-# done
+# 生成任务列表
+for i in 0 1 2 3; do
+    # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --n_preprocessor 6 --time_limit 3600 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    TASKS+=("python cls_benchmark.py --refit --Opt cashfe --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --time_limit 3600 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
+    # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --time_limit 3600 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --time_limit 3600 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 3600 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    TASKS+=("python cls_benchmark.py --refit --Opt cashfe --optimizer block_1 --time_limit 3600 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
+    # TASKS+=("python cls_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 3600 --job_idx $i")
+done
 
-# # 生成任务列表
-# for i in 5; do
-#     # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --n_preprocessor 6 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     TASKS+=("python rgs_benchmark.py --refit --Opt cashfe --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --time_limit 14400 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
-#     # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     TASKS+=("python rgs_benchmark.py --refit --Opt cashfe --optimizer block_1 --time_limit 14400 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
-#     # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 7200 --job_idx $i")
-# done
+# 生成任务列表
+for i in 5; do
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --n_preprocessor 6 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --time_limit 14400 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 14400 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 14400 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 7200 --job_idx $i")
+done
 
-# # 生成任务列表
-# for i in 0 1 2 3 4; do
-#     # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --n_preprocessor 6 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     TASKS+=("python rgs_benchmark.py --refit --Opt cashfe --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --time_limit 7200 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
-#     # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
-#     TASKS+=("python rgs_benchmark.py --refit --Opt cashfe --optimizer block_1 --time_limit 7200 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
-#     # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 3600 --job_idx $i")
-# done
+# 生成任务列表
+for i in 0 1 2 3 4; do
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --n_preprocessor 6 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --time_limit 7200 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --n_algorithm 6 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_2 --time_limit 7200 --job_idx $i --output_dir ./compress_data --output_file compress_data.txt")
+    TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 7200 --job_idx $i --output_dir ./refit_data --output_file res_refit_data.txt")
+    # TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_0 --time_limit 3600 --job_idx $i")
+done
 
 
 # 生成任务列表，测试为什么block1变差了
@@ -108,6 +108,9 @@ done
 # for i in 1 2 3; do
 #     TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --time_limit 3600 --job_idx $i --output_dir ./newfe_icafix_data --output_file ./newfe_icafix_data.txt")
 # done
+
+# TASKS+=("python rgs_benchmark.py --Opt cashfe --optimizer block_1 --n_algorithm 6 --n_preprocessor 6 --time_limit 7200 --job_idx 2 --output_dir ./refit_data --output_file res_refit_data.txt")
+
 
 # 最大并发数
 MAX_JOBS=4

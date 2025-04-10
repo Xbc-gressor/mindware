@@ -46,4 +46,3 @@ class CASHFERGSEvaluator(BaseRGSEvaluator):
         _val_node = construct_node(_val_node, op_list)
 
         return op_list, data_node, _val_node
-

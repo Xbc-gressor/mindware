@@ -25,7 +25,7 @@ class KNearestNeighborsClassifier(BaseClassificationModel):
         estimator = \
             sklearn.neighbors.KNeighborsClassifier(n_neighbors=self.n_neighbors,
                                                    weights=self.weights,
-                                                   p=self.p)
+                                                   p=self.p, n_jobs=self.n_jobs)
 
         if len(Y.shape) == 2 and Y.shape[1] > 1:
             self.estimator = sklearn.multiclass.OneVsRestClassifier(estimator, n_jobs=1)

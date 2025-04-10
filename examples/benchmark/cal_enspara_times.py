@@ -6,46 +6,47 @@ from cls_benchmark import chosen_datasets_info as cls_info
 
 data_dir = './block012_data'
 data_dir = './compress_data'
-data_dir = './refit_data'
+data_dir = './ens_para_stackskip_data'
 
 times_dict = {'CLS': {}, 'RGS': {}}
 
 for sub_dir in sorted(os.listdir(data_dir)):
     
-    with open(os.path.join(data_dir, sub_dir, 'config.json'), 'r') as f:
-        config = json.load(f)
-        
-    with open(os.path.join(data_dir, sub_dir, 'best_model_info.json'), 'r') as f:
-        best_model_info = json.load(f)
-        
-    opt = config['optimizer']
-    if opt != 'block_1':
+    config_path = os.path.join(data_dir, sub_dir, 'config.json')
+    best_model_info_path = os.path.join(data_dir, sub_dir, 'best_model_info.json')
+    if not (os.path.exists(config_path) and os.path.exists(best_model_info_path)):
         continue
+
+    with open(config_path, 'r') as f:
+        config = json.load(f)
     
+    if config['ensemble_method'] is None:
+        continue
+        
+    with open(best_model_info_path, 'r') as f:
+        best_model_info = json.load(f)
+    
+    thread = best_model_info['ensemble']['thread']
     types = config['task_type']
     task_id = config['task_id']
-    times = len(best_model_info['opt_trajectory']['final_rewards'])
-    
+    times = np.mean(best_model_info['ensemble']['train_cost'])
+
     if types == 4:
         tar_dict = times_dict['RGS']
     else:
         tar_dict = times_dict['CLS']
-    
+
     if task_id not in tar_dict:
         tar_dict[task_id] = {}
 
-    if 'include_preprocessors' in config:
-        tmp = config['include_preprocessors']
-        if tmp[list(tmp.keys())[0]] != None:
-            opt = "filall_" + opt
-            
-    if ('film_' + opt) not in tar_dict[task_id]:
-        opt = 'film_' + opt
+    opt = best_model_info['ensemble']["ensemble_method"] + f"_thr{thread}"
         
     tar_dict[task_id][opt] = times
     
     
 rank_fields = list(list(list(times_dict.values())[0].values())[0].keys())
+idx = np.argsort([int(tmp.split('thr')[1]) for tmp in rank_fields])
+rank_fields = [rank_fields[tmp] for tmp in idx]
     
 from prettytable import PrettyTable
 table = PrettyTable()
@@ -71,7 +72,7 @@ for task_type, datasets in times_dict.items():
         algorithms = datasets[dataset]
         if algorithms == {}:
             continue
-        row = [task_type, dataset] + [algorithms[t] for t in headers[2:]]
+        row = [task_type, dataset] + ["%.3f" % algorithms[t] for t in headers[2:]]
         table.add_row(row)
         
         for t in algorithms:
@@ -87,5 +88,28 @@ for task_type, algorithms in avgs.items():
         
 
 print(table)
+
+import matplotlib.pyplot as plt
+# 创建子图
+fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+# 绘制每个子图
+for ax, (key, values) in zip(axes, avgs.items()):
+    x = np.array([int(k.split('thr')[1]) for k in values.keys()])
+    y = np.array(list(values.values()))
+    idx = np.argsort(x)
+    x = x[idx]
+    y = y[idx]
+    ax.plot(x, y, marker='o')
+    ax.set_title(key)
+    ax.set_xticks(x)
+    ax.set_xlabel('Threads')
+    ax.set_ylabel('Time of Stacking-size10-L2')
+
+# 调整布局
+plt.tight_layout()
+plt.savefig('./images/multipro.png')
+plt.show()
+
 breakpoint()
 

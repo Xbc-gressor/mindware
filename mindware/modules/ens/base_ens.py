@@ -13,36 +13,34 @@ from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
 from mindware.components.metrics.metric import get_metric
 
-from mindware.components.optimizers.smac_optimizer import SMACOptimizer
-from mindware.components.optimizers.random_search_optimizer import RandomSearchOptimizer
-from mindware.components.optimizers.mfse_optimizer import MfseOptimizer
-from mindware.components.optimizers.bohb_optimizer import BohbOptimizer
-from mindware.components.optimizers.tpe_optimizer import TPEOptimizer
+from mindware.components.optimizers.smac_ens_optimizer import SMACEnsOptimizer
 
 from sklearn.utils.multiclass import type_of_target
 from mindware.utils.functions import is_imbalanced_dataset
 from mindware.components.utils.constants import type_dict
 
-from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
-from mindware.modules.base import BaseAutoML
+from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.utils.logging_utils import setup_logger, get_logger
 
 
 class BaseEns(object):
+
+    name = 'ens'
+
     def __init__(self, task_type: str = None, stats=None,
                  metric: Union[str, Callable, _BaseScorer] = 'acc', data_node: DataNode = None,
-                 evaluation: str = 'holdout', resampling_params=None,
+                 evaluation: str = 'cv', resampling_params=None,
                  optimizer='smac',
-                 time_limit=600, amount_of_resource=None, per_run_time_limit=600,
-                 output_dir=None, seed=1, n_jobs=1, topk=50, rmfiles=False,
-                 task_id='test'):
+                 time_limit=600, amount_of_resource=None, per_run_time_limit=float(np.inf),
+                 output_dir=None, seed=1, n_jobs=1, topk=50, 
+                 task_id='test', val_nodes:dict=None, **cs_args):
 
-        if optimizer not in ['smac', 'tpe', 'random_search']:
+        if optimizer not in ['smac']:
             raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
-        if evaluation not in ['holdout', 'cv', 'partial', 'partial_bohb']:
+        if evaluation not in ['cv']:
             raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
 
-        self.name = 'ens'
+
         self.metric_name = 'unknown'
         if isinstance(metric, str):
             self.metric_name = metric
@@ -50,7 +48,9 @@ class BaseEns(object):
         self.stats = stats
         self.data_node = data_node.copy_()
         self.evaluation = evaluation
-        self.resampling_params = resampling_params
+        self.resampling_params = resampling_params if resampling_params is not None else {}
+        self.resampling_params['folds'] = self.resampling_params.get('folds', 5)
+        self.resampling_params['test_size'] = self.resampling_params.get('test_size', 0.33)
         self.seed = seed
 
         self.optimizer_name = optimizer
@@ -67,11 +67,9 @@ class BaseEns(object):
         self.output_dir = output_dir
         self.n_jobs = n_jobs
         self.topk = topk
-        self.rmfiles = rmfiles
 
-        self.optimizer = None
-        self.evaluator = None
-        self.cs = None
+        from mindware.components.config_space.cs_builder import get_ens_cs
+        self.cs = get_ens_cs(**cs_args)
 
         self.incumbent_perf = -float("INF")
         self.incumbent = None
@@ -91,45 +89,38 @@ class BaseEns(object):
 
         self.refit_status = 'none'  # none, partial, full
 
-        self.logger = None
         self.task_id = task_id
 
-        self.es = None
+        path = 'ENS-%s(%d)-%s_%s_%s' % (
+            optimizer, self.seed, self.evaluation, self.task_id, self.datetime
+        )
+        self.output_dir = os.path.join(output_dir, path)
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+        self.logger = self._get_logger(optimizer)
+
         from mindware.modules.ens.ens_evaluator import EnsEvaluator
         self.evaluator = EnsEvaluator(
-            scorer=self.metric, stats=self.stats, task_type=self.task_type,
-            data_node=data_node,
+            scorer=self.metric, stats=self.stats, 
+            data_node=data_node, task_type=self.task_type,
             resampling_strategy=self.evaluation,
             resampling_params=self.resampling_params,
             timestamp=self.timestamp,
             output_dir=self.output_dir,
             seed=self.seed,
-            if_imbal=self.if_imbal
+            if_imbal=self.if_imbal,
+            val_nodes=val_nodes
         )
+        self.optimizer = self.build_optimizer()
 
     def _get_logger(self, optimizer_name):
         logger_name = 'MindWare-ENS-%s(%d)' % (optimizer_name, self.seed)
         setup_logger(os.path.join(self.output_dir, '%s.log' % str(logger_name)))
         return get_logger(logger_name)
 
-    def build_optimizer(self, name='ens', **kwargs):
+    def build_optimizer(self, name='ens'):
 
-        if self.evaluation == 'partial':
-            optimizer_class = MfseOptimizer
-        elif self.evaluation == 'partial_bohb':
-            optimizer_class = BohbOptimizer
-        else:
-            # TODO: Support asynchronous BO
-            if self.optimizer_name == 'random_search':
-                optimizer_class = RandomSearchOptimizer
-            elif self.optimizer_name == 'tpe':
-                optimizer_class = TPEOptimizer
-            elif self.optimizer_name == 'smac':
-                optimizer_class = SMACOptimizer
-            else:
-                raise ValueError("Invalid optimizer %s" % self.optimizer_name)
-
-        optimizer = optimizer_class(
+        optimizer = SMACEnsOptimizer(
             evaluator=self.evaluator, config_space=self.cs, name=name, eval_type=self.evaluation,
             time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
             per_run_time_limit=self.per_run_time_limit,
@@ -148,45 +139,101 @@ class BaseEns(object):
         self.optimizer.iterate(budget=self.time_limit + self.timestamp - time.time())
         if time.time() - self.timestamp > self.time_limit:
             self.timeout_flag = True
+            if self.timeout_flag:
+                self.logger.info(f"Time out({self.time_limit}s)!")
         self.early_stop_flag = self.optimizer.early_stopped_flag
+        if self.early_stop_flag:
+            self.logger.info(f"Early stop!")
 
         self.incumbent_perf = self.optimizer.incumbent_perf
-        self.incumbent = self.optimizer.incumbent_config
+        self.incumbent = self.optimizer.get_incumbent_config()
         self.eval_dict = self.optimizer.eval_dict
         return self.incumbent_perf
 
-    def run(self, refit):
+    def run(self, refit='full'):
 
         for i in range(self.amount_of_resource):
             if not (self.early_stop_flag or self.timeout_flag):
                 self.iterate()
 
+        config = self.incumbent.copy()
+        config.update({'stack_layers': self.cs['stack_layers'].upper, 'meta_learner': 'auto'})
+        model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
+        _, ensemble_builder, learder_board = CombinedTopKModelSaver._load(model_path)
+        self.es = ensemble_builder
+
+        # if refit != 'partial':
+        #     self.es.refit(datanode=self.data_node, mode=refit)
+
         return self.incumbent_perf
 
-    def _predict(self, test_data: DataNode, refit=True, ens=True):
+    def _predict(self, test_data: DataNode, refit='full'):
 
-        valid_data = BaseAutoML._get_valid_data(task_type=self.task_type, data_node=self.data_node, resampling_params=self.resampling_params, seed=self.seed)
         if self.es is None:
-            self.es = EnsembleBuilder(stats=self.stats, valid_data=valid_data,
-                                      task_type=self.task_type, if_imbal=self.if_imbal,
-                                      metric=self.metric,
-                                      output_dir=self.output_dir, seed=self.seed)
-            self.es.build_ensemble(**self.incumbent)
-            self.es.fit()
-        if refit:
-            self.es.refit(self.data_node)
+            config = self.incumbent.copy()
+            config.update({'stack_layers': self.cs['stack_layers'].upper, 'meta_learner': 'auto'})
+            model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
+            _, ensemble_builder, learder_board = CombinedTopKModelSaver._load(model_path)
+            self.es = ensemble_builder
+
+        if refit != 'partial':
+            self.es.refit(datanode=self.data_node, mode=refit)
 
         return self.es.predict(test_data, refit)
 
-    def predict(self, test_data: DataNode, refit=True, ens=True):
-        pred = self._predict(test_data, refit=refit, ens=ens)
+    def predict(self, test_data: DataNode, refit='full'):
+        pred = self._predict(test_data, refit=refit)
 
         if self.task_type in CLS_TASKS:
             return np.argmax(pred, axis=-1)
         else:
             return pred
 
-    def predict_proba(self, test_data: DataNode, refit=True, ens=True):
+    def predict_proba(self, test_data: DataNode, refit='full'):
         if self.task_type not in CLS_TASKS:
             raise AttributeError("predict_proba is not supported in regression")
-        return self._predict(test_data, refit=refit, ens=ens)
+        return self._predict(test_data, refit=refit)
+
+    def get_model_info(self, save=False):
+        model_info = dict()
+
+        config = self.incumbent.copy()
+        config.update({'stack_layers': self.cs['stack_layers'].upper, 'meta_learner': 'auto'})
+        path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
+        model_info['best'] = ('ens', self.incumbent, path)
+        model_info['best_info'] = self.es.get_ens_model_info()
+        leader_board = self.evaluator.leader_board
+        sorted_head = sorted(list(leader_board['train'].keys()), key=lambda x: (-leader_board['val'][x], -leader_board['train'][x]))
+        model_info['leader_board'] = [f"{head}: {', '.join(['%s-%.5f' % (key, leader_board[key][head]) for key in leader_board.keys()])}" for head in sorted_head]
+        model_info['comb_count'] = self.evaluator.comb_count
+
+        opt_trajectory = self.optimizer.get_opt_trajectory()
+        if opt_trajectory is not None:
+            model_info['opt_trajectory'] = opt_trajectory
+
+        if save:
+            with open(os.path.join(self.output_dir, 'best_model_info.json'), 'w') as f:
+                json.dump(model_info, f, indent=4)
+
+        return model_info
+
+    def get_conf(self, save=False):
+        # 获取对象的配置信息
+        conf = {
+            'name': self.name,
+            'task_type': self.task_type,
+            'task_id': self.task_id,
+            'metric': self.metric_name,
+            'optimizer': self.optimizer_name,
+            'time_limit': self.time_limit,
+            'amount_of_resource': self.amount_of_resource,
+            'per_run_time_limit': self.per_run_time_limit,
+            'seed': self.seed,
+            'if_imbal': self.if_imbal,
+        }
+
+        if save:
+            with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:
+                json.dump(conf, f, indent=4)
+
+        return conf

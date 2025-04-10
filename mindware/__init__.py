@@ -3,6 +3,7 @@ from mindware.modules.hpo.base_hpo import BaseHPO as HPO
 from mindware.modules.fe.base_fe import BaseFE as FE
 from mindware.modules.cashfe.base_cashfe import BaseCASHFE as CASHFE
 from mindware.modules.cash.base_cash import BaseCASH as CASH
+from mindware.modules.ens.base_ens import BaseEns as ENS
 from mindware.utils.data_manager import DataManager as DataManager
 from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
 
@@ -25,6 +26,7 @@ __all__ = [
     "FE",
     "CASH",
     "CASHFE",
+    "ENS",
     "DataManager",
     "EnsembleBuilder",
     "CLASSIFICATION",

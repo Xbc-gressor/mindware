@@ -5,6 +5,7 @@ import datetime
 import numpy as np
 import pickle as pkl
 import warnings
+import shutil
 
 from typing import Union, Callable
 from sklearn.metrics._scorer import _BaseScorer
@@ -25,17 +26,21 @@ from mindware.utils.functions import is_imbalanced_dataset
 from mindware.components.utils.constants import type_dict
 
 from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
-from mindware.components.utils.topk_saver import load_combined_transformer_estimator, CombinedTopKModelSaver
+from mindware.components.utils.topk_saver import load_combined_transformer_estimator, CombinedTopKModelSaver, check_mode
 
 from mindware.components.feature_engineering.parse import construct_node
 from mindware.components.ensemble import ensemble_list
 
-from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
+from mindware.modules.base_evaluator import fetch_predict_estimator, fetch_predict_results
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.components.feature_engineering.parse import parse_config
 from mindware.utils.logging_utils import setup_logger, get_logger
-from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
+from mindware.modules.base_evaluator import BaseEvaluator, get_kfold_name
 
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+# 忽略特定的警告
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 class BaseAutoML(object):
     name = 'abstract'
@@ -54,7 +59,9 @@ class BaseAutoML(object):
         self.metric = get_metric(metric)
         self.data_node = data_node.copy_()
         self.evaluation = evaluation
-        self.resampling_params = resampling_params
+        self.resampling_params = resampling_params if resampling_params is not None else {}
+        self.resampling_params['folds'] = self.resampling_params.get('folds', 5)
+        self.resampling_params['test_size'] = self.resampling_params.get('test_size', 0.33)
         self.seed = seed
 
         self.optimizer_name = optimizer
@@ -99,7 +106,7 @@ class BaseAutoML(object):
         if self.task_type in CLS_TASKS:
             self.if_imbal = is_imbalanced_dataset(self.data_node)
 
-        self.refit_status = 'none'  # none, partial, full
+        self.refit_status = 'none'  # none, partial, full, cv
 
         self.logger = None
         self.task_id = task_id
@@ -140,44 +147,54 @@ class BaseAutoML(object):
 
         return include_preps
 
-    @staticmethod
-    def _get_valid_data(task_type, data_node, resampling_params=None, seed=1, train=False):
-
-        test_size = 0.33
-        if resampling_params is not None and 'test_size' in resampling_params:
-            test_size = resampling_params['test_size']
-
-        valid_data = data_node.copy_(no_data=True)
-        X, y = data_node.data
-        if task_type in CLS_TASKS:
-            ss = BaseCLSEvaluator._get_spliter(resampling_strategy='holdout', test_size=test_size, random_state=seed)
-        else:
-            ss = BaseRGSEvaluator._get_spliter(resampling_strategy='holdout', test_size=test_size, random_state=seed)
-
-        x_p2, y_p2 = None, None
-        for train_index, val_index in ss.split(X, y):
-            if train:
-                val_index = train_index
-            x_p2, y_p2 = X[val_index], y[val_index]
-
-        valid_data.data = [x_p2, y_p2]
-
-        return valid_data
 
     @classmethod
-    def _refit_config(cls, config, data_node, task_type, if_imbal=False):
+    def _refit_config(cls, config, data_node, task_type, if_imbal=False, resampling_params=None, seed=1, mode='full'):
+        check_mode(mode)
         algo_id = config['algorithm']
-        if cls.name in ['fe', 'cashfe']:
-            data_node, op_list = parse_config(data_node, config, record=True, if_imbal=if_imbal)
+
+        if mode == 'cv':
+            folds = 3
+            if resampling_params is not None and 'folds' in resampling_params:
+                folds = resampling_params['folds']
+
+            op_list_dict = dict()
+            estimator_dict = dict()
+            fold = 1
+            for train_node, _, _, _ in BaseEvaluator._get_cv_data(task_type=task_type, data_node=data_node,
+                                                           resampling_params=resampling_params, seed=seed):
+                if cls.name in ['fe', 'cashfe']:
+                    train_node, op_list = parse_config(train_node, config, record=True, if_imbal=if_imbal)
+                else:
+                    op_list = {}
+
+                estimator = fetch_predict_estimator(task_type, algo_id, config,
+                                                    train_node.data[0], train_node.data[1],
+                                                    weight_balance=train_node.enable_balance,
+                                                    data_balance=train_node.data_balance)
+                key = get_kfold_name(folds=folds, fold=fold, seed=seed, shuffle=False)
+                op_list_dict[key] = op_list
+                estimator_dict[key] = estimator
+                fold += 1
+
+            return op_list_dict, estimator_dict
+
         else:
-            op_list = {}
+            if mode == 'partial':
+                train_node, _ = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=data_node,
+                                                                   resampling_params=resampling_params, seed=seed)
 
-        estimator = fetch_predict_estimator(task_type, algo_id, config,
-                                            data_node.data[0], data_node.data[1],
-                                            weight_balance=data_node.enable_balance,
-                                            data_balance=data_node.data_balance)
+            if cls.name in ['fe', 'cashfe']:
+                train_node, op_list = parse_config(train_node, config, record=True, if_imbal=if_imbal)
+            else:
+                op_list = {}
 
-        return op_list, estimator
+                estimator = fetch_predict_estimator(task_type, algo_id, config,
+                                                    train_node.data[0], train_node.data[1],
+                                                    weight_balance=train_node.enable_balance,
+                                                    data_balance=train_node.data_balance)
+
+            return op_list, estimator
 
     def _get_logger(self, optimizer_name):
         raise NotImplementedError()
@@ -257,7 +274,11 @@ class BaseAutoML(object):
         self.optimizer.iterate(budget=self.time_limit + self.timestamp - time.time())
         if time.time() - self.timestamp > self.time_limit:
             self.timeout_flag = True
+            if self.timeout_flag:
+                self.logger.info(f"Time out({self.time_limit}s)!")
         self.early_stop_flag = self.optimizer.early_stopped_flag
+        if self.early_stop_flag:
+            self.logger.info(f"Early stop!")
 
         self.incumbent_perf = self.optimizer.incumbent_perf
         self.incumbent = self.optimizer.incumbent_config
@@ -273,53 +294,50 @@ class BaseAutoML(object):
                 continue
             os.remove(os.path.join(self.output_dir, file))
 
-    def run(self, refit=True):
+    def run(self, refit='full'):
+        check_mode(refit)
 
         for i in range(self.amount_of_resource):
             if not (self.early_stop_flag or self.timeout_flag):
                 self.iterate()
 
         if self.ensemble_method is not None:
-            if self.evaluation == 'cv':
-                self.refit(partial=True)
+            # if self.evaluation == 'cv':
+            #     self.refit(partial=True)
 
             self.fit_ensemble(refit)  # 如果是cv，就不再refit
 
-        if self.evaluation == 'cv' or refit:
-            if self.refit_status != 'full':
-                self.refit_incumbent()
+        self.refit_incumbent(model=refit)
 
         if self.rmfiles:
             self.rm_files()
 
         return self.incumbent_perf
 
-    def refit_incumbent(self):
+    def refit_incumbent(self, mode):
+        check_mode(mode)
 
         self.logger.debug('Start to refit the best model!')
 
         if self.incumbent is None:
             raise AssertionError("The best config is None! Please check if all the evaluations are failed!")
 
-        model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, self.incumbent, self.datetime,
-                                                               refit=True)
+        model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, self.incumbent, self.datetime, mode=mode, **self.resampling_params)
         if os.path.exists(model_path):
-            self.logger.debug("The best model has been refitted!")
+            self.logger.debug("The best model has already been refitted before!")
             return
 
         config = self.incumbent.copy()
         algo_id = config['algorithm']
         if algo_id != 'neural_network':
             op_list, estimator = self._refit_config(self.incumbent, self.data_node, task_type=self.task_type,
-                                                    if_imbal=self.if_imbal)
+                                                    if_imbal=self.if_imbal, resampling_params=self.resampling_params, seed=self.seed, mode=mode)
             CombinedTopKModelSaver._save([op_list, estimator, self.incumbent_perf], model_path)
 
     # train with whole data
-    def refit(self, partial=False):
+    def refit(self, mode):
         # if partial, holdout training; else, whole-data training
-
-        if self.ensemble_method is None:
-            self.logger.error("No ensemble method is specified, no need to refit!")
+        check_mode(mode)
 
         self.logger.debug('Start to refit all the well-performed models!')
         config_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.datetime)
@@ -330,70 +348,53 @@ class BaseAutoML(object):
 
         with open(config_path, 'rb') as f:
             stats = pkl.load(f)
-        test_size = 0.33
-        if self.resampling_params is not None and 'test_size' in self.resampling_params:
-            test_size = self.resampling_params['test_size']
+
         for algo_id in stats.keys():
             if algo_id == 'neural_network':
                 continue
             model_to_eval = stats[algo_id]
             for idx, (config, perf, path) in enumerate(model_to_eval):
-                if not partial:
-                    path = CombinedTopKModelSaver.get_refit_path(path)
+                path = CombinedTopKModelSaver.get_parse_path(path, mode=mode, **self.resampling_params)
                 if os.path.exists(path):
+                    self.logger.debug("The model has already been refitted before: %s!" % path)
                     continue
-                # TODO: 有的refit会报错，提示X有NaN。原来的X是没有NaN的，可能FE后用一部分数据的时候没有NaN，但是全数据里面有了。
                 try:
-                    train_node = self.data_node
-                    X, y = train_node.data[0], train_node.data[1]
-                    if partial:
-                        train_node = train_node.copy_(no_data=True)
-                        ss = self.evaluator._get_spliter('holdout', test_size=test_size, random_state=self.seed)
-                        for train_index, _ in ss.split(X, y):
-                            X, y = X[train_index], y[train_index]
-
-                        train_node.data = [X, y]
-
-                    op_list, estimator = self._refit_config(config, data_node=train_node, task_type=self.task_type,
-                                                            if_imbal=self.if_imbal)
-
+                    op_list, estimator = self._refit_config(config, data_node=self.data_node, task_type=self.task_type,
+                                                            if_imbal=self.if_imbal, resampling_params=self.resampling_params, seed=self.seed, mode=mode)
                     CombinedTopKModelSaver._save([op_list, estimator, perf], path)
                 except:
                     self.logger.error("Failed to refit for %s !" % path)
 
-        self.refit_status = 'partial' if partial else 'full'
+        self.refit_status = mode
 
-    def fit_ensemble(self, refit=True):
+    def fit_ensemble(self, refit):
+        check_mode(refit)
 
         self.logger.debug('Start to fit ensemble model!')
 
         if self.ensemble_method is not None:
 
-            # 如果用全数据refit了，就不能包含k_nearest_neighbors, 因为它会将训练数据都预测为label，selection算法只会选knn
-            if self.evaluation == 'cv':
-                if self.refit_status in ['none', 'full']:
-                    raise AttributeError("Please call refit(partial=True) for cross-validation!")
-
             config_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.datetime)
             with open(config_path, 'rb') as f:
                 stats = pkl.load(f)
 
-            valid_data = self._get_valid_data(task_type=self.task_type, data_node=self.data_node,
-                                              resampling_params=self.resampling_params, seed=self.seed)
+            _, valid_node = BaseEvaluator._get_train_valid_data(task_type=self.task_type, data_node=self.data_node,
+                                                            resampling_params=self.resampling_params, seed=self.seed)
             # Ensembling all intermediate/ultimate models found in above optimization process.
-            self.es = EnsembleBuilder(stats=stats, valid_data=valid_data,
+            self.es = EnsembleBuilder(stats=stats, valid_node=valid_node,
                                       task_type=self.task_type, if_imbal=self.if_imbal,
-                                      metric=self.metric,
+                                      metric=self.metric, resampling_params=self.resampling_params,
                                       output_dir=self.output_dir, seed=self.seed)
             self.es.build_ensemble(ensemble_method=self.ensemble_method, ensemble_size=self.ensemble_size)
-            self.es.fit()
+            datanode = self.data_node if self.ensemble_method == 'stacking' else valid_node
+            self.es.fit(datanode=datanode)
 
-            if refit and self.refit_status != 'full':
-                self.es.refit(datanode=self.data_node)
+            if refit != 'partial':
+                self.es.refit(datanode=self.data_node, mode=refit)
         else:
             raise ValueError("No ensemble method is specified!")
 
-    def predict(self, test_data: DataNode, refit=True, ens=True):
+    def predict(self, test_data: DataNode, refit='full', ens=True):
         pred = self._predict(test_data, refit=refit, ens=ens)
 
         if self.task_type in CLS_TASKS:
@@ -411,9 +412,7 @@ class BaseAutoML(object):
             model_to_eval = stats[algo_id]
             for idx, (config, perf, path) in enumerate(model_to_eval):
                 # _, _, perf = CombinedTopKModelSaver._load(path)
-                train_node = cls._get_valid_data(task_type=task_type, data_node=data_node,
-                                                 resampling_params=resampling_params, seed=seed, train=True)
-                valid_node = cls._get_valid_data(task_type=task_type, data_node=data_node,
+                train_node, valid_node = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=data_node,
                                                  resampling_params=resampling_params, seed=seed)
 
                 op_list, estimator = cls._refit_config(config, data_node=train_node, task_type=task_type,
@@ -430,16 +429,21 @@ class BaseAutoML(object):
     def _predict_stats(cls, task_type, metric: Union[str, Callable, _BaseScorer] = None, data_node: DataNode = None,
                        test_data: DataNode = None, stats=None,
                        resampling_params=None,
-                       ensemble_method=None, ensemble_size=None, refit=True, prob=False, output_dir='./data', seed=1,
+                       ensemble_method=None, ensemble_size=None, refit='full', prob=False, output_dir='./data', seed=1,
                        task_id='test'):
-        path = 'STA-(%d)-%s_%s' % (
+        print("Predicting with stats")
+        if resampling_params is None:
+            resampling_params = {}
+        resampling_params['folds'] = resampling_params.get('folds', 3)
+        resampling_params['test_size'] = resampling_params.get('test_size', 0.33)
+
+        _path = 'STA-(%d)-%s_%s' % (
             seed, task_id, datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
         )
-        output_dir = os.path.join(output_dir, path)
+        output_dir = os.path.join(output_dir, _path)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        print("Predicting with stats")
         logger_name = 'MindWare-STA-(%d)' % (seed)
         setup_logger(os.path.join(output_dir, '%s.log' % str(logger_name)))
         logger = get_logger(logger_name)
@@ -467,89 +471,78 @@ class BaseAutoML(object):
                     best_config = config
                     best_path = path
 
-        if ensemble_method is not None:
-            valid_data = cls._get_valid_data(task_type=task_type, data_node=data_node,
-                                             resampling_params=resampling_params, seed=seed)
-            es = EnsembleBuilder(stats=stats, valid_data=valid_data,
-                                 task_type=task_type, if_imbal=if_imbal,
-                                 metric=metric,
-                                 output_dir=output_dir, seed=seed)
-            es.build_ensemble(ensemble_method=ensemble_method, ensemble_size=ensemble_size, **resampling_params)
-            es.fit()
-            if refit:
-                es.refit(datanode=data_node)
-            pred = es.predict(test_data, refit)
-            if task_type in CLS_TASKS:
-                if prob:
-                    return pred
-                else:
-                    return np.argmax(pred, axis=-1)
-            else:
-                return pred
-
-        else:
+        if ensemble_method is None:
 
             if best_path is None:
                 raise AttributeError("No stats found!")
 
-            if refit:
-                logger.info('Start to refit the best model!')
-                best_path = CombinedTopKModelSaver.get_refit_path(best_path)
-                if os.path.exists(best_path):
-                    logger.info("The best model has been refitted!")
-                    best_op_list, estimator, _ = CombinedTopKModelSaver._load(best_path)
-                else:
-                    best_op_list, estimator = cls._refit_config(best_config, data_node, task_type=task_type,
-                                                                if_imbal=if_imbal)
-            else:
+            logger.info('Start to refit the best model! mode: %s!' % refit)
+            best_path = CombinedTopKModelSaver.get_parse_path(best_path, mode=refit, **resampling_params)
+            if os.path.exists(best_path):
+                logger.info("The best model has been refitted!")
                 best_op_list, estimator, _ = CombinedTopKModelSaver._load(best_path)
-            test_data_node = test_data.copy_()
-            test_data_node = construct_node(test_data_node, best_op_list)
-
-            conf = {
-                'name': cls.name,
-                'task_type': task_type,
-                'task_id': task_id,
-                'metric': metric_name,
-                'seed': seed,
-                'if_imbal': if_imbal,
-                'ensemble_method': ensemble_method,
-                'ensemble_size': ensemble_size
-            }
-            with open(os.path.join(output_dir, 'config.json'), 'w') as f:
-                json.dump(conf, f, indent=4)
-
-            if task_type in CLS_TASKS:
-                if prob:
-                    return estimator.predict_proba(test_data_node.data[0])
-                else:
-                    return np.argmax(estimator.predict_proba(test_data_node.data[0]), axis=-1)
             else:
-                return estimator.predict(test_data_node.data[0])
+                best_op_list, estimator = cls._refit_config(best_config, data_node, task_type=task_type, if_imbal=if_imbal, resampling_params=resampling_params, seed=seed, mode=refit)
+                CombinedTopKModelSaver._save([best_op_list, estimator, best_perf], best_path)
 
-    def _predict(self, test_data: DataNode, refit=True, ens=True):
+            pred = fetch_predict_results(task_type, best_op_list, estimator, test_data)
+
+        else:
+            _, valid_node = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=data_node,
+                                                resampling_params=resampling_params, seed=seed)
+            es = EnsembleBuilder(stats=stats, valid_node=valid_node,
+                                 task_type=task_type, if_imbal=if_imbal,
+                                 metric=metric, resampling_params=resampling_params,
+                                 output_dir=output_dir, seed=seed)
+            es.build_ensemble(ensemble_method=ensemble_method, ensemble_size=ensemble_size)
+            datanode = data_node if ensemble_method == 'stacking' else valid_node
+            es.fit(datanode=datanode)
+            if refit != 'partial':
+                es.refit(datanode=data_node, mode=refit)
+            pred = es.predict(test_data, refit=refit)
+
+        with open(os.path.join(output_dir, 'config.json'), 'w') as f:
+            conf = {
+                'name': cls.name, 'task_type': task_type, 'task_id': task_id,
+                'metric': metric_name, 'seed': seed, 'if_imbal': if_imbal,
+                'ensemble_method': ensemble_method, 'ensemble_size': ensemble_size
+            }
+            json.dump(conf, f, indent=4)
+        with open(os.path.join(output_dir, 'best_model_info.json'), 'w') as f:
+            model_info = {'best': (best_config['algorithm'], best_config, best_path)}
+            if ensemble_method is not None:
+                model_info['ensemble'] = es.get_ens_model_info()
+            json.dump(model_info, f, indent=4)
+
+        if ensemble_method is None:
+            shutil.rmtree(output_dir)
+
+        if task_type in CLS_TASKS:
+            if prob:
+                return pred
+            else:
+                return np.argmax(pred, axis=-1)
+        else:
+            return pred
+
+    def _predict(self, test_data: DataNode, refit='full', ens=True):
         if ens and self.ensemble_method is not None:
             if self.es is None and self.evaluation == 'cv':
                 raise AttributeError("Please call refit() for cross-validation!")
             elif self.es is None:
                 raise AttributeError("AutoML is not fitted!")
-            return self.es.predict(test_data, refit)
+            return self.es.predict(test_data, refit=refit)
         else:
             try:
                 best_op_list, estimator = load_combined_transformer_estimator(self.output_dir, self.incumbent,
-                                                                              self.datetime, refit=refit)
+                                                                              self.datetime, mode=refit, **self.resampling_params)
             except Exception as e:
                 if self.evaluation == 'cv':
                     raise AttributeError("Please call refit() for cross-validation!")
                 else:
                     raise e
-            test_data_node = test_data.copy_()
-            test_data_node = construct_node(test_data_node, best_op_list)
 
-            if self.task_type in CLS_TASKS:
-                return estimator.predict_proba(test_data_node.data[0])
-            else:
-                return estimator.predict(test_data_node.data[0])
+            return fetch_predict_results(self.task_type, best_op_list, estimator, test_data)
 
     def predict_proba(self, test_data: DataNode, refit=True, ens=True):
         if self.task_type not in CLS_TASKS:
@@ -573,7 +566,7 @@ class BaseAutoML(object):
 
         return model_info
 
-    def get_conf(self):
+    def get_conf(self, save=False):
         # 获取对象的配置信息
         conf = {
             'name': self.name,
@@ -598,5 +591,9 @@ class BaseAutoML(object):
 
         if hasattr(self, 'filter_params'):
             conf['filter_params'] = self.filter_params
+
+        if save:
+            with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:
+                json.dump(conf, f, indent=4)
 
         return conf

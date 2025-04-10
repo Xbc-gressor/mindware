@@ -2,10 +2,14 @@ import os
 import pickle as pkl
 import joblib
 import hashlib
+import numpy as np
 
 
-def load_combined_transformer_estimator(model_dir, config, timestamp, refit=False):
-    model_path = CombinedTopKModelSaver.get_path_by_config(model_dir, config, timestamp, refit=refit)
+def check_mode(mode):
+    assert mode in ['partial', 'cv', 'full', 'cvpartial']
+
+def load_combined_transformer_estimator(model_dir, config, timestamp, mode='partial', **kwargs):
+    model_path = CombinedTopKModelSaver.get_path_by_config(model_dir, config, timestamp, mode=mode, **kwargs)
     op_list, model, _ = CombinedTopKModelSaver._load(model_path)
     return op_list, model
 
@@ -46,21 +50,27 @@ class CombinedTopKModelSaver(BaseTopKModelSaver):
         return sha.hexdigest()
 
     @staticmethod
-    def get_refit_path(ori_path):
+    def get_parse_path(ori_path, mode='partial', **kwargs):
+        check_mode(mode)
+        prefix = ''
+        if mode.startswith('cv'):
+            folds = kwargs['folds']
+            prefix = "%s%d_" % (mode, folds)
+        elif mode == 'full':
+            prefix = "%s_" % mode
         dir_path, filename = os.path.split(ori_path)
-        new_filename = 'refit_' + filename
+        new_filename = prefix + filename
         return os.path.join(dir_path, new_filename)
 
     @staticmethod
-    def get_path_by_config(output_dir, config, identifier, compress=True, refit=False):
-        prefix = 'refit_' if refit else ''
+    def get_path_by_config(output_dir, config, identifier, compress=True, mode='partial', **kwargs):
         if compress or config['algorithm'] in ['extra_trees']:
-            path = os.path.join(output_dir, '%s%s_%s.joblib' % (prefix, identifier, CombinedTopKModelSaver.get_configuration_id(config)))
+            path = os.path.join(output_dir, '%s_%s.joblib' % (identifier, CombinedTopKModelSaver.get_configuration_id(config)))
         else:
-            path = os.path.join(output_dir, '%s%s_%s.pkl' % (prefix, identifier, CombinedTopKModelSaver.get_configuration_id(config)))
+            path = os.path.join(output_dir, '%s_%s.pkl' % (identifier, CombinedTopKModelSaver.get_configuration_id(config)))
 
-        return os.path.abspath(path)
-    
+        return CombinedTopKModelSaver.get_parse_path(os.path.abspath(path), mode, **kwargs)
+
     @staticmethod
     def _save(items, save_path: str):
         if save_path.endswith('joblib'):
@@ -80,6 +90,8 @@ class CombinedTopKModelSaver(BaseTopKModelSaver):
         elif load_path.endswith('pkl'):
             with open(load_path, 'rb') as f:
                 return pkl.load(f)
+        elif load_path.endswith('npy'):
+            return np.load(load_path)
         else:
             raise ValueError("Invalid config path: %s", load_path)
 

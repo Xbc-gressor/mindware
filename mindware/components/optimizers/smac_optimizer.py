@@ -138,7 +138,7 @@ class SMACOptimizer(BaseOptimizer):
         if self.time_limit is not None and time.time() - self.timestamp > self.time_limit or \
                 self.evaluation_num_limit is not None and len(self.perfs) >= self.evaluation_num_limit:
             self.timeout_flag = True
-            
+
         # incumbent_perf: the large the better
         return self.incumbent_perf, iteration_cost, self.incumbent_config
 

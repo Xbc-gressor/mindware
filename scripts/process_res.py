@@ -5,7 +5,7 @@ import os
 
 exp_itr = 0
 task = 'cls'
-metric = 'f1'
+metric = 'acc'
 
 slices = [[0, 42], [42, 85], [85, 109], [0, 109]]
 if task == 'reg':
@@ -129,6 +129,7 @@ for row in range(2):
         max_scores = np.max(tmp_res_scores, axis=1)
         for i in range(len(max_scores)):
             max_idx = np.where(tmp_res_scores[i] == max_scores[i])[0]
+            print(len(max_idx))
             for t in max_idx:
                 counts[t] += 1
         # 绘制柱状图

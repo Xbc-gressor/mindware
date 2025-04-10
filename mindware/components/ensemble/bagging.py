@@ -8,21 +8,22 @@ from mindware.components.ensemble.base_ensemble import BaseEnsembleModel
 from mindware.components.feature_engineering.parse import construct_node
 
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
+from mindware.modules.base_evaluator import fetch_predict_results
 from functools import reduce
 
 
 class Bagging(BaseEnsembleModel):
-    def __init__(self, stats, valid_data,
+    def __init__(self, stats,
                  ensemble_size: int,
                  task_type: int, if_imbal: bool,
-                 metric: _BaseScorer,
+                 metric: _BaseScorer, resampling_params = None,
                  output_dir=None, seed=None,
                  predictions=None, base_model_mask=None):
-        super().__init__(stats, valid_data,
+        super().__init__(stats,
                          ensemble_method='bagging',
                          ensemble_size=ensemble_size,
                          task_type=task_type, if_imbal=if_imbal,
-                         metric=metric,
+                         metric=metric, resampling_params=resampling_params,
                          output_dir=output_dir, seed=seed,
                          predictions=predictions)
 
@@ -31,7 +32,7 @@ class Bagging(BaseEnsembleModel):
     def fit(self):
         return self
 
-    def predict(self, data, refit=False):
+    def predict(self, data, refit='full'):
         model_pred_list = []
         final_pred = []
         # Get predictions from each model
@@ -41,16 +42,9 @@ class Bagging(BaseEnsembleModel):
             for idx, (_, _, path) in enumerate(model_to_eval):
 
                 if self.base_model_mask[model_cnt] == 1:
-                    if refit:
-                        path = CombinedTopKModelSaver.get_refit_path(path)
+                    path = CombinedTopKModelSaver.get_parse_path(path, mode=refit, **self.resampling_params)
                     op_list, model, _ = CombinedTopKModelSaver._load(path)
-                    _node = data.copy_()
-                    _node = construct_node(_node, op_list)
-
-                    if self.task_type in CLS_TASKS:
-                        model_pred_list.append(model.predict_proba(_node.data[0]))
-                    else:
-                        model_pred_list.append(model.predict(_node.data[0]))
+                    model_pred_list.append(fetch_predict_results(self.task_type, op_list, model, data))
                 model_cnt += 1
 
         # Calculate the average of predictions

@@ -4,218 +4,155 @@ import os
 import pickle as pkl
 from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.metrics._scorer import _BaseScorer
+from sklearn.preprocessing import OneHotEncoder
 
-from mindware.components.ensemble.base_ensemble import BaseEnsembleModel
+from mindware.components.ensemble.blending import Blending
 from mindware.components.utils.constants import CLS_TASKS
-from mindware.components.evaluators.base_evaluator import fetch_predict_estimator
+from mindware.modules.base_evaluator import fetch_predict_estimator, fetch_predict_results
 from mindware.components.feature_engineering.parse import parse_config, construct_node
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
-from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
+from mindware.modules.base_evaluator import BaseEvaluator, get_kfold_name
+from mindware.components.ensemble.parallel_fit import layer_fit
 
 
-class Stacking(BaseEnsembleModel):
-    def __init__(self, ensemble_size: int,
-                 task_type: int,
-                 metric: _BaseScorer,
+class Stacking(Blending):
+    def __init__(self, stats,
+                 ensemble_size: int,
+                 task_type: int, if_imbal: bool,
+                 metric: _BaseScorer, resampling_params = None,
                  output_dir=None, seed=None,
-                 meta_learner='lightgbm',
-                 kfold=5,
-                 predictions=None):
-        super().__init__(ensemble_method='stacking',
-                         ensemble_size=ensemble_size,
-                         task_type=task_type,
-                         metric=metric,
-                         output_dir=output_dir, seed=seed,
-                         predictions=predictions)
+                 meta_learner='linear', stack_layers = 1, thread=16,
+                 skip_connect=True, retain=True,
+                 predictions=None, base_model_mask=None, opt=False):
+        super().__init__(stats=stats,
+                ensemble_size=ensemble_size,
+                task_type=task_type, if_imbal=if_imbal,
+                metric=metric, resampling_params=resampling_params,
+                output_dir=output_dir, seed=seed,
+                meta_learner=meta_learner, stack_layers=stack_layers, thread=thread,
+                skip_connect=skip_connect, retain=retain,
+                predictions=predictions, base_model_mask=base_model_mask)
 
-        self.kfold = kfold
-        try:
-            from lightgbm import LGBMClassifier
-        except:
-            warnings.warn("Lightgbm is not imported! Stacking will use linear model instead!")
-            meta_learner = 'linear'
+        self.ensemble_method = "stacking"
+        self.folds = 3
+        if self.resampling_params is not None and 'folds' in self.resampling_params:
+            self.folds = self.resampling_params['folds']
+        self.folds = self.sfolds
 
-        self.meta_method = meta_learner
+        self.opt = opt
+        self.base_sms = None
+        self.base_ops = None
 
-        # We use Xgboost as default meta-learner
-        if self.task_type in CLS_TASKS:
-            if meta_learner == 'linear':
-                try:
-                    from sklearn.linear_model import LogisticRegression
-                except:
-                    from sklearn.linear_model.logistic import LogisticRegression
-                self.meta_learner = LogisticRegression(max_iter=1000)
-            elif meta_learner == 'gb':
-                try:
-                    from sklearn.ensemble import GradientBoostingClassifier
-                except:
-                    from sklearn.ensemble.gradient_boosting import GradientBoostingClassifier
-                self.meta_learner = GradientBoostingClassifier(learning_rate=0.05, subsample=0.7, max_depth=4,
-                                                               n_estimators=250)
-            elif meta_learner == 'lightgbm':
-                from lightgbm import LGBMClassifier
-                self.meta_learner = LGBMClassifier(max_depth=4, learning_rate=0.05, n_estimators=150, n_jobs=1)
-        else:
-            if meta_learner == 'linear':
-                from sklearn.linear_model import LinearRegression
-                self.meta_learner = LinearRegression()
-            elif meta_learner == 'lightgbm':
-                from lightgbm import LGBMRegressor
-                self.meta_learner = LGBMRegressor(max_depth=4, learning_rate=0.05, n_estimators=70, n_jobs=1)
-
-    def get_path(self, algo_id, model_cnt, j, compress=True):
-
-        if compress or algo_id in ['extra_trees']:
-            _path = os.path.join(self.output_dir, '%s-stacking-model%d_part%d.joblib' % (self.datetime, model_cnt, j))
-        else:
-            _path = os.path.join(self.output_dir, '%s-stacking-model%d_part%d.pkl' % (self.datetime, model_cnt, j))
-        return _path
-
-    def fit(self, stats, datanode):
-        super(Stacking, self).fit(stats, datanode)
-        self._choose_base_models(datanode)
-        # Split training data for phase 1 and phase 2
-                            
-        if self.task_type in CLS_TASKS:
-            kf = BaseCLSEvaluator._get_spliter(resampling_strategy='cv', n_splits=self.kfold)
-        else:
-            kf = BaseRGSEvaluator._get_spliter(resampling_strategy='cv', n_splits=self.kfold)
-
-        # Train basic models using a part of training data
+    def get_base_features(self, datanode, val_nodes: dict=None, mode='partial'):
+        _output_dir = os.path.join(self.output_dir, 'ensemble_tmp')
         model_cnt = 0
         suc_cnt = 0
-        feature_p2 = None
-        y = None
+        ori_xs = {'train': None}
+
+        stack_configs = [[], []]
+        ori_config_paths = []
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
             for idx, (config, _, path) in enumerate(model_to_eval):
                 if self.base_model_mask[model_cnt] == 1:
-                    # op_list, model, _ = CombinedTopKModelSaver._load(path)
-                    # _node = datanode.copy_()
-                    #
-                    # _node = construct_node(_node, op_list, mode='train')
+                    stack_configs[0].append(config)
+                    ori_config_paths.append(path)
+                    if self.skip_connect:
+                        if ori_xs['train'] is None: ori_xs = {'train': []}
+                        model_path = path if mode == 'partial' else CombinedTopKModelSaver.get_parse_path(path, 'full')
+                        op_list, _, _ = CombinedTopKModelSaver._load(model_path)
+                        ori_x = construct_node(datanode.copy_(), op_list).data[0]
+                        ori_xs['train'].append(ori_x)
+                        if val_nodes is not None:
+                            for key in val_nodes.keys():
+                                if key not in ori_xs: ori_xs[key] = []
+                                ori_x = construct_node(val_nodes[key].copy_(), op_list).data[0]
+                                ori_xs[key].append(ori_x)
 
-                    X, y = datanode.data
-                    for j, (train, test) in enumerate(kf.split(X, y)):
-
-                        _path = self.get_path(algo_id, model_cnt, j)
-                        if os.path.exists(_path):
-                            continue
-
-                        train_node = datanode.copy_(no_data=True)
-                        val_node = datanode.copy_(no_data=True)
-                        train_node.data = [X[train], y[train]]
-                        val_node.data = [X[test], y[test]]
-
-                        train_node, op_list = parse_config(train_node, config, record=True, if_imbal=self.if_imbal)
-                        val_node = construct_node(val_node.copy_(), op_list)
-
-                        x_p1, y_p1 = train_node.data
-                        x_p2, _ = val_node.data
-
-                        estimator = fetch_predict_estimator(self.task_type, algo_id, config, x_p1, y_p1,
-                                                            weight_balance=datanode.enable_balance,
-                                                            data_balance=datanode.data_balance)
-                        CombinedTopKModelSaver._save(items=[op_list, estimator, None], save_path=_path)
-
-                        if self.task_type in CLS_TASKS:
-                            pred = estimator.predict_proba(x_p2)
-                            n_dim = np.array(pred).shape[1]
-                            if n_dim == 2:
-                                # Binary classificaion
-                                n_dim = 1
-                            # Initialize training matrix for phase 2
-                            if feature_p2 is None:
-                                num_samples = len(train) + len(test)
-                                feature_p2 = np.zeros((num_samples, self.ensemble_size * n_dim))
-                            if n_dim == 1:
-                                feature_p2[test, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = pred[:, 1:2]
-                            else:
-                                feature_p2[test, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = pred
-                        else:
-                            pred = estimator.predict(x_p2).reshape(-1, 1)
-                            n_dim = 1
-                            # Initialize training matrix for phase 2
-                            if feature_p2 is None:
-                                num_samples = len(train) + len(test)
-                                feature_p2 = np.zeros((num_samples, self.ensemble_size * n_dim))
-                            feature_p2[test, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = pred
                     suc_cnt += 1
                 model_cnt += 1
-        # Train model for stacking using the other part of training data
-        self.meta_learner.fit(feature_p2, y)
-        return self
 
-    def get_feature(self, data):
-        # Predict the labels via stacking
-        feature_p2 = None
+        sms, ops, base_feature, _, cost = layer_fit(stack_configs=stack_configs, new_node=datanode, ori_xs=None, n_base_model=len(stack_configs[0]),
+                                            task_type=self.task_type, if_imbal=self.if_imbal, seed=self.seed, 
+                                            layer=0, thread=self.thread, folds=self.folds, output_dir=_output_dir, ori_config_paths=ori_config_paths, logger=self.logger, mode=mode)
+
+        self.base_sms = sms
+        self.base_ops = ops
+
+        n_dim = base_feature.shape[1] // self.ensemble_size
+
+        base_features = {'train': base_feature}
+        if val_nodes is not None:
+            for key in val_nodes.keys():
+                base_features[key] = np.zeros((val_nodes[key].data[0].shape[0], base_feature.shape[1]))
+                for suc_cnt, config in enumerate(stack_configs[0]):
+                    # path = ori_config_paths[suc_cnt] if mode == 'partial' else CombinedTopKModelSaver.get_parse_path(ori_config_paths[suc_cnt], 'full')
+                    # op_list, estimator, _ = CombinedTopKModelSaver._load(model_path)
+                    # pred = fetch_predict_results(self.task_type, op_list, estimator, val_nodes[key])
+                    # if len(pred.shape) == 1:
+                    #     pred = pred.reshape(-1, 1)
+                    # base_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] += pred[:, -n_dim:]
+                    estimators = sms[suc_cnt]
+                    op_lists = ops[suc_cnt]
+                    for estimator, op_list in zip(estimators, op_lists):
+                        _new_node = val_nodes[key]
+                        pred = fetch_predict_results(self.task_type, op_list, estimator, _new_node)
+                        if len(pred.shape) == 1:
+                            pred = pred.reshape(-1, 1)
+                        base_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] += pred[:, -n_dim:] / len(estimators)
+
+        self.logger.info(f"Cost of Layer0 training with {self.thread} threads: {cost}s")
+        self.train_cost.append(cost)
+
+        return base_features, ori_xs
+
+    def get_feature(self, datanode, mode):
+        # Predict the labels via blending
+        base_features = None
+        ori_xs = None
         model_cnt = 0
         suc_cnt = 0
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
-            for idx, (config, _, path) in enumerate(model_to_eval):
+            for idx, (_, _, path) in enumerate(model_to_eval):
                 if self.base_model_mask[model_cnt] == 1:
-
-                    for j in range(self.kfold):
-                        _path = self.get_path(algo_id, model_cnt, j)
-                        op_list, estimator, _ = CombinedTopKModelSaver._load(_path)
-                        _node = data.copy_()
-                        _node = construct_node(_node, op_list)
-
-                        if self.task_type in CLS_TASKS:
-                            pred = estimator.predict_proba(_node.data[0])
-                            n_dim = np.array(pred).shape[1]
-                            if n_dim == 2:
-                                n_dim = 1
-                            if feature_p2 is None:
-                                num_samples = len(_node.data[0])
-                                feature_p2 = np.zeros((num_samples, self.ensemble_size * n_dim))
-                            # Get average predictions
-                            if n_dim == 1:
-                                feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = \
-                                    feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] + pred[:, 1:2] / self.kfold
-                            else:
-                                feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = \
-                                    feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] + pred / self.kfold
-                        else:
-                            pred = estimator.predict(_node.data[0]).reshape(-1, 1)
-                            n_dim = 1
-                            # Initialize training matrix for phase 2
-                            if feature_p2 is None:
-                                num_samples = len(_node.data[0])
-                                feature_p2 = np.zeros((num_samples, self.ensemble_size * n_dim))
-                            # Get average predictions
-                            feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = \
-                                feature_p2[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] + pred / self.kfold
+                    estimators = self.base_sms[suc_cnt]
+                    op_lists = self.base_ops[suc_cnt]
+                    for estimator, op_list in zip(estimators, op_lists):
+                        pred = fetch_predict_results(self.task_type, op_list, estimator, datanode)
+                        if len(pred.shape) == 1:
+                            pred = pred.reshape(-1, 1)
+                        n_dim = pred.shape[1] if pred.shape[1] > 2 else 1
+                        if base_features is None:
+                            num_samples = len(datanode.data[0])
+                            base_features = np.zeros((num_samples, self.ensemble_size * n_dim))
+                        base_features[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] += pred[:, -n_dim:] / len(estimators)
+                    if self.skip_connect:
+                        if ori_xs is None: ori_xs = []
+                        model_path = path if mode == 'partial' else CombinedTopKModelSaver.get_parse_path(path, 'full')
+                        op_list, _, _ = CombinedTopKModelSaver._load(model_path)
+                        ori_x = construct_node(datanode.copy_(), op_list).data[0]
+                        ori_xs.append(ori_x)
                     suc_cnt += 1
 
                 model_cnt += 1
-        return feature_p2
 
-    def predict(self, data, refit=False):
-        feature_p2 = self.get_feature(data)
-        # Get predictions from meta-learner
-        if self.task_type in CLS_TASKS:
-            final_pred = self.meta_learner.predict_proba(feature_p2)
-        else:
-            final_pred = self.meta_learner.predict(feature_p2)
-        return final_pred
+        return base_features, ori_xs
 
     def get_ens_model_info(self):
-        model_cnt = 0
-        ens_info = {}
-        ens_config = []
-        for algo_id in self.stats:
-            model_to_eval = self.stats[algo_id]
-            for idx, (config, _, _) in enumerate(model_to_eval):
-                if not hasattr(self, 'base_model_mask') or self.base_model_mask[model_cnt] == 1:
-                    model_path = self.get_path(algo_id, model_cnt, 0)
-                    ens_config.append((algo_id, config, model_path))
-                model_cnt += 1
+        ens_info = super().get_ens_model_info()
         ens_info['ensemble_method'] = 'stacking'
-        ens_info['config'] = ens_config
-        ens_info['meta_learner'] = self.meta_method
+        ens_info['folds'] = [self.folds, self.sfolds]
         return ens_info
 
-    def refit(self, datanode):
-        self.logger.debug("Start to refit all models needed by ensemble, no need with stacking!")
+    def refit(self, datanode, mode):
+        super().refit(datanode, mode)
+        if self.opt:
+            # Train basic models using a part of training data
+            base_features, ori_xs = self.get_base_features(datanode, mode=mode)
+
+            final_labels = {'train': datanode.data[1]}
+            last_features = self.forward(base_features, final_labels, train=True, ori_xs=ori_xs)
+
+            self.meta_learner = self.build_meta_learner(self.meta_method, self.task_type, last_features['train'], final_labels['train'],
+                                                        ensemble_size=self.ensemble_size, if_imbal=self.if_imbal, metric=self.metric)

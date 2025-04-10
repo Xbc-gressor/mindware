@@ -7,17 +7,21 @@ import datetime
 from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
-import time
+import os
 import numpy as np
 import warnings
+from mindware.components.utils.topk_saver import CombinedTopKModelSaver
+from mindware.modules.ens.ens_utils import better_ens
 
 class EnsEvaluator(_BaseEvaluator):
     def __init__(
-            self, scorer=None, stats=None, data_node=None, task_type=0,
+            self, fixed_config=None, scorer=None, stats=None, data_node=None, task_type=0,
             resampling_strategy='cv', resampling_params=None,
             timestamp=None, output_dir=None, seed=1,
-            if_imbal=False
+            if_imbal=False, val_nodes:dict=None,
     ):
+
+        self.fixed_config = fixed_config
         self.resampling_strategy = resampling_strategy
         self.resampling_params = resampling_params
 
@@ -30,37 +34,43 @@ class EnsEvaluator(_BaseEvaluator):
         self.seed = seed
         self.onehot_encoder = OneHotEncoder()
         if len(self.data_node.data[1].shape) == 1 and self.task_type in CLS_TASKS:
-            reshape_y = np.reshape(self.data_node.data[1].shape, (len(self.data_node.data[1].shape), 1))
+            reshape_y = np.reshape(self.data_node.data[1], (len(self.data_node.data[1]), 1))
             self.onehot_encoder.fit(reshape_y)
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
 
         self.datetime = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
+        self.train_data = self.data_node.copy_(no_data=True)
         self.val_data = self.data_node.copy_(no_data=True)
 
         test_size = 0.33
         if self.resampling_params is not None and 'test_size' in self.resampling_params:
             test_size = self.resampling_params['test_size']
-        ss = self._get_spliter(self.resampling_strategy, test_size=test_size, random_state=self.seed)
+        ss = self._get_spliter('holdout', test_size=test_size, random_state=self.seed)
 
+        _x_train, _y_train = None, None
         _x_val, _y_val = None, None
         for train_index, test_index in ss.split(self.data_node.data[0], self.data_node.data[1]):
+            _x_train, _y_train = self.data_node.data[0][train_index], self.data_node.data[1][train_index]
             _x_val, _y_val = self.data_node.data[0][test_index], self.data_node.data[1][test_index]
+        self.train_data.data = [_x_train, _y_train]
         self.val_data.data = [_x_val, _y_val]
 
-        self.n_fold = 5
-        self.split_index = []
-        skfold = self._get_spliter('cv', n_splits=self.n_fold, shuffle=False, random_state=self.seed)
-        self.ensemble_builders = []
-        predictions = np.array(EnsembleBuilder.build_predictions(self.stats, self.val_data, self.task_type))
-        for train_index, test_index in skfold.split(self.val_data.data[0], self.val_data.data[1]):
-            val_train_data = self.data_node.copy_(no_data=True)
-            val_train_data.data = [self.val_data.data[0][train_index], self.val_data.data[1][train_index]]
-            ensemble_builder = EnsembleBuilder(self.stats, val_train_data, self.task_type, self.scorer,
-                                               output_dir=self.output_dir, seed=self.seed, if_imbal=self.if_imbal, _predict=False)
-            ensemble_builder.predictions = predictions[:, train_index]
-            self.split_index.append((train_index, test_index))
-            self.ensemble_builders.append(ensemble_builder)
+        if val_nodes is None:
+            val_nodes = {}
+        val_nodes['val'] = self.val_data.copy_()
+        self.val_nodes = val_nodes
+
+        self.leader_board = dict()
+        self.cache = dict()
+
+        self.ensemble_builder = EnsembleBuilder(self.stats, self.val_data, self.task_type, self.scorer, resampling_params=self.resampling_params,
+                                               output_dir=self.output_dir, seed=self.seed, if_imbal=self.if_imbal)
+
+        self.best_model_path = None
+        self.best_perf = -np.inf
+        self.best_config = None
+        self.comb_count = 0
 
 
     def _get_spliter(self, resampling_strategy, **kwargs):
@@ -81,6 +91,15 @@ class EnsEvaluator(_BaseEvaluator):
         score = self.scorer._score_func(y_true, pred) * self.scorer._sign
         return score
 
+    def check_cache(self, base_model_mask):
+        base_idx = np.where(base_model_mask)[0]
+        key = '_'.join([str(x) for x in base_idx])
+
+        if key in self.cache:
+            return True, key
+        else:
+            return False, key
+
     def __call__(self, config, **kwargs):
 
         # Convert Configuration into dictionary
@@ -89,25 +108,52 @@ class EnsEvaluator(_BaseEvaluator):
         else:
             config = config.copy()
 
+        if self.fixed_config is not None:
+            config.update(self.fixed_config)
+
         # Prepare data node.
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            final_pred = None
-            for i, (_, test_index) in enumerate(self.split_index):
-                val_val_node = self.val_data.copy_(no_data=True)
-                val_val_node.data = [self.val_data.data[0][test_index], self.val_data.data[1][test_index]]
-                self.ensemble_builders[i].build_ensemble(**config)
-                self.ensemble_builders[i].fit()
-                pred = self.ensemble_builders[i].predict(val_val_node)
-                if final_pred is None:
-                    if len(pred.shape) == 1:
-                        final_pred = np.zeros(len(self.val_data.data[1]))
-                    else:
-                        final_pred = np.zeros((len(self.val_data.data[1]), pred.shape[1]))
+            base_model_mask = self.ensemble_builder.build_ensemble(ensemble_method='stacking', ensemble_size=config['ensemble_size'], ratio=config['ratio']/100,
+                                                                stack_layers=config['stack_layers'], meta_learner=config['meta_learner'], opt=True)
+            cache, key = self.check_cache(base_model_mask)
+            if cache:
+                learder_board = self.cache[key]
+            else:
+                stacking = self.ensemble_builder.fit(self.train_data, val_nodes=self.val_nodes)
+                learder_board = stacking.leader_board
+                self.cache[key] = learder_board
+                self.comb_count += 1
 
-                final_pred[test_index] = pred
+                # best_perf = np.max(list(learder_board['val'].values()))
+                best_config = self.ensemble_builder.model.best_config.copy()
+                best_config.update({'ensemble_size': config['ensemble_size'], 'ratio': config['ratio']})
+                if better_ens(best_config, self.best_config):
+                    self.best_config = best_config.copy()
+                    model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
+                    if self.best_model_path is not None:
+                        os.remove(self.best_model_path)
+                        self.logger.info(f"Remove old best ens model: {self.best_model_path}!")
+                    self.logger.info(f"Save new best ens model: {model_path}!")
+                    CombinedTopKModelSaver.save_config([None, self.ensemble_builder, learder_board], model_path)
+                    self.best_perf = best_config['val']
+                    self.best_model_path = model_path
 
-        score = self.calculate_score(final_pred, self.val_data.data[1])
+        size = config['ensemble_size']
+        ratio = config['ratio']
+        base = f'ens{size}_r{ratio}'
+        for key in learder_board:
+            if key not in self.leader_board:
+                self.leader_board[key] = {}
+            for leader, objective in learder_board[key].items():
+                head = f"{base}-{leader}"
+                assert head not in self.leader_board[key]
+                self.leader_board[key][head] = objective
+
+        # 取反
+        learder_board = {key: -value for key, value in learder_board['val'].items()}
         return_dict = dict()
         # Turn it into a minimization problem.
-        return_dict['objectives'] = [-score]
+        return_dict['leader_board'] = learder_board
+
+        return return_dict

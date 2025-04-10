@@ -86,13 +86,17 @@ class BaseOptimizer(object):
                     else:
                         fixed_config = self.evaluator.fixed_config.copy()
                     config.update(fixed_config)
-                classifier_id = config['algorithm']
+                if 'algorithm' not in config:
+                    assert 'ensemble_size' in config
+                    classifier_id = 'ens'
+                else:
+                    classifier_id = config['algorithm']
                 # -perf: The larger, the better.
                 save_flag, model_path, delete_flag, model_path_deleted = self.topk_saver.add(config, -perf,
                                                                                              classifier_id)
                 # By default, the evaluator has already stored the models.
-                if self.eval_type in ['holdout', 'partial', 'partial_bohb']:
-                    if save_flag:
+                if self.eval_type in ['holdout', 'partial', 'partial_bohb', 'cv']:
+                    if save_flag or self.name == 'ens':
                         pass
                     else:
                         if os.path.exists(model_path):

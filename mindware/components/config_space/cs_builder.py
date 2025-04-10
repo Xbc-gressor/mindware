@@ -9,7 +9,7 @@ from mindware.components.utils.class_loader import get_combined_candidtates
 from mindware.components.models.classification import _classifiers, _addons as _cls_addons
 from mindware.components.models.regression import _regressors, _addons as _rgs_addons
 
-from ConfigSpace import ConfigurationSpace, Constant, CategoricalHyperparameter, UniformIntegerHyperparameter, UniformFloatHyperparameter
+from ConfigSpace import ConfigurationSpace, Constant, CategoricalHyperparameter, UniformIntegerHyperparameter, UniformFloatHyperparameter, UnParametrizedHyperparameter
 from ConfigSpace.forbidden import ForbiddenInClause, ForbiddenAndConjunction, ForbiddenEqualsClause
 
 import numpy as np
@@ -126,13 +126,18 @@ def get_fe_cs(task_type=CLASSIFICATION, include_image=False,
     return cs
 
 
-def get_ens_cs():
+def get_ens_cs(**cs_args):
+    layer_upper = cs_args.get('layer_upper', 5)
+    size_upper = cs_args.get('size_upper', 50)
     cs = ConfigurationSpace()
-    ensemble_method = CategoricalHyperparameter('ensemble_method', ['bagging', 'blending', 'ensemble_selection'])
-    ensemble_size = UniformIntegerHyperparameter('ensemble_size', 2, 50)
+    # cs.add_hyperparameter(UnParametrizedHyperparameter('algorithm', 'ens'))
 
-    lamda = UniformIntegerHyperparameter("lamda", 0, 100, q=5, default_value=0)
+    meta_learner = CategoricalHyperparameter('meta_learner', ['weighted', 'lightgbm', 'linear', 'best'])
+    stack_layers = UniformIntegerHyperparameter('stack_layers', 0, layer_upper, default_value=0)
 
-    cs.add_hyperparameters([ensemble_method, ensemble_size, lamda])
+    ensemble_size = UniformIntegerHyperparameter('ensemble_size', 2, size_upper, default_value=10)
+    ratio = UniformIntegerHyperparameter("ratio", 0, 49, default_value=40)
+
+    cs.add_hyperparameters([meta_learner, stack_layers, ensemble_size, ratio])
 
     return cs
