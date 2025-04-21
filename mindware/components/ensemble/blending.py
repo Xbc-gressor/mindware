@@ -17,13 +17,61 @@ from mindware.modules.base_evaluator import BaseEvaluator
 from sklearn.metrics._scorer import _BaseScorer, _PredictScorer, _ThresholdScorer
 from copy import deepcopy
 from mindware.modules.ens.ens_utils import better_ens
+from sklearn.preprocessing import label_binarize
 
 
 class Besting:
-    def __init__(self, task_type, best_idx, n_dim, ensemble_size):
+    def __init__(self, task_type, best_idx, ensemble_size):
 
         self.task_type = task_type
         self.best_idx = best_idx
+        self.ensemble_size = ensemble_size
+
+    def stack_predict(self, features):
+
+        # features shape: num_data, n_base_model*n_dim
+        assert features.shape[1] % self.ensemble_size == 0
+        n_dim = features.shape[1] // self.ensemble_size
+
+        pred = features[:, self.best_idx * n_dim:(self.best_idx + 1) * n_dim]
+
+        if self.task_type in CLS_TASKS and n_dim == 1:
+            pred = np.hstack([1-pred, pred])
+
+        if pred.shape[1] == 1:
+            pred = pred.reshape(-1)
+        return pred
+
+# class Besting:
+#     def __init__(self, task_type, sms):
+
+#         assert sms is not None and isinstance(sms, list)
+#         self.task_type = task_type
+#         self.sms = sms
+
+#     def stack_predict(self, features):
+
+#         pred = None
+
+#         for sm in self.sms:
+#             if self.task_type in CLS_TASKS:
+#                 _pred = sm.predict_proba(features)
+#             else:
+#                 _pred = sm.predict(features)
+#             if pred is None:
+#                 pred = _pred
+#             else:
+#                 pred += _pred
+
+#         pred /= len(self.sms)
+
+#         return pred
+
+
+class Avging:
+    def __init__(self, task_type, n_dim, ensemble_size):
+
+        self.task_type = task_type
         self.n_dim = n_dim
         self.ensemble_size = ensemble_size
 
@@ -32,14 +80,16 @@ class Besting:
         # features shape: num_data, n_base_model*n_dim
         assert features.shape[1] == self.ensemble_size * self.n_dim
 
-        pred = features[:, self.best_idx * self.n_dim:(self.best_idx + 1) * self.n_dim]
+        data_len = features.shape[0]
+
+        features = features.reshape(data_len, -1, self.n_dim)
+        pred = np.average(features, axis=1)
 
         if self.task_type in CLS_TASKS and self.n_dim == 1:
             pred = np.hstack([1-pred, pred])
 
         if pred.shape[1] == 1:
             pred = pred.reshape(-1)
-
         return pred
 
 class Blending(BaseEnsembleModel):
@@ -49,7 +99,7 @@ class Blending(BaseEnsembleModel):
                  metric: _BaseScorer, resampling_params = None,
                  output_dir=None, seed=None,
                  meta_learner='auto', stack_layers = 1, thread=1,
-                 skip_connect=True, retain=False,
+                 skip_connect=True, retain=True, dropout=0,
                  predictions=None, base_model_mask=None):
         super().__init__(stats,
                          ensemble_method='blending',
@@ -73,6 +123,7 @@ class Blending(BaseEnsembleModel):
         self.train_cost = []
         self.skip_connect = skip_connect
         self.retain = retain
+        self.dropout = dropout
         self.encoder = OneHotEncoder()
 
         self.leader_board = {'train': {}}
@@ -88,6 +139,13 @@ class Blending(BaseEnsembleModel):
         self.lock = False
 
         self.best_config = None
+        self.meta_learner = None
+        self.best_last_features = None
+        self.final_labels = None
+        self.ori_x = None
+        self.best_configs = [None, None, None]
+        self.meta_learners = [None, None, None]
+        self.last_real_loss = None
 
     @staticmethod
     def build_meta_learner(meta_method, task_type, last_features, final_label=None, **kwargs):
@@ -109,11 +167,14 @@ class Blending(BaseEnsembleModel):
                 meta_learner.fit(final_label)
             else:
                 meta_learner.equal_fit()
-        elif meta_method.startswith('best_'):
+        elif meta_method == 'avging':
             ensemble_size = kwargs.get('ensemble_size', None)
             n_dim = last_features.shape[1] // ensemble_size
+            meta_learner = Avging(task_type=task_type, n_dim=n_dim, ensemble_size=ensemble_size)
+        elif meta_method.startswith('best_'):
+            ensemble_size = kwargs.get('ensemble_size', None)
             best_idx = int(meta_method.split('_')[1][3:])
-            meta_learner = Besting(task_type=task_type, best_idx=best_idx, n_dim=n_dim, ensemble_size=ensemble_size)
+            meta_learner = Besting(task_type=task_type, best_idx=best_idx, ensemble_size=ensemble_size)
         else:
             # We use Xgboost as default meta-learner
             if task_type in CLS_TASKS:
@@ -159,11 +220,9 @@ class Blending(BaseEnsembleModel):
             if n_dim is None:
                 n_dim = last_features[key].shape[1] // n_base_model
 
-            _final_label = final_labels[key]
-            if isinstance(self.metric, _ThresholdScorer):
-                if len(_final_label.shape) == 1:
-                    _final_label = self.encoder.transform(np.reshape(_final_label, (len(_final_label), 1))).toarray()
             loss = []
+            second_loss = []
+
             for i in range(n_base_model):
                 if np.isnan(last_features[key][:, i*n_dim:(i+1)*n_dim]).any():
                     loss.append(-np.inf)
@@ -174,18 +233,32 @@ class Blending(BaseEnsembleModel):
                             tmp = np.hstack([1-tmp, tmp])
                         else:
                             tmp = last_features[key][:, i*n_dim:(i+1)*n_dim]
+
+                        _final_label = final_labels[key]
+                        if len(_final_label.shape) == 1:
+                            _final_label = self.encoder.transform(np.reshape(_final_label, (len(_final_label), 1))).toarray()
+                        second_loss.append(-np.sum((tmp - _final_label) ** 2, axis=1).mean())
+
                         if isinstance(self.metric, _PredictScorer):
                             tmp = np.argmax(tmp, axis=-1)
                     else:
                         tmp = last_features[key][:, i]
+                        _final_label = final_labels[key]
+                        second_loss.append(-np.mean((tmp - _final_label) ** 2))
+
+                    _final_label = final_labels[key]
+                    if isinstance(self.metric, _ThresholdScorer):
+                        if len(_final_label.shape) == 1:
+                            _final_label = self.encoder.transform(np.reshape(_final_label, (len(_final_label), 1))).toarray()
                     loss.append(self.metric._score_func(_final_label, tmp) * self.metric._sign)
             print(key, np.mean(loss), loss)
 
             losses[key] = loss
+            losses[f'{key}_2'] = second_loss
 
         return losses
 
-    def register_leader(self, head_output, last_features, final_labels, layer):
+    def register_leader(self, head_output, new_features, last_features, final_labels, layer):
 
         n_base_model = self.ensemble_size
         n_dim = last_features['train'].shape[1] // n_base_model
@@ -198,7 +271,7 @@ class Blending(BaseEnsembleModel):
 
             for key in last_features.keys():
                 pred_features = last_features[key]
-                if config == 'weighted':
+                if config in ['weighted', 'avging']:
                     pred = meta_learner.stack_predict(pred_features)
                 else:
                     if self.task_type in CLS_TASKS:
@@ -217,44 +290,48 @@ class Blending(BaseEnsembleModel):
         # best_perf = -np.inf
         best_config = None
         best_head = None
-        best_last_feature = None
         # judge = 'train' if 'val' not in head_outputs else 'val'
 
         for key in head_outputs.keys():
             head_output = head_outputs[key]
             for head in head_output.keys():
-                perf = self.cal_scores({key: head_output[head]}, {key: final_labels[key]}, n_base_model=1)[key][0]
-                self.leader_board[key][head] = perf
+                perf = self.cal_scores({key: head_output[head]}, {key: final_labels[key]}, n_base_model=1)
+                for _key in perf:
+                    self.leader_board[_key][head] = perf[_key][0]
 
         for head in head_outputs['train'].keys():
             meta_learner, _ = head.split('-')
 
-            can_config = {'meta_learner': meta_learner, 'stack_layers': layer - 1, 
-                          'train': self.leader_board['train'][head], 'val': self.leader_board['val'][head]}
+            can_config = ({'meta_learner': meta_learner, 'stack_layers': layer - 1},
+                          {'train': self.leader_board['train'][head], 'val': self.leader_board['val'][head], 'val_2': self.leader_board['val_2'][head]})
             if better_ens(can_config, best_config):
                 best_config = can_config
                 best_head = head
-                best_last_feature = last_features['train'].copy()
+                # best_last_features['train'] = last_features['train'].copy()
+                # best_last_features['val'] = last_features['val'].copy()
 
-        if layer > 1:
-            perfs = [(self.layer_loss[-1]['val'][_idx], self.layer_loss[-1]['train'][_idx]) for _idx in range(self.ensemble_size)]
+        if new_features is not None:
+            self.last_real_loss = self.cal_scores(new_features, final_labels, self.ensemble_size)
+            perfs = [(self.last_real_loss['val'][_idx], self.last_real_loss['val_2'][_idx], self.last_real_loss['train'][_idx]) for _idx in range(self.ensemble_size)]
             _best_idx = max(enumerate(perfs), key=lambda x:x[1])[0]
 
-            head = f"best_idx{_best_idx}-L{layer}"
+            head = f"best_idx{_best_idx}-L{layer+1}"
 
-            for key in head_outputs.keys():
-                perf = self.layer_loss[-1][key][_best_idx]
+            for key in self.last_real_loss.keys():
+                perf = self.last_real_loss[key][_best_idx]
                 self.leader_board[key][head] = perf
 
-            can_config = {'meta_learner': 'best_idx', 'stack_layers': layer - 1, 
-                        'train': self.layer_loss[-1]['train'][_best_idx], 'val': self.layer_loss[-1]['val'][_best_idx]}
+            can_config = ({'meta_learner': 'best', 'stack_layers': layer},
+                        {'train': self.last_real_loss['train'][_best_idx], 'val': self.last_real_loss['val'][_best_idx], 'val_2': self.last_real_loss['val_2'][_best_idx]})
             if better_ens(can_config, best_config):
                 best_config = can_config
                 best_head = head
-                best_last_feature = np.full(last_features['train'].shape, np.nan)
-                best_last_feature[:, _best_idx * n_dim:(_best_idx + 1) * n_dim] = last_features['train'][:, _best_idx * n_dim:(_best_idx + 1) * n_dim]
+                # best_last_features['train'] = np.full(last_features['train'].shape, np.nan)
+                # best_last_features['train'][:, _best_idx * n_dim:(_best_idx + 1) * n_dim] = last_features['train'][:, _best_idx * n_dim:(_best_idx + 1) * n_dim]
+                # best_last_features['val'] = np.full(last_features['val'].shape, np.nan)
+                # best_last_features['val'][:, _best_idx * n_dim:(_best_idx + 1) * n_dim] = last_features['val'][:, _best_idx * n_dim:(_best_idx + 1) * n_dim]
 
-        return best_config, best_head, {'train': best_last_feature}
+        return best_config, best_head
 
     def forward(self, base_features: dict, final_labels: dict=None, train=False, ori_xs: dict=None):
 
@@ -266,6 +343,8 @@ class Blending(BaseEnsembleModel):
             for key in base_features.keys():
                 if key not in self.leader_board:
                     self.leader_board[key] = {}
+                if f'{key}_2' not in self.leader_board:
+                    self.leader_board[f'{key}_2'] = {}
 
         stack_configs = [[], ['weighted', 'lightgbm', 'linear']]
         model_cnt = 0
@@ -288,13 +367,19 @@ class Blending(BaseEnsembleModel):
         if train and not self.lock:
             self.layer_loss.append(self.cal_scores(base_features, final_labels, self.ensemble_size))
             self.stack_models = dict()
+        # if not train:
+        #     self.layer_loss.append(self.cal_scores(base_features, final_labels, self.ensemble_size))
 
         if self.stack_layers > 0:
             for layer in range(self.stack_layers):
 
                 if train:
                     new_node = DataManager(last_features['train'], final_labels['train']).get_data_node(last_features['train'], final_labels['train'])
-                    if self.thread > 1: save_ori_x(ori_xs['train'], _output_dir)
+                    val_nodes = {}
+                    for key in last_features:
+                        if key == 'train': continue
+                        val_nodes[key] = DataManager(last_features[key], final_labels[key]).get_data_node(last_features[key], final_labels[key])
+                    if self.thread > 1: save_ori_x(ori_xs, _output_dir)
 
                     fail_mask = np.full(n_base_model, False)
                     if self.lock:
@@ -302,73 +387,70 @@ class Blending(BaseEnsembleModel):
                         for i in range(len(sms)):
                             if sms[i] is None: fail_mask[i] = True
 
-                    sms, _, new_feature, head_output, cost = layer_fit(stack_configs=stack_configs, new_node=new_node, ori_xs=ori_xs['train'], n_base_model=n_base_model,
+                    sms, _, new_features, head_output, cost = layer_fit(stack_configs=stack_configs, new_node=new_node, ori_xs=ori_xs['train'], n_base_model=n_base_model,
                                                                     task_type=self.task_type, if_imbal=self.if_imbal, seed=self.seed,
                                                                     layer=layer+1, thread=self.thread, folds=self.sfolds, output_dir=_output_dir, logger=self.logger, metric=self.metric,
-                                                                    skip_mask=fail_mask)
+                                                                    skip_mask=fail_mask, val_nodes=val_nodes, dropout=self.dropout)
                     self.stack_models[f'layer_{layer+1}'] = sms
+                    for i in range(len(sms)):
+                        if sms[i] is None: fail_mask[i] = True
 
-                    new_features = {'train': new_feature}
-                    for key in last_features.keys():
-                        if key != 'train':
-                            new_features[key] = np.zeros_like(last_features[key])
-                            for suc_cnt, config in enumerate(stack_configs[0]):
-                                estimators = sms[suc_cnt]
-                                if estimators is not None:
-                                    for estimator in estimators:
-                                        _new_node = new_node
-                                        if ori_xs[key] is not None:
-                                            _new_node = new_node.copy_(no_data=True)
-                                            _new_node.data = (np.hstack([ori_xs[key][suc_cnt], last_features[key]]), final_labels[key])
-                                        pred = fetch_predict_results(self.task_type, {}, estimator, _new_node)
-                                        if len(pred.shape) == 1:
-                                            pred = pred.reshape(-1, 1)
-                                        new_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] += pred[:, -n_dim:] / len(estimators)
-                                else:
-                                    new_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = last_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim]
-
-                    if not self.lock:
-                        _best_config, _best_head, _best_last_features = self.register_leader(head_output, last_features, final_labels, layer+1)
+                    if self.lock:
+                        fail_mask = np.repeat(fail_mask, n_dim)
+                        for key in new_features.keys():
+                            last_features[key][:, ~fail_mask] = new_features[key][:, ~fail_mask]
+                        # self.layer_loss.append(self.cal_scores(last_features, final_labels, self.ensemble_size))
+                    else:
+                        _best_config, _best_head = self.register_leader(head_output, new_features, last_features, final_labels, layer+1)
                         if better_ens(_best_config, best_config):
                             best_config = _best_config
                             best_head = _best_head
-                            best_last_features = _best_last_features
+                            best_last_features = deepcopy(last_features)
                         self.logger.info(f"Cost of Layer{layer+1} training with {self.thread} threads: {cost}s")
                         # print(head_outputs)
 
-                        self.layer_loss.append(self.cal_scores(new_features, final_labels, self.ensemble_size))
                         self.train_cost.append(cost)
 
+                        # new_cans = [({'meta_learner': 'best', 'stack_layers': layer+1}, {'train': self.last_real_loss['train'][i], 'val': self.last_real_loss['val'][i], 'val_2': self.last_real_loss['val_2'][i]}) for i in range(self.ensemble_size)]
+                        # old_cans = [({'meta_learner': 'best', 'stack_layers': layer}, {'train': self.layer_loss[-1]['train'][i], 'val': self.layer_loss[-1]['val'][i], 'val_2': self.layer_loss[-1]['val_2'][i]}) for i in range(self.ensemble_size)]
+
+                        # bad_mask = np.full(self.ensemble_size, True)
+                        # for i in range(self.ensemble_size):
+                            # if better_ens(new_cans[i], old_cans[i]):
+                                # bad_mask[i] = False
+
+                        judge = 'train' if 'val' not in new_features else 'val'
+                        bad_mask = ~ (np.array(self.last_real_loss[judge]) > np.array(self.layer_loss[-1][judge]) + 1e-10)
+                        self.logger.info("Number of models getting improved: %d" % (n_base_model - (fail_mask|bad_mask).sum()))
+
                         if self.retain:
-                            judge = 'train' if 'val' not in new_features else 'val'
-                            fail_mask = np.array(self.layer_loss[-1][judge]) < np.array(self.layer_loss[-2][judge]) + 1e-5
-                            self.logger.info("Number of models getting improved: %d" % (n_base_model - fail_mask.sum()))
+                            fail_mask |= bad_mask
+                            for t in range(n_base_model):
+                                if bad_mask[t]: self.stack_models['layer_%d' % (layer+1)][t] = None
+
+                        fail_mask = np.repeat(fail_mask, n_dim)
+                        for key in new_features.keys():
+                            last_features[key][:, ~fail_mask] = new_features[key][:, ~fail_mask]
+
+                        if np.all(fail_mask | bad_mask):
+                            self.logger.info("None model gets improved! early stop!")
+                            if not (best_head.startswith('best_') and best_head.endswith(f'L{layer+2}')):
+                                self.stack_models.pop('layer_%d' % (layer+1))
+                            break
                         else:
-                            fail_mask = np.full(n_base_model, False)
-                        for t in range(n_base_model):
-                            if fail_mask[t]: self.stack_models['layer_%d' % (layer+1)][t] = None
+                            self.layer_loss.append(self.cal_scores(last_features, final_labels, self.ensemble_size))
+                            if layer == self.stack_layers - 1 and not self.lock:
+                                new_node = DataManager(last_features['train'], final_labels['train']).get_data_node(last_features['train'], final_labels['train'])
+                                _, _, _, head_output, cost = layer_fit(stack_configs=[[], stack_configs[1]], new_node=new_node, ori_xs=ori_xs['train'], n_base_model=n_base_model,
+                                                                    task_type=self.task_type, if_imbal=self.if_imbal, seed=self.seed,
+                                                                    layer=layer+2, thread=self.thread, folds=self.sfolds, output_dir=_output_dir, logger=self.logger, metric=self.metric)
 
-                    fail_mask = np.repeat(fail_mask, n_dim)
-                    for key in new_features.keys():
-                        last_features[key][:, ~fail_mask] = new_features[key][:, ~fail_mask]
-
-                    if np.all(fail_mask):
-                        self.logger.info("None model gets improved! early stop!")
-                        for t in range(layer+1, self.stack_layers):
-                            self.stack_models['layer_%d' % (t+1)] = [None] * n_base_model
-                        break
-                    elif layer == self.stack_layers - 1 and not self.lock:
-                        new_node = DataManager(last_features['train'], final_labels['train']).get_data_node(last_features['train'], final_labels['train'])
-                        _, _, _, head_output, cost = layer_fit(stack_configs=[[], stack_configs[1]], new_node=new_node, ori_xs=ori_xs['train'], n_base_model=n_base_model,
-                                                            task_type=self.task_type, if_imbal=self.if_imbal, seed=self.seed,
-                                                            layer=layer+2, thread=self.thread, folds=self.sfolds, output_dir=_output_dir, logger=self.logger, metric=self.metric)
-
-                        _best_config, _best_head, _best_last_features = self.register_leader(head_output, last_features, final_labels, layer+2)
-                        if better_ens(_best_config, best_config):
-                            best_config = _best_config
-                            best_head = _best_head
-                            best_last_features = _best_last_features
-                            # print(f"Head of layer{layer+2}: {head_outputs}")
+                                _best_config, _best_head = self.register_leader(head_output, None, last_features, final_labels, layer+2)
+                                if better_ens(_best_config, best_config):
+                                    best_config = _best_config
+                                    best_head = _best_head
+                                    best_last_features = deepcopy(last_features)
+                                # print(f"Head of layer{layer+2}: {head_outputs}")
                 else:
                     new_node = DataManager(last_features['test'], None).get_data_node(last_features['test'], None)
                     sms = self.stack_models['layer_%d' % (layer+1)]
@@ -388,16 +470,21 @@ class Blending(BaseEnsembleModel):
                                     new_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] += pred[:, -n_dim:] / len(estimators)
                             else:
                                 new_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = last_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim]
+
                     last_features = deepcopy(new_features)
                     best_last_features = last_features
 
+                    # self.layer_loss.append(self.cal_scores(last_features, final_labels, self.ensemble_size))
+
         if train:
             if self.thread > 1:
-                rm_ori_x(ori_xs['train'], _output_dir)
+                rm_ori_x(ori_xs, _output_dir)
 
             if self.lock:
                 best_last_features = last_features
             else:
+                self.final_labels = final_labels
+                self.best_last_features = best_last_features
                 self.best_config = best_config
                 tmp = best_head.split('-')
                 if self.meta_method == 'auto':
@@ -409,11 +496,14 @@ class Blending(BaseEnsembleModel):
                         if layer > self.stack_layers:
                             self.stack_models[key] = None
 
-                if 'best' in self.meta_method:
+                if 'best_' in self.meta_method:
                     best_idx = int(self.meta_method.split('_')[1][3:])
                     for i in range(len(self.stack_models[f'layer_{self.stack_layers}'])):
                         if i != best_idx:
                             self.stack_models[f'layer_{self.stack_layers}'][i] = None
+                    self.ori_x = {}
+                    for key in ori_xs.keys():
+                        self.ori_x[key] = ori_xs[key][best_idx]
 
                 self.lock = True  # 锁定
 
@@ -471,15 +561,16 @@ class Blending(BaseEnsembleModel):
 
     def predict(self, data, refit='full'):
         base_features, ori_xs = self.get_feature(data, refit)
-        last_features = self.forward({'test': base_features}, ori_xs={'test': ori_xs})
+        last_features = self.forward({'test': base_features}, ori_xs={'test': ori_xs}, final_labels = {'test': data.data[1]})  #, 
         # Get predictions from meta-learner
-        if self.meta_method == 'weighted' or self.meta_method.startswith('best_'):
+        if self.meta_method in ['weighted', 'avging'] or self.meta_method.startswith('best_'):
             final_pred = self.meta_learner.stack_predict(last_features['test'])
         else:
             if self.task_type in CLS_TASKS:
                 final_pred = self.meta_learner.predict_proba(last_features['test'])
             else:
                 final_pred = self.meta_learner.predict(last_features['test'])
+
         return final_pred
 
     def get_ens_model_info(self):
@@ -495,8 +586,9 @@ class Blending(BaseEnsembleModel):
         ens_info['ensemble_method'] = 'blending'
         ens_info['stask_layers'] = self.stack_layers
         ens_info['meta_learner'] = self.meta_method
+        ens_info['dropout'] = self.dropout
         judge = 'train' if 'val' not in self.leader_board else 'val'
-        sorted_head = sorted(list(self.leader_board['train'].keys()), key=lambda x: (-self.leader_board[judge][x], -self.leader_board['train'][x]))
+        sorted_head = sorted(list(self.leader_board['train'].keys()), key=lambda x: (-self.leader_board[judge][x], -self.leader_board[f'{judge}_2'][x], -self.leader_board['train'][x]))
         ens_info['leader_board'] = [f"{head}: {', '.join(['%s-%.5f' % (key, self.leader_board[key][head]) for key in self.leader_board.keys()])}" for head in sorted_head]
         if self.ensemble_method == 'weighted':
             ens_info['meta_weighted'] = ','.join(['%.3f' % tmp for tmp in self.meta_learner.weights_])

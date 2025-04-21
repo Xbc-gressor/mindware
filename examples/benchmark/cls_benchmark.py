@@ -72,8 +72,8 @@ if __name__ == '__main__':
     parser.add_argument('--layer', type=int, default=0, help='ensemble threads')
     parser.add_argument('--ens_thr', type=int, default=20, help='ensemble threads')
 
-    parser.add_argument('--layer_upper', type=int, default=5)
-    parser.add_argument('--size_upper', type=int, default=50)
+    parser.add_argument('--layer_upper', type=int, default=4)
+    parser.add_argument('--size_upper', type=int, default=40)
 
     parser.add_argument('--evaluation', type=str, default='holdout', help='evaluation')
     parser.add_argument('--time_limit', type=int, default=3600, help='time limit')
@@ -205,8 +205,13 @@ if __name__ == '__main__':
                 print(opt.get_conf(save=True))
                 opt.run(refit=args.refit)
                 print(opt.get_model_info(save=True))  # 保存最优模型信息
-                ens_pred = opt.predict(test_data_node, refit=args.refit)
-                ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
+                ens_preds = opt.predict(test_data_node, refit=args.refit)
+                ens_perfs = []
+                for ens_pred in ens_preds:
+                    ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
+                    ens_perfs.append(str(ens_perf))
+
+                ens_perf = ', '.join(ens_perfs)
 
             else:
 

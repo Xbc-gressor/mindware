@@ -127,17 +127,19 @@ def get_fe_cs(task_type=CLASSIFICATION, include_image=False,
 
 
 def get_ens_cs(**cs_args):
-    layer_upper = cs_args.get('layer_upper', 5)
-    size_upper = cs_args.get('size_upper', 50)
+    layer_upper = cs_args.get('layer_upper', 4)
+    size_upper = cs_args.get('size_upper', 40)
     cs = ConfigurationSpace()
     # cs.add_hyperparameter(UnParametrizedHyperparameter('algorithm', 'ens'))
 
     meta_learner = CategoricalHyperparameter('meta_learner', ['weighted', 'lightgbm', 'linear', 'best'])
     stack_layers = UniformIntegerHyperparameter('stack_layers', 0, layer_upper, default_value=0)
 
-    ensemble_size = UniformIntegerHyperparameter('ensemble_size', 2, size_upper, default_value=10)
-    ratio = UniformIntegerHyperparameter("ratio", 0, 49, default_value=40)
+    ensemble_size = UniformIntegerHyperparameter('ensemble_size', 2, size_upper, default_value=8, q=2)
+    ratio = UniformIntegerHyperparameter("ratio", 0, 48, default_value=48, q=2)
+    # dropout = UniformIntegerHyperparameter("dropout", 0, 20, default_value=20, q=20)
+    dropout = Constant("dropout", 0)
 
-    cs.add_hyperparameters([meta_learner, stack_layers, ensemble_size, ratio])
+    cs.add_hyperparameters([meta_learner, stack_layers, ensemble_size, ratio, dropout])
 
     return cs

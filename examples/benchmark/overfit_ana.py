@@ -14,12 +14,13 @@ import json
 import numpy as np
 from openbox.utils.history import History, Observation
 import pickle as pkl
+from scipy.stats import kendalltau, spearmanr
 
-# data_dir = './res_ensopt_data'
+data_dir = './res_ensopt_data'
 
 # data_dict = {'CLS': {}, 'RGS': {}}
 
-# for task in os.listdir(data_dir):
+# for task in sorted(os.listdir(data_dir)):
 #     task_path = os.path.join(data_dir, task)
 
 #     with open(os.path.join(task_path, 'config.json'), 'r') as f:
@@ -51,14 +52,20 @@ import pickle as pkl
 
 #         tmp = perfs.split(', ')
 #         train = float(tmp[0][6:])
-#         test = float(tmp[1][5:])
-#         val = float(tmp[2][4:])
+#         train2 = float(tmp[1][8:])
+#         test = float(tmp[2][5:])
+#         test2 = float(tmp[3][7:])
+#         val = float(tmp[4][4:])
+#         val2 = float(tmp[5][6:])
 
-#         X.append([size, ratio, h, layer, train, val])
+#         X.append([size, ratio, h, layer, train, train2, val, val2])
 #         y.append(test)
 
 #     tar_dict[task_id] = (X, y)
 
+
+# with open('./leader_board.pkl', 'wb') as f:
+#     pkl.dump(data_dict, f)
 
 
 def test(data_dict, cal):
@@ -70,11 +77,18 @@ def test(data_dict, cal):
 
         for task, data in tar_dict.items():
             X, y = data
+            best_x = None
+            best_idx = -1
+            for idx, x in enumerate(X):
+                if best_x is None:
+                    best_x = x
+                    best_idx = idx
+                else:
+                    if cal(x, best_x):
+                        best_x = x
+                        best_idx = idx
 
-            scores = [cal(x) for x in X]
-            idx = np.argmax(scores)
-
-            sel_x, sel_y = X[idx], y[idx]
+            sel_x, sel_y = X[best_idx], y[best_idx]
 
             rank = len(np.where(np.array(y) > sel_y)[0]) + 1
 
@@ -83,114 +97,145 @@ def test(data_dict, cal):
     return result_dict
 
 
-def only_val(x):
-    return x[5]
+# size, ratio, h, layer, train, train2, val, val2
+def only_val(x, y):
+    return x[6] > y[6]
 
-def only_train(x):
-    return x[4]
+def only_val2(x, y):
+    return x[7] > y[7]
 
-def train_val(x):
-    return x[4] + x[5] * 1e10
+def only_train(x, y):
+    return x[4] > y[4]
 
-def train_val(x):
-    return x[4] + x[5] * 1e10
+def val_train(x, y):
+    if x[6] != y[6]:
+        return x[6] > y[6]
+    else:
+        return x[4] > y[4]
+
+def val_p_train(x, y):
+
+    return x[4] + x[6] > y[4] + y[6]
+
+def val_val2(x, y):
+    if x[6] != y[6]:
+        return x[6] > y[6]
+    else:
+        return x[7] > y[7]
 
 with open('./leader_board.pkl', 'rb') as f:
     data_dict = pkl.load(f)
 
-# candidate_cals = {
-#     'only_train': only_train, 
-#     'only_val': only_val,
-#     'train_val': train_val
-# }
-# rank_fields = list(candidate_cals.keys())
+candidate_cals = {
+    'only_train': only_train,
+    'only_val': only_val,
+    'only_val2': only_val2,
+    'val_train': val_train,
+    'val_p_train': val_p_train,
+    'val_val2': val_val2
+}
+rank_fields = list(candidate_cals.keys())
 
-# final_dict = {}
-# for mth, cal in candidate_cals.items():
-#     result_dict = test(data_dict, cal)
+final_dict = {}
+for mth, cal in candidate_cals.items():
+    result_dict = test(data_dict, cal)
 
-#     for task_type, datasets in result_dict.items():
-#         if task_type not in final_dict:
-#             final_dict[task_type] = {}
+    for task_type, datasets in result_dict.items():
+        if task_type not in final_dict:
+            final_dict[task_type] = {}
 
-#         for dataset, res in datasets.items():
-#             if dataset not in final_dict[task_type]:
-#                 final_dict[task_type][dataset] = {}
-#             final_dict[task_type][dataset][mth] = res[-1]
+        for dataset, res in datasets.items():
+            if dataset not in final_dict[task_type]:
+                final_dict[task_type][dataset] = {}
+            final_dict[task_type][dataset][mth] = res[-1]
 
-# from prettytable import PrettyTable
-# table = PrettyTable()
-# headers = ["Task Type", "Dataset"] + rank_fields
-# avgs = {
-#     "CLS": {t:[] for t in headers[2:]},
-#     "RGS": {t:[] for t in headers[2:]},
-#     "ALL": {t:[] for t in headers[2:]}
-# }
+from prettytable import PrettyTable
+table = PrettyTable()
+corrs = ['train_cor', 'train2_cor', 'val_cor', 'val2_cor', 'val_p_val2']
+headers = ["Task Type", "Dataset"] + rank_fields + corrs
+avgs = {
+    "CLS": {t:[] for t in headers[2:]},
+    "RGS": {t:[] for t in headers[2:]},
+    "ALL": {t:[] for t in headers[2:]}
+}
 
-# for task_type, datasets in final_dict.items():
+for task_type, datasets in final_dict.items():
+
+    table.field_names = headers
+
+    # 填充表格行数据
+    for dataset, res in datasets.items():
+        row = [task_type, dataset] + [res[t] for t in rank_fields]
+
+        for t in res:
+            avgs[task_type][t].append(res[t])
+            avgs["ALL"][t].append(res[t])
+
+        # 计算一下相关性
+        raw_X, raw_y = data_dict[task_type][dataset]
+        for i in range(5):
+            if i == 4:
+                tmp_X = [tmp[6] + tmp[7] for tmp in raw_X]
+            else:
+                tmp_X = [tmp[i+4] for tmp in raw_X]
+            ken = round(kendalltau(tmp_X, raw_y)[0], 5)
+            row.append(ken)
+            avgs[task_type][corrs[i]].append(ken)
+            avgs["ALL"][corrs[i]].append(ken)
+        table.add_row(row)
+
+    table.add_row(["-"*9, "-"*12] + ["-"*11] * len(headers[2:]))
+
+for task_type, algorithms in avgs.items():
+    for algorithm in algorithms:
+        algorithms[algorithm] = np.mean(algorithms[algorithm])
     
-#     table.field_names = headers
-    
-#     # 填充表格行数据
-#     for dataset, res in datasets.items():
-#         row = [task_type, dataset] + [res[t] for t in headers[2:]]
-#         table.add_row(row)
+    table.add_row([task_type, "average"] + ["%.3f" % algorithms[t] for t in headers[2:]])
+
+print(table)
+
+# # 测试代理模型
+# from mindware.components.config_space.cs_builder import get_ens_cs
+# from openbox.core.base import build_surrogate
+# from scipy.stats import kendalltau, spearmanr
+# from openbox.utils.config_space.space_utils import get_config_from_dict
+
+# from sklearn.model_selection import KFold
+# kf =  KFold(n_splits=10, shuffle=True, random_state=1)
+
+# space = get_ens_cs()
+
+# result_dict = {}
+# for t, tar_dict in data_dict.items():
+#     if t not in result_dict:
+#         result_dict[t] = {}
+
+#     for task, data in tar_dict.items():
+#         _X, _y = data
+#         print(task, len(_y))
+#         his = History(task_id='test', config_space=space)
+#         for i in range(len(_X)):
+#             x = _X[i]
+#             config = get_config_from_dict(space, {'ensemble_size': x[0], 'ratio': x[1], 'meta_learner': x[2], 'stack_layers': x[3]-1})
+#             obs = Observation(config=config, objectives=[-_y[i]])
+#             his.update_observation(obs)
         
-#         for t in res:
-#             avgs[task_type][t].append(res[t])
-#             avgs["ALL"][t].append(res[t])
-#     table.add_row(["-"*9, "-"*12] + ["-"*11] * len(headers[2:]))
+#         X = his.get_config_array()
+#         y = his.get_objectives()
+#         preds = np.zeros(len(y))
+#         for train_idx, val_idx in kf.split(X, y):
+#             train_X, train_y = X[train_idx], y[train_idx]
+#             val_X, val_y = X[val_idx], y[val_idx]
 
-# for task_type, algorithms in avgs.items():
-#     for algorithm in algorithms:
-#         algorithms[algorithm] = np.mean(algorithms[algorithm])
-    
-#     table.add_row([task_type, "average"] + ["%.3f" % algorithms[t] for t in headers[2:]])
+#             surrogate = build_surrogate(func_str='gp', config_space=space, rng=np.random.RandomState(1))
+#             surrogate.train(train_X, train_y)
+#             pred, _ = surrogate.predict(val_X)
+#             preds[val_idx] = pred.reshape(-1)
 
-# print(table)
-
-# 测试代理模型
-from mindware.components.config_space.cs_builder import get_ens_cs
-from openbox.core.base import build_surrogate
-from scipy.stats import kendalltau, spearmanr
-from openbox.utils.config_space.space_utils import get_config_from_dict
-
-from sklearn.model_selection import KFold
-kf =  KFold(n_splits=10, shuffle=True, random_state=1)
-
-space = get_ens_cs()
-
-result_dict = {}
-for t, tar_dict in data_dict.items():
-    if t not in result_dict:
-        result_dict[t] = {}
-
-    for task, data in tar_dict.items():
-        _X, _y = data
-        print(task, len(_y))
-        his = History(task_id='test', config_space=space)
-        for i in range(len(_X)):
-            x = _X[i]
-            config = get_config_from_dict(space, {'ensemble_size': x[0], 'ratio': x[1], 'meta_learner': x[2], 'stack_layers': x[3]-1})
-            obs = Observation(config=config, objectives=[-_y[i]])
-            his.update_observation(obs)
-        
-        X = his.get_config_array()
-        y = his.get_objectives()
-        preds = np.zeros(len(y))
-        for train_idx, val_idx in kf.split(X, y):
-            train_X, train_y = X[train_idx], y[train_idx]
-            val_X, val_y = X[val_idx], y[val_idx]
-
-            surrogate = build_surrogate(func_str='gp', config_space=space, rng=np.random.RandomState(1))
-            surrogate.train(train_X, train_y)
-            pred, _ = surrogate.predict(val_X)
-            preds[val_idx] = pred.reshape(-1)
-
-        ken, _ = kendalltau(preds, y)
-        spear, _ = spearmanr(preds, y)
-        result_dict[t][task] = (ken, spear)
-        print(result_dict[t][task])
+#         ken, _ = kendalltau(preds, y)
+#         spear, _ = spearmanr(preds, y)
+#         result_dict[t][task] = (ken, spear)
+#         print(result_dict[t][task])
 
 
 """
@@ -199,13 +244,23 @@ for t, tar_dict in data_dict.items():
 
 GP
 mv 138
-0.4136658612171899
+(0.4136658612171899, 0.5233585950049573)
 sick 530
-0.7521261884846323
+(0.7521261884846323, 0.8714726554610034)
 kc1 242
-0.5935503025362225
+(0.5935503025362225, 0.7638387324046693)
 ailerons 481
-0.4542484312028197
+(0.4542484312028197, 0.6079279664766588)
 cpu_act 552
-0.4676557063070832
+(0.4676557063070832, 0.6188413917295609)
+cpu_act 159
+(0.5286834704690552, 0.7131151028090693)
+bank32nh 216
+(0.8301781571896802, 0.951991149737058)
+Moneyball 4768
+(0.6621903936463813, 0.8456242474960081)
+debutanizer 283
+(0.66388201227308, 0.825599412618655)
+puma8NH 219
+(0.6528269512316159, 0.8444731975187664)
 """

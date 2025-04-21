@@ -10,14 +10,14 @@ from mindware.components.evaluators.cls_evaluator import get_estimator as get_cl
 from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
 from mindware.components.feature_engineering.parse import parse_config, construct_node
 
-def get_node_name(layer):
+def get_node_name(layer, key):
 
-    return f'node_layer{layer}.pkl'
+    return f'node_layer{layer}_{key}.pkl'
 
 
 def get_ori_x_name(model_idx):
 
-    return f'ori_x_conf{model_idx}.npy'
+    return f'ori_x_conf{model_idx}.pkl'
 
 
 def get_estimator_name(layer, model_idx, fold):
@@ -27,7 +27,7 @@ def get_estimator_name(layer, model_idx, fold):
 
 def parallel_fit(config, task_type, if_imbal, seed,
                  layer, model_idx, fold, folds,
-                 train_index, valid_index, 
+                 train_index, valid_index,
                  node_path, ori_x_path, output_dir, ori_config_path, **kwargs):
 
     # 第0层需要fe，并且ori_config_path不是None
@@ -36,10 +36,11 @@ def parallel_fit(config, task_type, if_imbal, seed,
     data_node = CombinedTopKModelSaver._load(node_path)
     train_node = data_node.copy_(no_data=True)
     valid_node = data_node.copy_(no_data=True)
+    ori_x = None
     if ori_x_path is not None and not isinstance(config, str):
         ori_x = CombinedTopKModelSaver._load(ori_x_path)
-        train_node.data = (np.hstack([ori_x[train_index], data_node.data[0][train_index]]), data_node.data[1][train_index])
-        valid_node.data = (np.hstack([ori_x[valid_index], data_node.data[0][valid_index]]), data_node.data[1][valid_index])
+        train_node.data = (np.hstack([ori_x['train'][train_index], data_node.data[0][train_index]]), data_node.data[1][train_index])
+        valid_node.data = (np.hstack([ori_x['train'][valid_index], data_node.data[0][valid_index]]), data_node.data[1][valid_index])
     else:
         train_node.data = (data_node.data[0][train_index], data_node.data[1][train_index])
         valid_node.data = (data_node.data[0][valid_index], data_node.data[1][valid_index])
@@ -59,6 +60,9 @@ def parallel_fit(config, task_type, if_imbal, seed,
                 pred = meta_learner.predict_proba(pred_features)
             else:
                 pred = meta_learner.predict(pred_features)
+
+        if len(pred.shape) == 1: pred = pred.reshape(-1, 1)
+        preds = {'train': pred}
     else:
         if layer == 0:
             _mode = 'cv'
@@ -84,6 +88,49 @@ def parallel_fit(config, task_type, if_imbal, seed,
                                                     weight_balance=train_node.enable_balance,
                                                     data_balance=train_node.data_balance)
         else:
+            # start = time.time()
+            n_base_model = kwargs['n_base_model']
+            dropout = kwargs['dropout']
+            # if n_base_model < 10:
+            #     dropout = 0
+            # elif n_base_model < 20:
+            #     dropout = 0.1
+            # elif n_base_model < 30:
+            #     dropout = 0.2
+            # else:
+            #     dropout = 0.3
+
+            if dropout > 0:
+                dropout_num = int(n_base_model * dropout)
+                if dropout_num > 0:
+                    rng = np.random.default_rng(seed=1 + 1000 * layer + 100 * fold + model_idx)
+                    # rng = np.random
+
+                    # feature_dim = data_node.data[0].shape[1]
+                    # n_dim = feature_dim // n_base_model
+                    # for row in range(train_node.data[0].shape[0]):
+                    #     dropout_idx = np.random.choice(n_base_model, size=dropout_num, replace=False)
+
+                    #     for d in range(n_dim):
+                    #         remain_mask = [-idx*n_dim-d-1 for idx in range(n_base_model) if idx not in dropout_idx]
+                    #         for didx in dropout_idx:
+                    #             train_node.data[0][row, -didx*n_dim-d-1] = train_node.data[0][row, remain_mask].mean()
+
+                    train_num, all_dim = train_node.data[0].shape
+                    predict_dim = data_node.data[0].shape[1]
+                    ori_dim = all_dim - predict_dim
+                    n_dim = predict_dim // n_base_model
+                    dropout_mask = np.zeros((train_num, n_base_model), dtype=int)
+                    for i in range(train_num):
+                        dropout_mask[i, rng.choice(n_base_model, dropout_num, replace=False)] = 1
+
+                    for dim in range(n_dim):
+                        col =[ori_dim + dim + idx * n_dim for idx in range(n_base_model)]
+                        data_pure = train_node.data[0][:, col] * (1 - dropout_mask)
+                        train_node.data[0][:, col] = data_pure + dropout_mask * np.sum(data_pure, axis=1, keepdims=True) / (n_base_model - dropout_num)
+
+            # mid_time = time.time()
+
             if task_type in CLS_TASKS:
                 _, estimator = get_cls_estimator(config, config['algorithm'])
             elif task_type in RGS_TASKS:
@@ -94,19 +141,45 @@ def parallel_fit(config, task_type, if_imbal, seed,
             except:
                 return model_idx, fold, None, need_save
 
+            # print(mid_time - start, time.time() - mid_time)
+
         pred = fetch_predict_results(task_type, op_list, estimator, valid_node)
         if len(pred.shape) == 1: pred = pred.reshape(-1, 1)
+        preds = {'train': pred}
+        valid_paths = kwargs.get('valid_paths', {})
+        for key in valid_paths:
+            _data_node = CombinedTopKModelSaver._load(valid_paths[key])
+            if ori_x is not None :
+                _data_node.data = (np.hstack([ori_x[key], _data_node.data[0]]), _data_node.data[1])
+            pred = fetch_predict_results(task_type, op_list, estimator, _data_node)
+            if len(pred.shape) == 1: pred = pred.reshape(-1, 1)
+            preds[key] = pred
 
     if need_save:
         estimator_path = os.path.join(output_dir, get_estimator_name(layer, model_idx, fold))
         CombinedTopKModelSaver._save([op_list, estimator], estimator_path)
 
-    return model_idx, fold, pred, need_save
+    return model_idx, fold, preds, need_save
+
+
+def parallel_predict(model_idx, config_path, task_type, node_path):
+
+    op_list, model, _ = CombinedTopKModelSaver._load(config_path)
+    valid_node = CombinedTopKModelSaver._load(node_path)
+    valid_node = construct_node(valid_node, op_list)
+    X_valid, y_valid = valid_node.data
+
+    if task_type in CLS_TASKS:
+        y_valid_pred = model.predict_proba(X_valid)
+    else:
+        y_valid_pred = model.predict(X_valid)
+
+    return model_idx, y_valid_pred
 
 
 def layer_fit(stack_configs, n_base_model, new_node, ori_xs, 
               task_type, if_imbal, seed, layer, output_dir, 
-              thread=1, folds = 5, ori_config_paths=None, logger=None, metric=None, skip_mask=None, mode='partial'):
+              thread=1, folds = 5, ori_config_paths=None, logger=None, metric=None, skip_mask=None, mode='partial', val_nodes: dict=None, dropout=0):
     # 如果是第0层，要把训练好的模型保存到原始的文件夹中，用ori_config_paths控制
     # 如果是第0层，需要FE，用need_fe控制
     # stack_configs: [[base model configs], [head configs]]
@@ -128,7 +201,10 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
     if layer != 0:
         assert n_dim == new_node.data[0].shape[1] // n_base_model
 
-    new_features = np.full((data_len, n_base_model * n_dim), np.nan)
+    new_features = {'train': np.full((data_len, n_base_model * n_dim), np.nan)}
+    if val_nodes is not None:
+        for key in val_nodes:
+            new_features[key] = np.zeros((val_nodes[key].data[0].shape[0], n_base_model * n_dim))
     head_outputs = dict()
 
     sms = [[None] * folds for _ in range(n_base_model)]
@@ -217,9 +293,17 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
 
                 fold += 1
     else:
-        node_path = os.path.join(output_dir, get_node_name(layer))
+        # 保存train node和valid nodes
+        node_path = os.path.join(output_dir, get_node_name(layer, 'train'))
         with open(node_path, 'wb') as f:
             pkl.dump(new_node, f)
+        valid_paths = {}
+        if val_nodes is not None:
+            for key in val_nodes:
+                path = os.path.join(output_dir, get_node_name(layer, key))
+                with open(path, 'wb') as f:
+                    pkl.dump(val_nodes[key], f)
+                valid_paths[key] = path
 
         with cfutures.ProcessPoolExecutor(max_workers=thread) as executor:
             fs_wait = set()
@@ -239,12 +323,16 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
                         'layer': layer, 'model_idx': suc_cnt, 'fold': fold, 'folds': folds,
                         'train_index': train_index, 'valid_index': valid_index,
                         'node_path': node_path, 'ori_x_path': None if ori_xs is None else os.path.join(output_dir, get_ori_x_name(suc_cnt)),
-                        'output_dir': output_dir, 'ori_config_path': ori_config_path
+                        'output_dir': output_dir, 'ori_config_path': ori_config_path, 'n_base_model': n_base_model,
                     }
                     if suc_cnt >= _n_base:
-                        kwargs.update({'metric': metric, 'n_base_model': n_base_model})
-                    elif layer == 0:
-                        kwargs.update({'mode': mode})
+                        kwargs.update({'metric': metric})
+                    else:
+                        kwargs.update({'valid_paths': valid_paths})
+                        if layer == 0:
+                            kwargs.update({'mode': mode})
+                        else:
+                            kwargs.update({'dropout': dropout})
 
                     if len(fs_wait) < thread:
                         fs_wait.add(executor.submit(parallel_fit, **kwargs))
@@ -252,19 +340,24 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
                         fs_done, fs_wait = cfutures.wait(fs_wait, return_when=cfutures.FIRST_COMPLETED)
                         fs_wait.add(executor.submit(parallel_fit, **kwargs))
                         for fs in fs_done:
-                            model_idx, _fold, pred, need_save = fs.result()
+                            model_idx, _fold, preds, need_save = fs.result()
                             if model_idx < _n_base:
-                                if pred is not None:
-                                    new_features[valid_indexes[_fold-1], model_idx * n_dim:(model_idx + 1) * n_dim] = pred[:, -n_dim:]
+                                if preds is not None:
+                                    new_features['train'][valid_indexes[_fold-1], model_idx * n_dim:(model_idx + 1) * n_dim] = preds['train'][:, -n_dim:]
+                                    if val_nodes is not None:
+                                        for key in val_nodes.keys():
+                                            new_features[key][:, model_idx * n_dim:(model_idx + 1) * n_dim] += preds[key][:, -n_dim:] / folds
                                     if need_save:
                                         estimator_path = os.path.join(output_dir, get_estimator_name(layer, model_idx, _fold))
                                         op_list, estimator = CombinedTopKModelSaver._load(estimator_path)
                                         os.remove(estimator_path)
                                         sms[model_idx][_fold-1] = estimator
                                         ops[model_idx][_fold-1] = op_list
+                                else:
+                                    for key in val_nodes.keys():
+                                        new_features[key][:, model_idx * n_dim:(model_idx + 1) * n_dim] = np.nan
                             else:
-                                if len(pred.shape) == 1:
-                                    pred = pred.reshape(-1, 1)
+                                pred = preds['train']
                                 _config = stack_configs[1][model_idx-_n_base]
                                 head = f"{_config}-L{layer}"
                                 if head not in head_outputs:
@@ -275,26 +368,33 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
             while len(fs_wait) > 0:
                 fs_done, fs_wait = cfutures.wait(fs_wait, return_when=cfutures.FIRST_COMPLETED)
                 for fs in fs_done:
-                    model_idx, _fold, pred, need_save = fs.result()
+                    model_idx, _fold, preds, need_save = fs.result()
                     if model_idx < _n_base:
-                        if pred is not None:
-                            new_features[valid_indexes[_fold-1], model_idx * n_dim:(model_idx + 1) * n_dim] = pred[:, -n_dim:]
+                        if preds is not None:
+                            new_features['train'][valid_indexes[_fold-1], model_idx * n_dim:(model_idx + 1) * n_dim] = preds['train'][:, -n_dim:]
+                            if val_nodes is not None:
+                                for key in val_nodes.keys():
+                                    new_features[key][:, model_idx * n_dim:(model_idx + 1) * n_dim] += preds[key][:, -n_dim:] / folds
                             if need_save:
                                 estimator_path = os.path.join(output_dir, get_estimator_name(layer, model_idx, _fold))
                                 op_list, estimator = CombinedTopKModelSaver._load(estimator_path)
                                 os.remove(estimator_path)
                                 sms[model_idx][_fold-1] = estimator
                                 ops[model_idx][_fold-1] = op_list
+                        else:
+                            for key in val_nodes.keys():
+                                new_features[key][:, model_idx * n_dim:(model_idx + 1) * n_dim] = np.nan
                     else:
-                        if len(pred.shape) == 1:
-                            pred = pred.reshape(-1, 1)
+                        pred = preds['train']
                         _config = stack_configs[1][model_idx-_n_base]
                         head = f"{_config}-L{layer}"
                         if head not in head_outputs:
                             head_outputs[head] = np.zeros((data_len,) + pred.shape[1:])
                         head_outputs[head][valid_indexes[_fold-1]] = pred
 
-        os.remove(os.path.join(output_dir, get_node_name(layer)))
+        os.remove(node_path)
+        for path in valid_paths.values():
+            os.remove(path)
 
     cost = time.time() - start
     print(f"Cost of Layer{layer} training with {thread} threads: {cost}s")
@@ -338,16 +438,16 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
 def save_ori_x(ori_xs, output_dir):
 
     if ori_xs is not None:
-        for suc_cnt in range(len(ori_xs)):
-            ori_x = ori_xs[suc_cnt]
+        for suc_cnt in range(len(ori_xs['train'])):
+            ori_x = {key: ori_xs[key][suc_cnt] for key in ori_xs}
             ori_x_path = os.path.join(output_dir, get_ori_x_name(suc_cnt))
             if not os.path.exists(ori_x_path):
-                np.save(ori_x_path, ori_x)
+                CombinedTopKModelSaver._save(ori_x, ori_x_path)
 
 def rm_ori_x(ori_xs, output_dir):
 
     if ori_xs is not None:
-        for suc_cnt in range(len(ori_xs)):
+        for suc_cnt in range(len(ori_xs['train'])):
             ori_x_path = os.path.join(output_dir, get_ori_x_name(suc_cnt))
             if os.path.exists(ori_x_path):
                 os.remove(ori_x_path)

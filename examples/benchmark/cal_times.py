@@ -7,6 +7,7 @@ from cls_benchmark import chosen_datasets_info as cls_info
 data_dir = './block012_data'
 data_dir = './compress_data'
 data_dir = './refit_data'
+data_dir = './res_ensopt_dropout_data'
 
 times_dict = {'CLS': {}, 'RGS': {}}
 
@@ -18,13 +19,14 @@ for sub_dir in sorted(os.listdir(data_dir)):
     with open(os.path.join(data_dir, sub_dir, 'best_model_info.json'), 'r') as f:
         best_model_info = json.load(f)
         
-    opt = config['optimizer']
-    if opt != 'block_1':
-        continue
+    # opt = config['optimizer']
+    # if opt != 'block_1':
+    #     continue
     
     types = config['task_type']
     task_id = config['task_id']
-    times = len(best_model_info['opt_trajectory']['final_rewards'])
+    # times = len(best_model_info['opt_trajectory']['final_rewards'])
+    times = best_model_info['comb_count']
     
     if types == 4:
         tar_dict = times_dict['RGS']
@@ -34,13 +36,15 @@ for sub_dir in sorted(os.listdir(data_dir)):
     if task_id not in tar_dict:
         tar_dict[task_id] = {}
 
-    if 'include_preprocessors' in config:
-        tmp = config['include_preprocessors']
-        if tmp[list(tmp.keys())[0]] != None:
-            opt = "filall_" + opt
+    # if 'include_preprocessors' in config:
+    #     tmp = config['include_preprocessors']
+    #     if tmp[list(tmp.keys())[0]] != None:
+    #         opt = "filall_" + opt
             
-    if ('film_' + opt) not in tar_dict[task_id]:
-        opt = 'film_' + opt
+    # if ('film_' + opt) not in tar_dict[task_id]:
+    #     opt = 'film_' + opt
+
+    opt = 'ens'
         
     tar_dict[task_id][opt] = times
     

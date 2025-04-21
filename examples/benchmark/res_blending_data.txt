@@ -1,0 +1,12 @@
+RGS: cashfe-block_1-blending10-filter_m6_p6, Moneyball: -572.2768164754162, -589.7060024642906
+RGS: cashfe-block_1-blending10-filter_m-1_p-1, Moneyball: -521.8049690301167, -607.0568084505796
+RGS: cashfe-block_1-blending10-filter_m6_p6, debutanizer: -0.005038839679728273, -0.0033487013210654866
+RGS: cashfe-block_1-blending10-filter_m-1_p-1, debutanizer: -0.0039047502913266974, -0.004398846908426633
+RGS: cashfe-block_1-blending10-filter_m6_p6, puma8NH: -9.993620941447107, -10.094055311599703
+RGS: cashfe-block_1-blending10-filter_m-1_p-1, puma8NH: -9.895146224432404, -10.255487880058437
+RGS: cashfe-block_1-blending10-filter_m-1_p-1, cpu_act: -4.781099511882871, -8.207825507476402
+RGS: cashfe-block_1-blending10-filter_m6_p6, cpu_act: -4.188951000688319, -5.3218256702527755
+RGS: cashfe-block_1-blending10-filter_m-1_p-1, bank32nh: -0.006172702273792627, -0.0061641076770207245
+RGS: cashfe-block_1-blending10-filter_m6_p6, bank32nh: -0.006192130502118047, -0.00608057357814036
+RGS: cashfe-block_1-blending10-filter_m-1_p-1, black_friday: -11884992.685094623, -12021432.020111034
+RGS: cashfe-block_1-blending10-filter_m6_p6, black_friday: -11877024.227000687, -11852068.064086094
