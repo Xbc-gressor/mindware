@@ -59,8 +59,10 @@ class Stacking(Blending):
                     ori_config_paths.append(path)
                     if self.skip_connect:
                         if ori_xs['train'] is None: ori_xs = {'train': []}
-                        model_path = path # if mode == 'partial' else CombinedTopKModelSaver.get_parse_path(path, 'full')
-                        op_list, _, _ = CombinedTopKModelSaver._load(model_path)
+                        # model_path = path if mode == 'partial' else CombinedTopKModelSaver.get_parse_path(path, 'full')
+                        # op_list, _, _ = CombinedTopKModelSaver._load(model_path)
+                        _, op_list = parse_config(datanode, config, record=True, if_imbal=self.if_imbal)
+
                         ori_x = construct_node(datanode.copy_(), op_list).data[0]
                         ori_xs['train'].append(ori_x)
                         if val_nodes is not None:
@@ -115,7 +117,7 @@ class Stacking(Blending):
         suc_cnt = 0
         for algo_id in self.stats.keys():
             model_to_eval = self.stats[algo_id]
-            for idx, (_, _, path) in enumerate(model_to_eval):
+            for idx, (config, _, path) in enumerate(model_to_eval):
                 if self.base_model_mask[model_cnt] == 1:
                     estimators = self.base_sms[suc_cnt]
                     op_lists = self.base_ops[suc_cnt]
@@ -130,9 +132,10 @@ class Stacking(Blending):
                         base_features[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] += pred[:, -n_dim:] / len(estimators)
                     if self.skip_connect:
                         if ori_xs is None: ori_xs = []
-                        model_path = path # if mode == 'partial' else CombinedTopKModelSaver.get_parse_path(path, 'full')
-                        op_list, _, _ = CombinedTopKModelSaver._load(model_path)
-                        ori_x = construct_node(datanode.copy_(), op_list).data[0]
+                        # model_path = path if mode == 'partial' else CombinedTopKModelSaver.get_parse_path(path, 'full')
+                        # op_list, _, _ = CombinedTopKModelSaver._load(model_path)
+                        # _, op_list = parse_config(datanode, config, record=True, if_imbal=self.if_imbal)
+                        ori_x = construct_node(datanode.copy_(), op_lists[0]).data[0]
                         ori_xs.append(ori_x)
                     suc_cnt += 1
 
@@ -147,8 +150,43 @@ class Stacking(Blending):
         return ens_info
 
     def refit(self, datanode, mode):
-        super().refit(datanode, mode)
+        # super().refit(datanode, mode)
         if self.opt:
+            # self.get_base_features(datanode, mode=mode)
+            # stack_configs = []
+            # model_cnt = 0
+            # for algo_id in self.stats.keys():
+            #     model_to_eval = self.stats[algo_id]
+            #     for idx, (config, _, _) in enumerate(model_to_eval):
+            #         if self.base_model_mask[model_cnt] == 1:
+            #             stack_configs.append(config)
+            #         model_cnt += 1
+            # final_label = np.hstack([self.final_labels['train'], self.final_labels['val']])
+            # for layer in range(self.stack_layers):
+            #     last_feature = np.vstack([self.last_features_record[layer]['train'], self.last_features_record[layer]['val']])
+
+            #     sms = self.stack_models[f'layer_{layer+1}']
+            #     for i in range(len(stack_configs)):
+            #         if sms[i] is None: continue
+
+            #         ori_x = np.vstack([self.ori_x['train'][i], self.ori_x['val'][i]])
+            #         _last_feature = np.hstack([ori_x, last_feature])
+            #         from mindware.components.evaluators.cls_evaluator import get_estimator as get_cls_estimator
+            #         from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
+            #         if self.task_type in CLS_TASKS:
+            #             _, estimator = get_cls_estimator(stack_configs[i], stack_configs[i]['algorithm'])
+            #         else:
+            #             _, estimator = get_rgs_estimator(stack_configs[i], stack_configs[i]['algorithm'])
+
+            #         estimator.fit(_last_feature, final_label)
+
+            #         self.stack_models[f'layer_{layer+1}'][i] = [estimator]
+
+            # if 'best_' not in self.meta_method:
+            #     last_feature = np.vstack([self.last_features_record[self.stack_layers]['train'], self.last_features_record[self.stack_layers]['val']])
+            #     self.meta_learner = self.build_meta_learner(self.meta_method, self.task_type, last_feature, final_label,
+            #                                                 ensemble_size=self.ensemble_size, if_imbal=self.if_imbal, metric=self.metric)
+
             # last_feature = np.vstack([self.best_last_features['train'], self.best_last_features['val']])
             # final_label = np.hstack([self.final_labels['train'], self.final_labels['val']])
             # if 'best_' not in self.meta_method:
@@ -188,4 +226,4 @@ class Stacking(Blending):
 
             self.meta_learner = self.build_meta_learner(self.meta_method, self.task_type, last_features['train'], final_labels['train'],
                                                         ensemble_size=self.ensemble_size, if_imbal=self.if_imbal, metric=self.metric)
-            
+

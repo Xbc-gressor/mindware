@@ -140,9 +140,11 @@ class Blending(BaseEnsembleModel):
 
         self.best_config = None
         self.meta_learner = None
-        self.best_last_features = None
+
+        self.last_features_record = None
         self.final_labels = None
         self.ori_x = None
+
         self.best_configs = [None, None, None]
         self.meta_learners = [None, None, None]
         self.last_real_loss = None
@@ -345,6 +347,9 @@ class Blending(BaseEnsembleModel):
                     self.leader_board[key] = {}
                 if f'{key}_2' not in self.leader_board:
                     self.leader_board[f'{key}_2'] = {}
+            if not self.lock:
+                self.layer_loss = [self.cal_scores(base_features, final_labels, self.ensemble_size)]
+                self.stack_models = dict()
 
         stack_configs = [[], ['weighted', 'lightgbm', 'linear']]
         model_cnt = 0
@@ -364,16 +369,11 @@ class Blending(BaseEnsembleModel):
         best_head = None
         best_last_features = last_features
 
-        if train and not self.lock:
-            self.layer_loss.append(self.cal_scores(base_features, final_labels, self.ensemble_size))
-            self.stack_models = dict()
-        # if not train:
-        #     self.layer_loss.append(self.cal_scores(base_features, final_labels, self.ensemble_size))
-
         if self.stack_layers > 0:
             for layer in range(self.stack_layers):
 
                 if train:
+
                     new_node = DataManager(last_features['train'], final_labels['train']).get_data_node(last_features['train'], final_labels['train'])
                     val_nodes = {}
                     for key in last_features:
@@ -399,7 +399,6 @@ class Blending(BaseEnsembleModel):
                         fail_mask = np.repeat(fail_mask, n_dim)
                         for key in new_features.keys():
                             last_features[key][:, ~fail_mask] = new_features[key][:, ~fail_mask]
-                        # self.layer_loss.append(self.cal_scores(last_features, final_labels, self.ensemble_size))
                     else:
                         _best_config, _best_head = self.register_leader(head_output, new_features, last_features, final_labels, layer+1)
                         if better_ens(_best_config, best_config):
@@ -407,7 +406,6 @@ class Blending(BaseEnsembleModel):
                             best_head = _best_head
                             best_last_features = deepcopy(last_features)
                         self.logger.info(f"Cost of Layer{layer+1} training with {self.thread} threads: {cost}s")
-                        # print(head_outputs)
 
                         self.train_cost.append(cost)
 
@@ -432,13 +430,14 @@ class Blending(BaseEnsembleModel):
                         for key in new_features.keys():
                             last_features[key][:, ~fail_mask] = new_features[key][:, ~fail_mask]
 
+                        self.layer_loss.append(self.cal_scores(last_features, final_labels, self.ensemble_size))
+
                         if np.all(fail_mask | bad_mask):
                             self.logger.info("None model gets improved! early stop!")
                             if not (best_head.startswith('best_') and best_head.endswith(f'L{layer+2}')):
                                 self.stack_models.pop('layer_%d' % (layer+1))
                             break
                         else:
-                            self.layer_loss.append(self.cal_scores(last_features, final_labels, self.ensemble_size))
                             if layer == self.stack_layers - 1 and not self.lock:
                                 new_node = DataManager(last_features['train'], final_labels['train']).get_data_node(last_features['train'], final_labels['train'])
                                 _, _, _, head_output, cost = layer_fit(stack_configs=[[], stack_configs[1]], new_node=new_node, ori_xs=ori_xs['train'], n_base_model=n_base_model,
@@ -450,7 +449,6 @@ class Blending(BaseEnsembleModel):
                                     best_config = _best_config
                                     best_head = _best_head
                                     best_last_features = deepcopy(last_features)
-                                # print(f"Head of layer{layer+2}: {head_outputs}")
                 else:
                     new_node = DataManager(last_features['test'], None).get_data_node(last_features['test'], None)
                     sms = self.stack_models['layer_%d' % (layer+1)]
@@ -474,8 +472,6 @@ class Blending(BaseEnsembleModel):
                     last_features = deepcopy(new_features)
                     best_last_features = last_features
 
-                    # self.layer_loss.append(self.cal_scores(last_features, final_labels, self.ensemble_size))
-
         if train:
             if self.thread > 1:
                 rm_ori_x(ori_xs, _output_dir)
@@ -484,7 +480,9 @@ class Blending(BaseEnsembleModel):
                 best_last_features = last_features
             else:
                 self.final_labels = final_labels
-                self.best_last_features = best_last_features
+                self.ori_x = {}
+                for key in ori_xs.keys():
+                    self.ori_x[key] = ori_xs[key]
                 self.best_config = best_config
                 tmp = best_head.split('-')
                 if self.meta_method == 'auto':
@@ -501,9 +499,6 @@ class Blending(BaseEnsembleModel):
                     for i in range(len(self.stack_models[f'layer_{self.stack_layers}'])):
                         if i != best_idx:
                             self.stack_models[f'layer_{self.stack_layers}'][i] = None
-                    self.ori_x = {}
-                    for key in ori_xs.keys():
-                        self.ori_x[key] = ori_xs[key][best_idx]
 
                 self.lock = True  # 锁定
 

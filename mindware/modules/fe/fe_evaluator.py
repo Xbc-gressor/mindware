@@ -36,9 +36,10 @@ class FECLSEvaluator(BaseCLSEvaluator):
             if_imbal
         )
 
-    def _get_parse_data_node(self, config, record=True):
-        data_node, op_list = parse_config(self.train_node, config, record=record, if_imbal=self.if_imbal)
-        _val_node = self.val_node.copy_()
+    @staticmethod
+    def _get_parse_data_node(config, train_node, val_node, if_imbal, record=True):
+        data_node, op_list = parse_config(train_node, config, record=record, if_imbal=if_imbal)
+        _val_node = val_node.copy_()
         _val_node = construct_node(_val_node, op_list)
 
         return op_list, data_node, _val_node
@@ -56,9 +57,10 @@ class FERGSEvaluator(BaseRGSEvaluator):
             timestamp, output_dir, seed
         )
 
-    def _get_parse_data_node(self, config, record=True):
-        data_node, op_list = parse_config(self.train_node, config, record=record)
-        _val_node = self.val_node.copy_()
+    @staticmethod
+    def _get_parse_data_node(config, train_node, val_node, if_imbal, record=True):
+        data_node, op_list = parse_config(train_node, config, record=record, if_imbal=if_imbal)
+        _val_node = val_node.copy_()
         _val_node = construct_node(_val_node, op_list)
 
         return op_list, data_node, _val_node

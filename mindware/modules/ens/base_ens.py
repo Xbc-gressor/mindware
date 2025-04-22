@@ -22,7 +22,6 @@ from mindware.components.utils.constants import type_dict
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.utils.logging_utils import setup_logger, get_logger
 
-
 class BaseEns(object):
 
     name = 'ens'
@@ -32,7 +31,7 @@ class BaseEns(object):
                  evaluation: str = 'cv', resampling_params=None,
                  optimizer='smac',
                  time_limit=600, amount_of_resource=None, per_run_time_limit=float(np.inf),
-                 output_dir=None, seed=1, n_jobs=1, topk=50, 
+                 output_dir=None, seed=1, n_jobs=1, topk=np.inf, 
                  task_id='test', val_nodes:dict=None, **cs_args):
 
         if optimizer not in ['smac']:
@@ -112,6 +111,9 @@ class BaseEns(object):
             val_nodes=val_nodes
         )
         self.optimizer = self.build_optimizer()
+        self.es = None
+        self.es_list = []
+        self.predictions = None
 
     def _get_logger(self, optimizer_name):
         logger_name = 'MindWare-ENS-%s(%d)' % (optimizer_name, self.seed)
@@ -157,10 +159,19 @@ class BaseEns(object):
                 self.iterate()
 
         config = self.incumbent.copy()
-        config.update({'stack_layers': self.cs['stack_layers'].upper, 'meta_learner': 'auto'})
         model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
         _, ensemble_builder, learder_board = CombinedTopKModelSaver._load(model_path)
         self.es = ensemble_builder
+
+        self.es_list.append(ensemble_builder)
+
+        best_model_paths = self.evaluator.best_pool.best_model_paths
+        for i in range(len(best_model_paths)-2, -1, -1):
+            model_path = best_model_paths[i]
+            if model_path is None:
+                break
+            _, ensemble_builder, _ = CombinedTopKModelSaver._load(model_path)
+            self.es_list.append(ensemble_builder)
 
         # if refit != 'partial':
         #     self.es.refit(datanode=self.data_node, mode=refit)
@@ -171,23 +182,49 @@ class BaseEns(object):
 
         if self.es is None:
             config = self.incumbent.copy()
-            config.update({'stack_layers': self.cs['stack_layers'].upper, 'meta_learner': 'auto'})
             model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
             _, ensemble_builder, learder_board = CombinedTopKModelSaver._load(model_path)
             self.es = ensemble_builder
 
-        if refit != 'partial':
-            self.es.refit(datanode=self.data_node, mode=refit)
+        predictions = {'partial': [], refit: []}
 
-        return self.es.predict(test_data, refit)
+        for es in self.es_list:
+            predictions['partial'].append(es.predict(test_data, 'partial'))
+
+        if refit != 'partial':
+            for es in self.es_list:
+                es.refit(datanode=self.data_node, mode=refit)
+
+        for es in self.es_list:
+            predictions[refit].append(es.predict(test_data, refit))
+
+        self.predictions = predictions
+
+        return predictions
 
     def predict(self, test_data: DataNode, refit='full'):
-        pred = self._predict(test_data, refit=refit)
+        _preds = self._predict(test_data, refit=refit)
+        # if refit != 'partial':
+        #     preds.append(self._predict(test_data, refit=refit))
+        topk = len(_preds['partial'])
+        preds = []
+        for k in range(topk, 0, -1):
+            preds.append(np.mean(_preds[refit][:k], axis=0))
 
-        if self.task_type in CLS_TASKS:
-            return np.argmax(pred, axis=-1)
-        else:
-            return pred
+        for k in range(topk, 0, -1):
+            preds.append(np.mean(_preds['partial'][:k], axis=0))
+
+        for k in range(topk, 0, -1):
+            preds.append(np.mean(_preds[refit][:k] + _preds['partial'][:k], axis=0))
+
+        results = []
+        for pred in preds:
+            if self.task_type in CLS_TASKS:
+                results.append(np.argmax(pred, axis=-1))
+            else:
+                results.append(pred)
+
+        return results
 
     def predict_proba(self, test_data: DataNode, refit='full'):
         if self.task_type not in CLS_TASKS:
@@ -197,13 +234,11 @@ class BaseEns(object):
     def get_model_info(self, save=False):
         model_info = dict()
 
-        config = self.incumbent.copy()
-        config.update({'stack_layers': self.cs['stack_layers'].upper, 'meta_learner': 'auto'})
-        path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
-        model_info['best'] = ('ens', self.incumbent, path)
+        model_info['best_pool'] = self.evaluator.best_pool.get_best_pool_info()
+        model_info['best'] = self.incumbent
         model_info['best_info'] = self.es.get_ens_model_info()
         leader_board = self.evaluator.leader_board
-        sorted_head = sorted(list(leader_board['train'].keys()), key=lambda x: (-leader_board['val'][x], -leader_board['train'][x]))
+        sorted_head = sorted(list(leader_board['train'].keys()), key=lambda x: (-leader_board['val'][x], -leader_board['val_2'][x], -leader_board['train'][x])) 
         model_info['leader_board'] = [f"{head}: {', '.join(['%s-%.5f' % (key, leader_board[key][head]) for key in leader_board.keys()])}" for head in sorted_head]
         model_info['comb_count'] = self.evaluator.comb_count
 

@@ -11,7 +11,67 @@ import os
 import numpy as np
 import warnings
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
-from mindware.modules.ens.ens_utils import better_ens
+from mindware.modules.ens.ens_utils import equal_ens, better_ens
+from copy import deepcopy
+
+
+
+
+class BestPool:
+
+    def __init__(self, topk, output_dir, datetime, logger):
+        self.topk = topk
+        self.output_dir = output_dir
+        self.best_model_paths = [None] * self.topk
+        self.best_perfs = [-np.inf] * self.topk
+        self.best_configs = [None] * self.topk
+        self.datetime = datetime
+        self.logger = logger
+
+    def add_config(self, can_config, learder_board, ensemble_builder):
+        idx = 0
+        while idx < self.topk:
+            # 去掉完全一样的config
+            if equal_ens(can_config, self.best_configs[idx]):
+                return False
+            if not better_ens(can_config, self.best_configs[idx]):
+                break
+            idx += 1
+        if idx == 0:
+            return False
+
+        if self.best_model_paths[0] is not None:
+            os.remove(self.best_model_paths[0])
+            self.logger.info(f"Remove old best ens model: {self.best_model_paths[0]}!")
+
+        for i in range(0, idx-1):
+            self.best_model_paths[i] = self.best_model_paths[i+1]
+            self.best_perfs[i] = self.best_perfs[i+1]
+            self.best_configs[i] = self.best_configs[i+1]
+
+        config = can_config[0].copy()
+        model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
+        self.logger.info(f"Save new best ens model: {model_path}!")
+        CombinedTopKModelSaver.save_config([None, ensemble_builder, learder_board], model_path)
+
+        self.best_model_paths[idx-1] = model_path
+        self.best_perfs[idx-1] = can_config[1]['val']
+        self.best_configs[idx-1] = can_config
+
+        return True
+
+    def get_best_pool_info(self):
+        info = []
+        for i in range(self.topk-1, -1, -1):
+            if self.best_configs[i] is None:
+                break
+            config = self.best_configs[i][0].copy()
+            config.update(self.best_configs[i][1])
+            config['model_path'] = self.best_model_paths[i]
+            info.append(config)
+
+        return info
+
 
 class EnsEvaluator(_BaseEvaluator):
     def __init__(
@@ -40,36 +100,44 @@ class EnsEvaluator(_BaseEvaluator):
 
         self.datetime = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
-        self.train_data = self.data_node.copy_(no_data=True)
-        self.val_data = self.data_node.copy_(no_data=True)
 
         test_size = 0.33
         if self.resampling_params is not None and 'test_size' in self.resampling_params:
             test_size = self.resampling_params['test_size']
         ss = self._get_spliter('holdout', test_size=test_size, random_state=self.seed)
 
-        _x_train, _y_train = None, None
-        _x_val, _y_val = None, None
+        train_data = self.data_node.copy_(no_data=True)
+        val_data = self.data_node.copy_(no_data=True)
         for train_index, test_index in ss.split(self.data_node.data[0], self.data_node.data[1]):
             _x_train, _y_train = self.data_node.data[0][train_index], self.data_node.data[1][train_index]
             _x_val, _y_val = self.data_node.data[0][test_index], self.data_node.data[1][test_index]
-        self.train_data.data = [_x_train, _y_train]
-        self.val_data.data = [_x_val, _y_val]
+            train_data.data = [_x_train, _y_train]
+            val_data.data = [_x_val, _y_val]
+
+        self.ensemble_builder = EnsembleBuilder(self.stats, val_data, self.task_type, self.scorer, resampling_params=self.resampling_params,
+                                               output_dir=self.output_dir, seed=self.seed, if_imbal=self.if_imbal)
+
+        # # reshuffle
+        # ss = self._get_spliter('holdout', test_size=test_size, random_state=self.seed * 16)
+        # train_data = self.data_node.copy_(no_data=True)
+        # val_data = self.data_node.copy_(no_data=True)
+        # for train_index, test_index in ss.split(self.data_node.data[0], self.data_node.data[1]):
+        #     _x_train, _y_train = self.data_node.data[0][train_index], self.data_node.data[1][train_index]
+        #     _x_val, _y_val = self.data_node.data[0][test_index], self.data_node.data[1][test_index]
+        #     train_data.data = [_x_train, _y_train]
+        #     val_data.data = [_x_val, _y_val]
 
         if val_nodes is None:
             val_nodes = {}
-        val_nodes['val'] = self.val_data.copy_()
+        val_nodes['val'] = val_data.copy_()
         self.val_nodes = val_nodes
+        self.train_data = train_data
 
         self.leader_board = dict()
         self.cache = dict()
 
-        self.ensemble_builder = EnsembleBuilder(self.stats, self.val_data, self.task_type, self.scorer, resampling_params=self.resampling_params,
-                                               output_dir=self.output_dir, seed=self.seed, if_imbal=self.if_imbal)
-
-        self.best_model_path = None
-        self.best_perf = -np.inf
-        self.best_config = None
+        self.topk = 5
+        self.best_pool = BestPool(self.topk, self.output_dir, self.datetime, self.logger)
         self.comb_count = 0
 
 
@@ -91,9 +159,10 @@ class EnsEvaluator(_BaseEvaluator):
         score = self.scorer._score_func(y_true, pred) * self.scorer._sign
         return score
 
-    def check_cache(self, base_model_mask):
+    def check_cache(self, base_model_mask, dropout):
         base_idx = np.where(base_model_mask)[0]
-        key = '_'.join([str(x) for x in base_idx])
+        dropout = int(len(base_idx) * dropout / 100)
+        key = '_'.join([str(x) for x in base_idx]) + f' - d{dropout}'
 
         if key in self.cache:
             return True, key
@@ -114,9 +183,10 @@ class EnsEvaluator(_BaseEvaluator):
         # Prepare data node.
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            base_model_mask = self.ensemble_builder.build_ensemble(ensemble_method='stacking', ensemble_size=config['ensemble_size'], ratio=config['ratio']/100,
+            base_model_mask = self.ensemble_builder.build_ensemble(ensemble_method='stacking', ensemble_size=config['ensemble_size'], ratio=config['ratio']/100, dropout=config['dropout']/100,
                                                                 stack_layers=config['stack_layers'], meta_learner=config['meta_learner'], opt=True)
-            cache, key = self.check_cache(base_model_mask)
+            cache, key = self.check_cache(base_model_mask, config['dropout'])
+
             if cache:
                 learder_board = self.cache[key]
             else:
@@ -126,22 +196,24 @@ class EnsEvaluator(_BaseEvaluator):
                 self.comb_count += 1
 
                 # best_perf = np.max(list(learder_board['val'].values()))
-                best_config = self.ensemble_builder.model.best_config.copy()
-                best_config.update({'ensemble_size': config['ensemble_size'], 'ratio': config['ratio']})
-                if better_ens(best_config, self.best_config):
-                    self.best_config = best_config.copy()
-                    model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
-                    if self.best_model_path is not None:
-                        os.remove(self.best_model_path)
-                        self.logger.info(f"Remove old best ens model: {self.best_model_path}!")
-                    self.logger.info(f"Save new best ens model: {model_path}!")
-                    CombinedTopKModelSaver.save_config([None, self.ensemble_builder, learder_board], model_path)
-                    self.best_perf = best_config['val']
-                    self.best_model_path = model_path
+                best_config = deepcopy(self.ensemble_builder.model.best_config)
+                best_config[0].update({'ensemble_size': config['ensemble_size'], 'ratio': config['ratio'], 'dropout': config['dropout']})
+                self.best_pool.add_config(best_config, learder_board, self.ensemble_builder)
+                # if better_ens(best_config, self.best_config):
+                #     self.best_config = best_config.copy()
+                #     model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
+                #     if self.best_model_path is not None:
+                #         os.remove(self.best_model_path)
+                #         self.logger.info(f"Remove old best ens model: {self.best_model_path}!")
+                #     self.logger.info(f"Save new best ens model: {model_path}!")
+                #     CombinedTopKModelSaver.save_config([None, self.ensemble_builder, learder_board], model_path)
+                #     self.best_perf = best_config['val']
+                #     self.best_model_path = model_path
 
         size = config['ensemble_size']
         ratio = config['ratio']
-        base = f'ens{size}_r{ratio}'
+        dropout = config['dropout']
+        base = f'ens{size}_r{ratio}_d{dropout}'
         for key in learder_board:
             if key not in self.leader_board:
                 self.leader_board[key] = {}

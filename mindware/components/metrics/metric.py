@@ -25,6 +25,9 @@ def get_metric(metric):
     elif metric in ['log_loss', 'cross_entropy']:
         from sklearn.metrics import log_loss
         return make_scorer(log_loss, greater_is_better=False, needs_proba=True)
+    elif metric in ['brier_score_loss']:
+        from sklearn.metrics import brier_score_loss
+        return make_scorer(brier_score_loss, greater_is_better=False, needs_proba=True)
 
     # Metrics for regression
     elif metric in ["mean_squared_error", "mse"]:

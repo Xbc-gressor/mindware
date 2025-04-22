@@ -12,13 +12,17 @@ from openbox.utils.util_funcs import parse_result, deprecate_kwarg
 from openbox.utils.history import Observation, History
 from openbox.utils.config_space.space_utils import get_config_from_dict
 from mindware.components.optimizers.base_optimizer import BaseOptimizer, MAX_INT
+from mindware.components.optimizers.advisor import MyAdvisor
 from mindware.modules.ens.ens_utils import better_ens
+from copy import deepcopy
+from mindware.modules.ens.ens_evaluator import EnsEvaluator
+from ConfigSpace import Constant
 
 
 class SMACEnsOptimizer(BaseOptimizer):
 
     def __init__(
-            self, evaluator: callable, config_space, name, eval_type,
+            self, evaluator: EnsEvaluator, config_space, name, eval_type,
             time_limit=None, evaluation_limit=None,
             per_run_time_limit=300, per_run_mem_limit=1024, 
             inner_iter_num_per_iter=1, timestamp=None, 
@@ -38,11 +42,11 @@ class SMACEnsOptimizer(BaseOptimizer):
             raise ValueError('Task id is not SPECIFIED. Please input task id first.')
 
         _logger_kwargs = {'force_init': False}  # do not init logger in advisor
-        from openbox.core.generic_advisor import Advisor
-        self.config_advisor = Advisor(config_space,
-                                    initial_trials=3,
-                                    init_strategy='random_explore_first',
-                                    surrogate_type='prf',
+        self.config_advisor = MyAdvisor(config_space,
+                                    initial_trials=4,
+                                    init_strategy='default',  # random_explore_first
+                                    rand_prob=0.2,
+                                    surrogate_type='gp',
                                     acq_type='ei',
                                     task_id=task_id,
                                     output_dir=logging_dir,
@@ -50,9 +54,22 @@ class SMACEnsOptimizer(BaseOptimizer):
                                     logger_kwargs=_logger_kwargs)
 
         self.RATIO_RANGE = (config_space['ratio'].lower, config_space['ratio'].upper)
+        self.RQ = config_space['ratio'].q
         self.SIZE_RANGE = (config_space['ensemble_size'].lower, config_space['ensemble_size'].upper)
+        self.SQ = config_space['ensemble_size'].q
+        if isinstance(config_space['dropout'], Constant):
+            self.DROPOUT_RANGE = (config_space['dropout'].value, config_space['dropout'].value)
+            self.DQ = 1
+        else:
+            self.DROPOUT_RANGE = (config_space['dropout'].lower, config_space['dropout'].upper)
+            self.DQ = config_space['dropout'].q
+
         self.STACK_UPPER = config_space['stack_layers'].upper
-        self.cache = np.full((self.SIZE_RANGE[1]-self.SIZE_RANGE[0]+1, self.RATIO_RANGE[1]-self.RATIO_RANGE[0]+1), False)
+        self.cache = np.full((
+            (self.SIZE_RANGE[1]-self.SIZE_RANGE[0]) // self.SQ + 1,
+            (self.RATIO_RANGE[1]-self.RATIO_RANGE[0]) // self.RQ + 1,
+            (self.DROPOUT_RANGE[1]-self.DROPOUT_RANGE[0]) // self.DQ + 1
+        ), False)
 
         self.iteration_id = 0
         self.incumbent_config = None
@@ -74,30 +91,29 @@ class SMACEnsOptimizer(BaseOptimizer):
     def iterate(self, budget=MAX_INT) -> Observation:
 
         _start_time = time.time()
-
         # get configuration suggestion from advisor
         i = 0
-        max_sample_num = self.RATIO_RANGE[1] * self.SIZE_RANGE[1]
+        max_sample_num = 5000 # self.RATIO_RANGE[1] * self.SIZE_RANGE[1] * (self.DROPOUT_RANGE[1] + 1)
         while True:
             config = self.config_advisor.get_suggestion().get_dictionary().copy()
             size = config['ensemble_size']
             ratio = config['ratio']
-            if self.cache[size-self.SIZE_RANGE[0], ratio-self.RATIO_RANGE[0]]:
+            dropout = config['dropout']
+            if self.cache[(size-self.SIZE_RANGE[0])//self.SQ, (ratio-self.RATIO_RANGE[0])//self.RQ, (dropout-self.DROPOUT_RANGE[0])//self.DQ]:
                 i += 1
                 if i > max_sample_num:
                     logger.info("Can't sample new config after %d tries! Randomly choose one!" % max_sample_num)
 
                     availables = np.where(self.cache == False)
                     idx = np.random.randint(0, len(availables[0]))
-                    s1, s2 = availables[0][idx], availables[1][idx]
-                    self.cache[s1, s2] = True
+                    s1, s2, s3 = availables[0][idx], availables[1][idx], availables[2][idx]
+                    self.cache[s1, s2, s3] = True
 
-                    config.update({'ensemble_size': self.SIZE_RANGE[0]+s1, 'ratio': self.RATIO_RANGE[0]+s2})
+                    config.update({'ensemble_size': self.SIZE_RANGE[0]+s1*self.SQ, 'ratio': self.RATIO_RANGE[0]+s2*self.RQ, 'dropout': self.DROPOUT_RANGE[0]+s3*self.DQ})
                     break
             else:
-                self.cache[size-self.SIZE_RANGE[0], ratio-self.RATIO_RANGE[0]] = True
+                self.cache[(size-self.SIZE_RANGE[0])//self.SQ, (ratio-self.RATIO_RANGE[0])//self.RQ, (dropout-self.DROPOUT_RANGE[0])//self.DQ] = True
                 break
-
         config.update({'stack_layers': self.STACK_UPPER, 'meta_learner': 'auto'})
 
         timeout = self.per_run_time_limit
@@ -136,11 +152,8 @@ class SMACEnsOptimizer(BaseOptimizer):
             self.configs.append(new_config)
             self.perfs.append(-objective)
 
-        can_config = self.evaluator.best_config.copy()
-        if better_ens(can_config, self.incumbent_config):
-            self.incumbent_perf = self.evaluator.best_perf
-            self.incumbent_config = can_config.copy()
-
+        self.incumbent_perf = self.evaluator.best_pool.best_perfs[-1]
+        self.incumbent_config = deepcopy(self.evaluator.best_pool.best_configs[-1])
 
         self.iteration_id += 1
         # Logging
@@ -165,10 +178,8 @@ class SMACEnsOptimizer(BaseOptimizer):
         }
 
         return trajectory
-    
+
     def get_incumbent_config(self):
-        incumbent_config = self.incumbent_config.copy()
-        incumbent_config.pop('train')
-        incumbent_config.pop('val')
+        incumbent_config = self.incumbent_config[0].copy()
 
         return incumbent_config

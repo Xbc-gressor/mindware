@@ -161,7 +161,7 @@ class BaseEvaluator(_BaseEvaluator):
         raise NotImplementedError
 
     @staticmethod
-    def _get_parse_data_node(self, config, train_node, val_node, record=True):
+    def _get_parse_data_node(self, config, train_node, val_node, if_imbal, record=True):
 
         return {}, train_node, val_node
 
@@ -190,13 +190,13 @@ class BaseEvaluator(_BaseEvaluator):
                 warnings.filterwarnings("ignore")
 
                 train_node, val_node = self._get_train_valid_data(self.task_type, self.data_node, self.resampling_params, seed=self.seed)
-                op_list, train_node, val_node = self._get_parse_data_node(config, train_node, val_node, record=True)
+                op_list, train_node, val_node = self._get_parse_data_node(config, train_node, val_node, self.if_imbal, record=True)
 
             _x_train, _y_train = train_node.data
             _x_val, _y_val = val_node.data
 
-            estimator = fetch_predict_estimator(self.task_type, estimator_id=estimator_id, config=config, 
-                                                X_train=_x_train, y_train=_y_train, 
+            estimator = fetch_predict_estimator(self.task_type, estimator_id=estimator_id, config=config,
+                                                X_train=_x_train, y_train=_y_train,
                                                 weight_balance=train_node.enable_balance, data_balance=train_node.data_balance)
             score = self.scorer(estimator, _x_val, _y_val)
 
@@ -214,7 +214,7 @@ class BaseEvaluator(_BaseEvaluator):
                 fold = 1
                 for train_node, val_node, _, _ in self._get_cv_data(self.task_type, self.data_node, self.resampling_params, seed=self.seed):
 
-                    op_list, train_node, val_node = self._get_parse_data_node(config, train_node, val_node, record=True)
+                    op_list, train_node, val_node = self._get_parse_data_node(config, train_node, val_node, self.if_imbal, record=True)
 
                     _x_train, _y_train = train_node.data
                     _x_val, _y_val = val_node.data
@@ -242,7 +242,7 @@ class BaseEvaluator(_BaseEvaluator):
                 warnings.filterwarnings("ignore")
 
                 train_node, val_node = self._get_train_valid_data(self.task_type, self.data_node, self.resampling_params, seed=self.seed)
-                op_list, train_node, val_node = self._get_parse_data_node(config, train_node, val_node, record=True)
+                op_list, train_node, val_node = self._get_parse_data_node(config, train_node, val_node, self.if_imbal, record=True)
 
             _x_train, _y_train = train_node.data
 

@@ -136,11 +136,20 @@ declare -a TASKS
 #     done
 # done
 
-for i in 0 1 2 3 4; do
-    TASKS+=("python cls_benchmark.py --time_limit 3600 --refit full --job_idx $i --Opt ens --optimizer block_1 --output_dir ./res_ensopt_data --output_file res_ensopt_data.txt --stats_path ${cls_fil[$i]}")
-    TASKS+=("python rgs_benchmark.py --time_limit 7200 --refit full --job_idx $i --Opt ens --optimizer block_1 --output_dir ./res_ensopt_data --output_file res_ensopt_data.txt --stats_path ${rgs_fil[$i]}")
-done
+# find refit_data/ -type f -name 'cv*' -exec rm {} +
 
+for i in 0 1 2 3 4; do
+    TASKS+=("python cls_benchmark.py --time_limit 3600 --refit full --job_idx $i --Opt ens --optimizer block_1 --output_dir ./res_ensopt_dropout_data --output_file res_ensopt_data.txt --stats_path ${cls_fil[$i]}")
+    TASKS+=("python rgs_benchmark.py --size_upper 30 --time_limit 7200 --refit full --job_idx $i --Opt ens --optimizer block_1 --output_dir ./res_ensopt_dropout_data --output_file res_ensopt_data.txt --stats_path ${rgs_fil[$i]}")
+done
+# j=4
+# TASKS+=("python cls_benchmark.py --time_limit 3600 --refit full --job_idx $j --Opt ens --optimizer block_1 --output_dir ./res_ensopt_data --output_file res_ensopt_data.txt --stats_path ${cls_fil[$j]}")
+# TASKS+=("python rgs_benchmark.py --size_upper 30 --time_limit 7200 --refit full --job_idx $j --Opt ens --optimizer block_1 --output_dir ./res_ensopt_data --output_file res_ensopt_data.txt --stats_path ${rgs_fil[$j]}")
+
+# for i in 0 4 1 3 2; do
+#     TASKS+=("python cls_benchmark.py --time_limit 1 --refit full --job_idx $i --Opt ens --optimizer block_1 --output_dir ./res_ensopt_data_dropout --output_file res_ensopt_data_dropout.txt --stats_path ${cls_fil[$i]}")
+#     TASKS+=("python rgs_benchmark.py --time_limit 1 --refit full --job_idx $i --Opt ens --optimizer block_1 --output_dir ./res_ensopt_data_dropout --output_file res_ensopt_data_dropout.txt --stats_path ${rgs_fil[$i]}")
+# done
 
 # 最大并发数
 MAX_JOBS=4

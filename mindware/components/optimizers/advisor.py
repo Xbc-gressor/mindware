@@ -19,6 +19,17 @@ class MyAdvisor(Advisor):
     """
     Basic Advisor Class, which adopts a policy to sample a configuration.
     """
+    def alter_model(self, history: History):
+        if not self.auto_alter_model:
+            return
+
+        num_config_evaluated = len(history)
+
+        if num_config_evaluated >= 400:
+            if self.surrogate_type == 'gp':
+                self.surrogate_type = 'prf'
+                logger.info(f'n_observations={num_config_evaluated}, change surrogate model from GP to PRF!')
+                self.setup_bo_basics()
 
     def get_suggestion(self, history: History = None, return_list: bool = False):
         """

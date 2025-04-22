@@ -1,4 +1,37 @@
 
+def equal_ens(ens1, ens2):
+    """
+        "meta_learner": "best",
+        "stack_layers": 2,
+        "ensemble_size": 38,
+        "ratio": 26,
+        "dropout": 20
+    """
+    assert ens1 is not None or ens2 is not None
+
+    if ens1 is None or ens2 is None:
+
+        return False
+
+    if 'ensemble_size' in ens1[0] and ens1[0]['ensemble_size'] != ens2[0]['ensemble_size']:
+        return False
+
+    if 'ratio' in ens1[0] and ens1[0]['ratio'] != ens2[0]['ratio']:
+        return False
+
+    if 'meta_learner' in ens1[0] and ens1[0]['meta_learner'] != ens2[0]['meta_learner']:
+        return False
+
+    if 'stack_layers' in ens1[0] and ens1[0]['stack_layers'] != ens2[0]['stack_layers']:
+        return False
+
+    if 'dropout' in ens1[0]:
+        if ens1[0]['stack_layers'] == 0:
+            return True
+        else:
+            return ens1[0]['dropout'] == ens2[0]['dropout']
+
+
 def better_ens(ens1, ens2):
 
     assert ens1 is not None or ens2 is not None
@@ -7,20 +40,24 @@ def better_ens(ens1, ens2):
 
         return ens2 is None
 
-    if 'val' in ens1:
-        if ens1['val'] != ens2['val']:
-            return ens1['val'] > ens2['val']
+    if 'val' in ens1[1]:
+        if ens1[1]['val'] != ens2[1]['val']:
+            return ens1[1]['val'] > ens2[1]['val']
 
-    if 'train' in ens1:
-        if ens1['train'] != ens2['train']:
-            return ens1['train'] > ens2['train']
+    if 'val_2' in ens1[1]:
+        if ens1[1]['val_2'] != ens2[1]['val_2']:
+            return ens1[1]['val_2'] > ens2[1]['val_2']
 
-    if 'ensemble_size' in ens1 and 'ratio' in ens1:
-        if ens1['ensemble_size'] * ens1['ratio'] != ens2['ensemble_size'] * ens2['ratio']:
-            return ens1['ensemble_size'] * (ens1['ratio'] + 1) > ens2['ensemble_size'] * (ens2['ratio'] + 1)
+    if 'train' in ens1[1]:
+        if ens1[1]['train'] != ens2[1]['train']:
+            return ens1[1]['train'] > ens2[1]['train']
 
-    if 'stack_layers' in ens1:
-        if ens1['stack_layers'] != ens2['stack_layers']:
-            return ens1['stack_layers'] < ens2['stack_layers']
+    if 'ensemble_size' in ens1[0] and 'ratio' in ens1[0]:
+        if ens1[0]['ensemble_size'] * ens1[0]['ratio'] != ens2[0]['ensemble_size'] * ens2[0]['ratio']:
+            return ens1[0]['ensemble_size'] * (ens1[0]['ratio'] + 1) > ens2[0]['ensemble_size'] * (ens2[0]['ratio'] + 1)
+
+    if 'stack_layers' in ens1[0]:
+        if ens1[0]['stack_layers'] != ens2[0]['stack_layers']:
+            return ens1[0]['stack_layers'] < ens2[0]['stack_layers']
 
     return False
