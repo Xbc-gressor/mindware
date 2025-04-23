@@ -108,7 +108,8 @@ class BaseEns(object):
             output_dir=self.output_dir,
             seed=self.seed,
             if_imbal=self.if_imbal,
-            val_nodes=val_nodes
+            val_nodes=val_nodes,
+            n_jobs=self.n_jobs
         )
         self.optimizer = self.build_optimizer()
         self.es = None
@@ -229,7 +230,21 @@ class BaseEns(object):
     def predict_proba(self, test_data: DataNode, refit='full'):
         if self.task_type not in CLS_TASKS:
             raise AttributeError("predict_proba is not supported in regression")
-        return self._predict(test_data, refit=refit)
+        _preds = self._predict(test_data, refit=refit)
+        # if refit != 'partial':
+        #     preds.append(self._predict(test_data, refit=refit))
+        topk = len(_preds['partial'])
+        preds = []
+        for k in range(topk, 0, -1):
+            preds.append(np.mean(_preds[refit][:k], axis=0))
+
+        for k in range(topk, 0, -1):
+            preds.append(np.mean(_preds['partial'][:k], axis=0))
+
+        for k in range(topk, 0, -1):
+            preds.append(np.mean(_preds[refit][:k] + _preds['partial'][:k], axis=0))
+
+        return preds
 
     def get_model_info(self, save=False):
         model_info = dict()

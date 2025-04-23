@@ -78,7 +78,7 @@ class EnsEvaluator(_BaseEvaluator):
             self, fixed_config=None, scorer=None, stats=None, data_node=None, task_type=0,
             resampling_strategy='cv', resampling_params=None,
             timestamp=None, output_dir=None, seed=1,
-            if_imbal=False, val_nodes:dict=None,
+            if_imbal=False, val_nodes:dict=None, n_jobs=1
     ):
 
         self.fixed_config = fixed_config
@@ -114,9 +114,6 @@ class EnsEvaluator(_BaseEvaluator):
             train_data.data = [_x_train, _y_train]
             val_data.data = [_x_val, _y_val]
 
-        self.ensemble_builder = EnsembleBuilder(self.stats, val_data, self.task_type, self.scorer, resampling_params=self.resampling_params,
-                                               output_dir=self.output_dir, seed=self.seed, if_imbal=self.if_imbal)
-
         # # reshuffle
         # ss = self._get_spliter('holdout', test_size=test_size, random_state=self.seed * 16)
         # train_data = self.data_node.copy_(no_data=True)
@@ -139,6 +136,10 @@ class EnsEvaluator(_BaseEvaluator):
         self.topk = 5
         self.best_pool = BestPool(self.topk, self.output_dir, self.datetime, self.logger)
         self.comb_count = 0
+        self.n_jobs = n_jobs
+
+        self.ensemble_builder = EnsembleBuilder(self.stats, val_data, self.task_type, self.scorer, resampling_params=self.resampling_params,
+                                               output_dir=self.output_dir, seed=self.seed, if_imbal=self.if_imbal, thread=self.n_jobs)
 
 
     def _get_spliter(self, resampling_strategy, **kwargs):

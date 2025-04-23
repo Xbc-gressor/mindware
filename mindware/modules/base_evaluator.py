@@ -129,7 +129,7 @@ class BaseEvaluator(_BaseEvaluator):
             train_data.data = [X[train_index], y[train_index]]
             valid_data.data = [X[val_index], y[val_index]]
 
-        return train_index, valid_data
+        return train_data, valid_data
 
     @staticmethod
     def _get_cv_data(task_type, data_node, resampling_params=None, seed=1, only_index=False):

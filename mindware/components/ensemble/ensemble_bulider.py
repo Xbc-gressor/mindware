@@ -85,7 +85,7 @@ class EnsembleBuilder:
                                   task_type=self.task_type, if_imbal=self.if_imbal,
                                   metric=self.metric, resampling_params=self.resampling_params,
                                   output_dir=self.output_dir, seed=self.seed,
-                                  stack_layers=stack_layers, meta_learner=meta_learner, thread=self.thread,
+                                  meta_learner=meta_learner, 
                                   dropout=dropout,
                                   predictions=self.predictions, base_model_mask=base_model_mask)
         elif ensemble_method == 'stacking':

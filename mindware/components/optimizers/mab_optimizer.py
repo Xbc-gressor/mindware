@@ -76,7 +76,6 @@ class MabOptimizer(BaseOptimizer):
                     cs.add_forbidden_clause(forbid)
                 except:
                     pass
-
             if fe_config_space is not None:
                 cs.add_hyperparameters(
                     deepcopy(fe_config_space.get_hyperparameters()))

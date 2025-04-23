@@ -307,12 +307,14 @@ class BaseAutoML(object):
 
             self.fit_ensemble(refit)  # 如果是cv，就不再refit
 
-        self.refit_incumbent(model=refit)
+        self.refit_incumbent(mode=refit)
 
         if self.rmfiles:
             self.rm_files()
 
-        return self.incumbent_perf
+        stats_path = os.path.join(self.output_dir, '%s_topk_config.pkl' % self.datetime)
+
+        return self.incumbent_perf, stats_path
 
     def refit_incumbent(self, mode):
         check_mode(mode)
