@@ -6,7 +6,7 @@ from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.metrics._scorer import _BaseScorer
 from sklearn.preprocessing import OneHotEncoder
 
-from mindware.components.ensemble.blending import Blending
+from mindware.components.ensemble.blending import Blending, Besting
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.modules.base_evaluator import fetch_predict_estimator, fetch_predict_results
 from mindware.components.feature_engineering.parse import parse_config, construct_node
@@ -21,6 +21,65 @@ from mindware.utils.data_manager import DataManager
 from mindware.modules.base_evaluator import BaseEvaluator
 
 
+class BestStack:
+
+    def __init__(self, max_k):
+
+        self.max_k = max_k
+        self.best_configs = [None] * self.max_k
+        self.best_heads = [None] * self.max_k
+        self.meta_learners = [None] * self.max_k
+
+    def add_config(self, can_config, head, meta_learner):
+
+        assert can_config[0]['stack_layers'] + 1 == int(head.split('-')[1][1:])
+
+        idx = 0
+        while idx < self.max_k and better_ens(can_config, self.best_configs[idx]):
+            idx += 1
+        if idx != 0:
+            for i in range(0, idx - 1):
+                self.best_configs[i] = self.best_configs[i + 1]
+                self.best_heads[i] = self.best_heads[i + 1]
+                self.meta_learners[i] = self.meta_learners[i + 1]
+            self.best_configs[idx - 1] = can_config
+            self.best_heads[idx - 1] = head
+            self.meta_learners[idx - 1] = meta_learner
+
+    def drop_config(self, idx):
+        self.best_configs[idx] = None
+        self.best_heads[idx] = None
+        self.meta_learners[idx] = None
+
+    @property
+    def max_stack_layers(self):
+
+        max_stack_layers = 0
+        for i in range(self.max_k):
+            if self.best_configs[i] is None: continue
+
+            max_stack_layers = max(max_stack_layers, self.best_configs[i][0]['stack_layers'])
+
+        return max_stack_layers
+
+    def max_only_best(self):
+        max_stack_layers = self.max_stack_layers
+        best_idx = None
+        count = 0
+        for i in range(self.max_k):
+            head = self.best_heads[i]
+            if head is None: continue
+
+            tmp = head.split('-')
+            if int(tmp[-1][1:]) == max_stack_layers + 1:
+                count += 1
+                if tmp[0].startswith('best'):
+                    best_idx = int(tmp[0].split('_')[1][3:])
+
+        only_best = (count == 1) & (best_idx is not None)
+
+        return only_best, best_idx
+
 
 class Stacking(Blending):
     def __init__(self, stats,
@@ -29,7 +88,7 @@ class Stacking(Blending):
                  metric: _BaseScorer, resampling_params = None,
                  output_dir=None, seed=None,
                  meta_learner='weighted', stack_layers = 1, thread=20,
-                 skip_connect=True, retain=True, dropout=0,
+                 skip_connect=True, retain=True, dropout=0, max_k=3,
                  predictions=None, base_model_mask=None, opt=False):
         super().__init__(stats=stats,
                 ensemble_size=ensemble_size,
@@ -62,8 +121,8 @@ class Stacking(Blending):
         self.final_labels = None
         self.ori_x = None
 
-        self.best_configs = [None, None, None]
-        self.meta_learners = [None, None, None]
+        self.best_stack = BestStack(max_k)
+
         self.last_real_loss = None
 
         self.opt = opt
@@ -218,15 +277,18 @@ class Stacking(Blending):
     def register_leader(self, head_output, new_features, last_features, final_labels, layer):
 
         n_base_model = self.ensemble_size
-        n_dim = last_features['train'].shape[1] // n_base_model
+        best_config = None
+        best_head = None
 
         # 计算val和test上的head输出
         head_outputs = {'train': head_output}
         for config in ['weighted', 'lightgbm', 'linear']:
+            head = f"{config}-L{layer}"
             meta_learner = Blending.build_meta_learner(config, self.task_type, last_features['train'], final_labels['train'],
                                 ensemble_size=n_base_model, if_imbal=self.if_imbal, metric=self.metric)
 
             for key in last_features.keys():
+                if key == 'train': continue
                 pred_features = last_features[key]
                 if config in ['weighted', 'avging']:
                     pred = meta_learner.stack_predict(pred_features)
@@ -235,37 +297,25 @@ class Stacking(Blending):
                         pred = meta_learner.predict_proba(pred_features)
                     else:
                         pred = meta_learner.predict(pred_features)
-
                 if len(pred.shape) == 1:
                     pred = pred.reshape(-1, 1)
-
-                head = f"{config}-L{layer}"
                 if key not in head_outputs:
                     head_outputs[key] = {}
                 head_outputs[key][head] = pred
 
-        # best_perf = -np.inf
-        best_config = None
-        best_head = None
-        # judge = 'train' if 'val' not in head_outputs else 'val'
+            perf = self.cal_scores(head_outputs, final_labels, n_base_model=1)
+            for _key in perf:
+                self.leader_board[_key][head] = perf[_key][0]
 
-        for key in head_outputs.keys():
-            head_output = head_outputs[key]
-            for head in head_output.keys():
-                perf = self.cal_scores({key: head_output[head]}, {key: final_labels[key]}, n_base_model=1)
-                for _key in perf:
-                    self.leader_board[_key][head] = perf[_key][0]
-
-        for head in head_outputs['train'].keys():
-            meta_learner, _ = head.split('-')
-
-            can_config = ({'meta_learner': meta_learner, 'stack_layers': layer - 1},
+            can_config = ({'meta_learner': config, 'stack_layers': layer - 1},
                           {'train': self.leader_board['train'][head], 'val': self.leader_board['val'][head], 'val_2': self.leader_board['val_2'][head]})
+
             if better_ens(can_config, best_config):
                 best_config = can_config
                 best_head = head
-                # best_last_features['train'] = last_features['train'].copy()
-                # best_last_features['val'] = last_features['val'].copy()
+
+            self.best_stack.add_config(can_config, head, meta_learner)
+
 
         if new_features is not None:
             self.last_real_loss = self.cal_scores(new_features, final_labels, self.ensemble_size)
@@ -280,15 +330,64 @@ class Stacking(Blending):
 
             can_config = ({'meta_learner': 'best', 'stack_layers': layer},
                         {'train': self.last_real_loss['train'][_best_idx], 'val': self.last_real_loss['val'][_best_idx], 'val_2': self.last_real_loss['val_2'][_best_idx]})
+
             if better_ens(can_config, best_config):
                 best_config = can_config
                 best_head = head
-                # best_last_features['train'] = np.full(last_features['train'].shape, np.nan)
-                # best_last_features['train'][:, _best_idx * n_dim:(_best_idx + 1) * n_dim] = last_features['train'][:, _best_idx * n_dim:(_best_idx + 1) * n_dim]
-                # best_last_features['val'] = np.full(last_features['val'].shape, np.nan)
-                # best_last_features['val'][:, _best_idx * n_dim:(_best_idx + 1) * n_dim] = last_features['val'][:, _best_idx * n_dim:(_best_idx + 1) * n_dim]
+
+            meta_learner = Besting(self.task_type, _best_idx, self.ensemble_size)
+            self.best_stack.add_config(can_config, head, meta_learner)
 
         return best_config, best_head
+
+    def clear_stack(self):
+        self.stack_layers = self.best_stack.max_stack_layers
+        for key in self.stack_models.keys():
+            layer = int(key.split('_')[1])
+            if layer > self.stack_layers:
+                self.stack_models[key] = None
+
+        max_only_best, best_idx = self.best_stack.max_only_best()
+        if max_only_best:
+            for i in range(len(self.stack_models[f'layer_{self.stack_layers}'])):
+                if i != best_idx:
+                    self.stack_models[f'layer_{self.stack_layers}'][i] = None
+
+    def check_stack(self, layer, last_features, final_labels, train):
+
+        tar_idxs = []
+        for i in range(self.best_stack.max_k):
+            if self.best_stack.best_heads[i] is None: continue
+
+            head = self.best_stack.best_heads[i]
+            if int(head.split('-')[1][1:]) == layer:
+                tar_idxs.append(i)
+
+        predictions = None
+        if train:
+            for idx in tar_idxs:
+                meta_method = self.best_stack.best_configs[0]['meta_learner']
+                if meta_method.startswith('best'):
+                    continue
+                meta_learner = Blending.build_meta_learner(meta_method, self.task_type, last_features['train'], final_labels['train'],
+                                                           ensemble_size=self.ensemble_size, if_imbal=self.if_imbal, metric=self.metric)
+                self.best_stack.meta_learners[idx] = meta_learner
+        else:
+            predictions = [None] * self.best_stack.max_k
+            for idx in tar_idxs:
+                meta_method = self.best_stack.best_configs[0]['meta_learner']
+                meta_learner = self.best_stack.meta_learners[idx]
+                if meta_method in ['weighted', 'avging'] or meta_method.startswith('best_'):
+                    final_pred = meta_learner.stack_predict(last_features['test'])
+                else:
+                    if self.task_type in CLS_TASKS:
+                        final_pred = meta_learner.predict_proba(last_features['test'])
+                    else:
+                        final_pred = meta_learner.predict(last_features['test'])
+
+                predictions[idx] = final_pred
+
+        return predictions
 
     def forward(self, base_features: dict, final_labels: dict=None, train=False, ori_xs: dict=None):
 
@@ -322,10 +421,10 @@ class Stacking(Blending):
 
         best_config = None
         best_head = None
-        best_last_features = last_features
 
+        stack_predictions = [None] * self.best_stack.max_k
         if self.stack_layers > 0:
-            for layer in range(self.stack_layers):
+            for layer in range(self.stack_layers+1):
 
                 if train:
 
@@ -351,6 +450,8 @@ class Stacking(Blending):
                         if sms[i] is None: fail_mask[i] = True
 
                     if self.lock:
+                        # refit meta_learner
+                        self.check_stack(layer+1, last_features, final_labels, train)
                         fail_mask = np.repeat(fail_mask, n_dim)
                         for key in new_features.keys():
                             last_features[key][:, ~fail_mask] = new_features[key][:, ~fail_mask]
@@ -359,7 +460,6 @@ class Stacking(Blending):
                         if better_ens(_best_config, best_config):
                             best_config = _best_config
                             best_head = _best_head
-                            best_last_features = deepcopy(last_features)
                         self.logger.info(f"Cost of Layer{layer+1} training with {self.thread} threads: {cost}s")
 
                         self.train_cost.append(cost)
@@ -389,8 +489,8 @@ class Stacking(Blending):
 
                         if np.all(fail_mask | bad_mask):
                             self.logger.info("None model gets improved! early stop!")
-                            if not (best_head.startswith('best_') and best_head.endswith(f'L{layer+2}')):
-                                self.stack_models.pop('layer_%d' % (layer+1))
+                            # if not (best_head.startswith('best_') and best_head.endswith(f'L{layer+2}')):
+                            #     self.stack_models.pop('layer_%d' % (layer+1))
                             break
                         else:
                             if layer == self.stack_layers - 1 and not self.lock:
@@ -403,8 +503,12 @@ class Stacking(Blending):
                                 if better_ens(_best_config, best_config):
                                     best_config = _best_config
                                     best_head = _best_head
-                                    best_last_features = deepcopy(last_features)
                 else:
+
+                    predictions = self.check_stack(layer + 1, last_features, final_labels, train)
+                    for idx, pre in enumerate(predictions):
+                        if pre is not None:
+                            stack_predictions[idx] = pre
                     new_node = DataManager(last_features['test'], None).get_data_node(last_features['test'], None)
                     sms = self.stack_models['layer_%d' % (layer+1)]
                     for key in last_features.keys():
@@ -425,39 +529,46 @@ class Stacking(Blending):
                                 new_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = last_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim]
 
                     last_features = deepcopy(new_features)
-                    best_last_features = last_features
+                    if layer == self.stack_layers - 1:
+                        predictions = self.check_stack(layer + 1, last_features, final_labels, train)
 
         if train:
             if self.thread > 1:
                 rm_ori_x(ori_xs, _output_dir)
 
-            if self.lock or not self.opt:
-                best_last_features = last_features
+            if self.lock:
+                self.check_stack(self.stack_layers+1, last_features, final_labels, train)
             else:
-                self.final_labels = final_labels
-                self.ori_x = {}
-                for key in ori_xs.keys():
-                    self.ori_x[key] = ori_xs[key]
-                self.best_config = best_config
+                # self.final_labels = final_labels
+                # self.ori_x = {}
+                # for key in ori_xs.keys():
+                #     self.ori_x[key] = ori_xs[key]
+
+                # tmp = best_head.split('-')
+                # self.meta_method = tmp[0]
+                # best_layer = int(tmp[1][1:])
+                # self.stack_layers = best_layer - 1
+
+                # self.best_config = best_config
+                # if 'best_' in self.meta_method:
+                #     best_idx = int(self.meta_method.split('_')[1][3:])
+                #     for i in range(len(self.stack_models[f'layer_{self.stack_layers}'])):
+                #         if i != best_idx:
+                #             self.stack_models[f'layer_{self.stack_layers}'][i] = None
+
                 tmp = best_head.split('-')
-                if self.meta_method == 'auto':
-                    self.meta_method = tmp[0]
-                    best_layer = int(tmp[1][1:])
-                    self.stack_layers = best_layer - 1
-                    for key in self.stack_models.keys():
-                        layer = int(key.split('_')[1])
-                        if layer > self.stack_layers:
-                            self.stack_models[key] = None
+                self.meta_method = tmp[0]
+                self.best_config = best_config
 
-                if 'best_' in self.meta_method:
-                    best_idx = int(self.meta_method.split('_')[1][3:])
-                    for i in range(len(self.stack_models[f'layer_{self.stack_layers}'])):
-                        if i != best_idx:
-                            self.stack_models[f'layer_{self.stack_layers}'][i] = None
-
+                self.clear_stack()  # 清掉多余的堆叠
                 self.lock = True  # 锁定
+        else:
+            predictions = self.check_stack(self.stack_layers + 1, last_features, final_labels, train)
+            for idx, pre in enumerate(predictions):
+                if pre is not None:
+                    stack_predictions[idx] = pre
 
-        return best_last_features
+        return stack_predictions
 
     def get_ens_model_info(self):
         ens_info = super().get_ens_model_info()
@@ -486,26 +597,28 @@ class Stacking(Blending):
         if val_nodes is not None:
             for key in val_nodes.keys():
                 final_labels[key] = val_nodes[key].data[1]
-        last_features = self.forward(base_features, final_labels, train=True, ori_xs=ori_xs)
 
-        self.meta_learner = self.build_meta_learner(self.meta_method, self.task_type, last_features['train'], final_labels['train'],
-                                                    ensemble_size=self.ensemble_size, if_imbal=self.if_imbal, metric=self.metric)
+        self.forward(base_features, final_labels, train=True, ori_xs=ori_xs)
+        # last_features = self.forward(base_features, final_labels, train=True, ori_xs=ori_xs)
+        # self.meta_learner = self.build_meta_learner(self.meta_method, self.task_type, last_features['train'], final_labels['train'],
+        #                                             ensemble_size=self.ensemble_size, if_imbal=self.if_imbal, metric=self.metric)
 
         return self
 
     def predict(self, data, refit='full'):
         base_features, ori_xs = self.get_feature(data, refit)
-        last_features = self.forward({'test': base_features}, ori_xs={'test': ori_xs})  #, final_labels = {'test': data.data[1]}
-        # Get predictions from meta-learner
-        if self.meta_method in ['weighted', 'avging'] or self.meta_method.startswith('best_'):
-            final_pred = self.meta_learner.stack_predict(last_features['test'])
-        else:
-            if self.task_type in CLS_TASKS:
-                final_pred = self.meta_learner.predict_proba(last_features['test'])
-            else:
-                final_pred = self.meta_learner.predict(last_features['test'])
+        stack_predictions = self.forward({'test': base_features}, ori_xs={'test': ori_xs})  #, final_labels = {'test': data.data[1]}
+        # last_features = self.forward({'test': base_features}, ori_xs={'test': ori_xs})  #, final_labels = {'test': data.data[1]}
+        # # Get predictions from meta-learner
+        # if self.meta_method in ['weighted', 'avging'] or self.meta_method.startswith('best_'):
+        #     final_pred = self.meta_learner.stack_predict(last_features['test'])
+        # else:
+        #     if self.task_type in CLS_TASKS:
+        #         final_pred = self.meta_learner.predict_proba(last_features['test'])
+        #     else:
+        #         final_pred = self.meta_learner.predict(last_features['test'])
 
-        return final_pred
+        return stack_predictions
 
     def refit(self, datanode, mode):
         # super().refit(datanode, mode)
@@ -580,8 +693,9 @@ class Stacking(Blending):
             base_features, ori_xs = self.get_base_features(datanode, mode=mode)
 
             final_labels = {'train': datanode.data[1]}
-            last_features = self.forward(base_features, final_labels, train=True, ori_xs=ori_xs)
+            self.forward(base_features, final_labels, train=True, ori_xs=ori_xs)
 
-            self.meta_learner = self.build_meta_learner(self.meta_method, self.task_type, last_features['train'], final_labels['train'],
-                                                        ensemble_size=self.ensemble_size, if_imbal=self.if_imbal, metric=self.metric)
+            # last_features = self.forward(base_features, final_labels, train=True, ori_xs=ori_xs)
+            # self.meta_learner = self.build_meta_learner(self.meta_method, self.task_type, last_features['train'], final_labels['train'],
+            #                                             ensemble_size=self.ensemble_size, if_imbal=self.if_imbal, metric=self.metric)
 
