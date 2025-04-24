@@ -181,42 +181,30 @@ class BaseEns(object):
 
     def _predict(self, test_data: DataNode, refit='full'):
 
-        if self.es is None:
-            config = self.incumbent.copy()
-            model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
-            _, ensemble_builder, learder_board = CombinedTopKModelSaver._load(model_path)
-            self.es = ensemble_builder
+        stack_predictions, refit_stack_predictions = self.evaluator.best_pool.predict(test_data, data_node=self.data_node, refit=refit)
 
-        predictions = {'partial': [], refit: []}
-
-        for es in self.es_list:
-            predictions['partial'].append(es.predict(test_data, 'partial'))
+        predictions = {'partial': stack_predictions}
 
         if refit != 'partial':
-            for es in self.es_list:
-                es.refit(datanode=self.data_node, mode=refit)
-
-        for es in self.es_list:
-            predictions[refit].append(es.predict(test_data, refit))
+            predictions[refit] = refit_stack_predictions
 
         self.predictions = predictions
 
-        return predictions
+        topk = len(stack_predictions)
+        preds = []
+        if refit != 'partial':
+            for k in range(topk, 0, -1):
+                preds.append(np.mean(refit_stack_predictions[-k:], axis=0))
+            for k in range(topk, 0, -1):
+                preds.append(np.mean(refit_stack_predictions[-k:] + stack_predictions[-k:], axis=0))
+
+        for k in range(topk, 0, -1):
+            preds.append(np.mean(stack_predictions[-k:], axis=0))
+
+        return preds
 
     def predict(self, test_data: DataNode, refit='full'):
-        _preds = self._predict(test_data, refit=refit)
-        # if refit != 'partial':
-        #     preds.append(self._predict(test_data, refit=refit))
-        topk = len(_preds['partial'])
-        preds = []
-        for k in range(topk, 0, -1):
-            preds.append(np.mean(_preds[refit][:k], axis=0))
-
-        for k in range(topk, 0, -1):
-            preds.append(np.mean(_preds['partial'][:k], axis=0))
-
-        for k in range(topk, 0, -1):
-            preds.append(np.mean(_preds[refit][:k] + _preds['partial'][:k], axis=0))
+        preds = self._predict(test_data, refit=refit)
 
         results = []
         for pred in preds:
@@ -230,19 +218,7 @@ class BaseEns(object):
     def predict_proba(self, test_data: DataNode, refit='full'):
         if self.task_type not in CLS_TASKS:
             raise AttributeError("predict_proba is not supported in regression")
-        _preds = self._predict(test_data, refit=refit)
-        # if refit != 'partial':
-        #     preds.append(self._predict(test_data, refit=refit))
-        topk = len(_preds['partial'])
-        preds = []
-        for k in range(topk, 0, -1):
-            preds.append(np.mean(_preds[refit][:k], axis=0))
-
-        for k in range(topk, 0, -1):
-            preds.append(np.mean(_preds['partial'][:k], axis=0))
-
-        for k in range(topk, 0, -1):
-            preds.append(np.mean(_preds[refit][:k] + _preds['partial'][:k], axis=0))
+        preds = self._predict(test_data, refit=refit)
 
         return preds
 

@@ -1,5 +1,8 @@
+from nose.importer import remove_path
 from sklearn.metrics._scorer import balanced_accuracy_scorer, _ThresholdScorer, _PredictScorer
 from sklearn.preprocessing import OneHotEncoder
+
+from examples.myExps.predict_frompkl import predictions
 from mindware.components.evaluators.base_evaluator import _BaseEvaluator
 
 from mindware.utils.logging_utils import get_logger
@@ -10,6 +13,7 @@ from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
 import os
 import numpy as np
 import warnings
+from mindware.components.feature_engineering.transformation_graph import DataNode
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.modules.ens.ens_utils import equal_ens, better_ens
 from copy import deepcopy
@@ -19,16 +23,18 @@ from copy import deepcopy
 
 class BestPool:
 
-    def __init__(self, topk, output_dir, datetime, logger):
+    def __init__(self, topk, max_k, output_dir, datetime, logger):
         self.topk = topk
+        self.max_k = max_k
         self.output_dir = output_dir
         self.best_model_paths = [None] * self.topk
         self.best_perfs = [-np.inf] * self.topk
         self.best_configs = [None] * self.topk
+        self.inner_idxs = [None] * self.topk
         self.datetime = datetime
         self.logger = logger
 
-    def add_config(self, can_config, learder_board, ensemble_builder):
+    def add_config(self, can_config, learder_board, ensemble_builder, inner_idx):
         idx = 0
         while idx < self.topk:
             # 去掉完全一样的config
@@ -40,23 +46,29 @@ class BestPool:
         if idx == 0:
             return False
 
-        if self.best_model_paths[0] is not None:
-            os.remove(self.best_model_paths[0])
-            self.logger.info(f"Remove old best ens model: {self.best_model_paths[0]}!")
+        remove_path = self.best_model_paths[0]
+        if remove_path is not None:
+            remove_idx = self.inner_idxs[0]
+            if remove_idx == self.max_k - 1:
+                os.remove(self.best_model_paths[0])
+                self.logger.info(f"Remove old best ens model: {self.best_model_paths[0]}!")
 
         for i in range(0, idx-1):
             self.best_model_paths[i] = self.best_model_paths[i+1]
             self.best_perfs[i] = self.best_perfs[i+1]
             self.best_configs[i] = self.best_configs[i+1]
+            self.inner_idxs[i] = self.inner_idxs[i+1]
 
-        config = can_config[0].copy()
+        config = {'ensemble_size': can_config[0]['ensemble_size'], 'ratio': can_config[0]['ratio'], 'dropout': can_config[0]['dropout']}
         model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
-        self.logger.info(f"Save new best ens model: {model_path}!")
-        CombinedTopKModelSaver.save_config([None, ensemble_builder, learder_board], model_path)
+        if not os.path.exists(model_path):
+            self.logger.info(f"Save new best ens model: {model_path}!")
+            CombinedTopKModelSaver.save_config([None, ensemble_builder, learder_board], model_path)
 
         self.best_model_paths[idx-1] = model_path
         self.best_perfs[idx-1] = can_config[1]['val']
         self.best_configs[idx-1] = can_config
+        self.inner_idxs[idx-1] = inner_idx
 
         return True
 
@@ -71,6 +83,46 @@ class BestPool:
             info.append(config)
 
         return info
+
+    def predict(self, test_data: DataNode, data_node: DataNode=None, refit='full'):
+        stack_predictions = [None] * self.topk
+        refit_stack_predictions = None
+        if refit != 'partial':
+            refit_stack_predictions = [None] * self.topk
+        model_path_dict = {}
+        none_num = 0
+        for i in range(self.topk):
+            model_path = self.best_model_paths[i]
+            if model_path is None:
+                none_num += 1
+                continue
+            if model_path not in model_path_dict:
+                model_path_dict[model_path] = []
+            model_path_dict[model_path].append(i)
+
+        for model_path, idxs in model_path_dict.items():
+            _, ensemble_builder, learder_board = CombinedTopKModelSaver._load(model_path)
+            inner_idxs = [self.inner_idxs[idx] for idx in idxs]
+            for i in range(np.min(inner_idxs)):
+                ensemble_builder.model.best_stack.drop_config(i)
+            ensemble_builder.model.clear_stack()
+
+            predictions = ensemble_builder.predict(test_data, 'partial')
+            for inner_idx, idx in zip(inner_idxs, idxs):
+                stack_predictions[idx] = predictions[inner_idx]
+
+            if refit != 'partial':
+                assert data_node is not None
+                ensemble_builder.refit(datanode=data_node, mode=refit)
+                predictions = ensemble_builder.predict(test_data, 'partial')
+                for inner_idx, idx in zip(inner_idxs, idxs):
+                    refit_stack_predictions[idx] = predictions[inner_idx]
+
+        stack_predictions = stack_predictions[none_num:]
+        if refit != 'partial':
+            refit_stack_predictions = refit_stack_predictions[none_num:]
+
+        return stack_predictions, refit_stack_predictions
 
 
 class EnsEvaluator(_BaseEvaluator):
@@ -99,7 +151,6 @@ class EnsEvaluator(_BaseEvaluator):
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
 
         self.datetime = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
-
 
         test_size = 0.33
         if self.resampling_params is not None and 'test_size' in self.resampling_params:
@@ -133,8 +184,9 @@ class EnsEvaluator(_BaseEvaluator):
         self.leader_board = dict()
         self.cache = dict()
 
-        self.topk = 5
-        self.best_pool = BestPool(self.topk, self.output_dir, self.datetime, self.logger)
+        self.topk = 10
+        self.max_k = 3
+        self.best_pool = BestPool(self.topk, self.max_k, self.output_dir, self.datetime, self.logger)
         self.comb_count = 0
         self.n_jobs = n_jobs
 
@@ -185,7 +237,7 @@ class EnsEvaluator(_BaseEvaluator):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             base_model_mask = self.ensemble_builder.build_ensemble(ensemble_method='stacking', ensemble_size=config['ensemble_size'], ratio=config['ratio']/100, dropout=config['dropout']/100,
-                                                                stack_layers=config['stack_layers'], meta_learner=config['meta_learner'], opt=True)
+                                                                stack_layers=config['stack_layers'], meta_learner=config['meta_learner'], max_k=self.max_k, opt=True)
             cache, key = self.check_cache(base_model_mask, config['dropout'])
 
             if cache:
@@ -197,9 +249,14 @@ class EnsEvaluator(_BaseEvaluator):
                 self.comb_count += 1
 
                 # best_perf = np.max(list(learder_board['val'].values()))
-                best_config = deepcopy(self.ensemble_builder.model.best_config)
-                best_config[0].update({'ensemble_size': config['ensemble_size'], 'ratio': config['ratio'], 'dropout': config['dropout']})
-                self.best_pool.add_config(best_config, learder_board, self.ensemble_builder)
+                for idx in range(self.max_k):
+                    best_config = deepcopy(self.ensemble_builder.model.best_stack.best_configs[idx])
+                    if best_config is None: continue
+                    best_config[0].update({'ensemble_size': config['ensemble_size'], 'ratio': config['ratio'], 'dropout': config['dropout']})
+                    flag = self.best_pool.add_config(best_config, learder_board, self.ensemble_builder, idx)
+                    if not flag:
+                        self.ensemble_builder.model.best_stack.drop_config(idx)
+                        self.ensemble_builder.model.clear_stack()
                 # if better_ens(best_config, self.best_config):
                 #     self.best_config = best_config.copy()
                 #     model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
