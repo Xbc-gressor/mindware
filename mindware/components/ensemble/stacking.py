@@ -265,7 +265,13 @@ class Stacking(Blending):
                     if isinstance(self.metric, _ThresholdScorer):
                         if len(_final_label.shape) == 1:
                             _final_label = self.encoder.transform(np.reshape(_final_label, (len(_final_label), 1))).toarray()
-                    loss.append(self.metric._score_func(_final_label, tmp) * self.metric._sign)
+
+                    score = -np.inf
+                    try:
+                        score = self.metric._score_func(_final_label, tmp) * self.metric._sign
+                    except:
+                        self.logger.info("Error when cal score!")
+                    loss.append(score)
             print(key, np.mean(loss), loss)
 
             losses[key] = loss
