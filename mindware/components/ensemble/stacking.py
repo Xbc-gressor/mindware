@@ -145,9 +145,9 @@ class Stacking(Blending):
                     ori_config_paths.append(path)
                     if self.skip_connect:
                         if ori_xs['train'] is None: ori_xs = {'train': []}
-                        # model_path = path if mode == 'partial' else CombinedTopKModelSaver.get_parse_path(path, 'full')
-                        # op_list, _, _ = CombinedTopKModelSaver._load(model_path)
-                        _, op_list = parse_config(datanode, config, record=True, if_imbal=self.if_imbal)
+                        model_path = path # if mode == 'partial' else CombinedTopKModelSaver.get_parse_path(path, 'full')
+                        op_list, _, _ = CombinedTopKModelSaver._load(model_path)
+                        # _, op_list = parse_config(datanode, config, record=True, if_imbal=self.if_imbal)
 
                         ori_x = construct_node(datanode.copy_(), op_list).data[0]
                         ori_xs['train'].append(ori_x)
@@ -218,10 +218,9 @@ class Stacking(Blending):
                         base_features[:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] += pred[:, -n_dim:] / len(estimators)
                     if self.skip_connect:
                         if ori_xs is None: ori_xs = []
-                        # model_path = path if mode == 'partial' else CombinedTopKModelSaver.get_parse_path(path, 'full')
-                        # op_list, _, _ = CombinedTopKModelSaver._load(model_path)
-                        # _, op_list = parse_config(datanode, config, record=True, if_imbal=self.if_imbal)
-                        ori_x = construct_node(datanode.copy_(), op_lists[0]).data[0]
+                        model_path = path # if mode == 'partial' else CombinedTopKModelSaver.get_parse_path(path, 'full')
+                        op_list, _, _ = CombinedTopKModelSaver._load(model_path)
+                        ori_x = construct_node(datanode.copy_(), op_list).data[0]
                         ori_xs.append(ori_x)
                     suc_cnt += 1
 
@@ -282,7 +281,7 @@ class Stacking(Blending):
 
         # 计算val和test上的head输出
         head_outputs = {'train': head_output}
-        for config in ['weighted', 'lightgbm', 'linear']:
+        for config in ['weighted', 'linear']:  # 'lightgbm', 
             head = f"{config}-L{layer}"
             meta_learner = Blending.build_meta_learner(config, self.task_type, last_features['train'], final_labels['train'],
                                 ensemble_size=n_base_model, if_imbal=self.if_imbal, metric=self.metric)
@@ -303,9 +302,10 @@ class Stacking(Blending):
                     head_outputs[key] = {}
                 head_outputs[key][head] = pred
 
-            perf = self.cal_scores(head_outputs, final_labels, n_base_model=1)
-            for _key in perf:
-                self.leader_board[_key][head] = perf[_key][0]
+            for key in last_features.keys():
+                perf = self.cal_scores({key: head_outputs[key][head]}, {key: final_labels[key]}, n_base_model=1)
+                for _key in perf:
+                    self.leader_board[_key][head] = perf[_key][0]
 
             can_config = ({'meta_learner': config, 'stack_layers': layer - 1},
                           {'train': self.leader_board['train'][head], 'val': self.leader_board['val'][head], 'val_2': self.leader_board['val_2'][head]})
@@ -366,7 +366,7 @@ class Stacking(Blending):
         predictions = None
         if train:
             for idx in tar_idxs:
-                meta_method = self.best_stack.best_configs[0]['meta_learner']
+                meta_method = self.best_stack.best_configs[idx][0]['meta_learner']
                 if meta_method.startswith('best'):
                     continue
                 meta_learner = Blending.build_meta_learner(meta_method, self.task_type, last_features['train'], final_labels['train'],
@@ -375,9 +375,9 @@ class Stacking(Blending):
         else:
             predictions = [None] * self.best_stack.max_k
             for idx in tar_idxs:
-                meta_method = self.best_stack.best_configs[0]['meta_learner']
+                meta_method = self.best_stack.best_configs[idx][0]['meta_learner']
                 meta_learner = self.best_stack.meta_learners[idx]
-                if meta_method in ['weighted', 'avging'] or meta_method.startswith('best_'):
+                if meta_method in ['weighted', 'avging'] or meta_method.startswith('best'):
                     final_pred = meta_learner.stack_predict(last_features['test'])
                 else:
                     if self.task_type in CLS_TASKS:
@@ -424,7 +424,7 @@ class Stacking(Blending):
 
         stack_predictions = [None] * self.best_stack.max_k
         if self.stack_layers > 0:
-            for layer in range(self.stack_layers+1):
+            for layer in range(self.stack_layers):
 
                 if train:
 

@@ -159,20 +159,20 @@ class BaseEns(object):
             if not (self.early_stop_flag or self.timeout_flag):
                 self.iterate()
 
-        config = self.incumbent.copy()
-        model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
-        _, ensemble_builder, learder_board = CombinedTopKModelSaver._load(model_path)
-        self.es = ensemble_builder
+        # config = self.incumbent.copy()
+        # model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
+        # _, ensemble_builder, learder_board = CombinedTopKModelSaver._load(model_path)
+        # self.es = ensemble_builder
 
-        self.es_list.append(ensemble_builder)
+        # self.es_list.append(ensemble_builder)
 
-        best_model_paths = self.evaluator.best_pool.best_model_paths
-        for i in range(len(best_model_paths)-2, -1, -1):
-            model_path = best_model_paths[i]
-            if model_path is None:
-                break
-            _, ensemble_builder, _ = CombinedTopKModelSaver._load(model_path)
-            self.es_list.append(ensemble_builder)
+        # best_model_paths = self.evaluator.best_pool.best_model_paths
+        # for i in range(len(best_model_paths)-2, -1, -1):
+        #     model_path = best_model_paths[i]
+        #     if model_path is None:
+        #         break
+        #     _, ensemble_builder, _ = CombinedTopKModelSaver._load(model_path)
+        #     self.es_list.append(ensemble_builder)
 
         # if refit != 'partial':
         #     self.es.refit(datanode=self.data_node, mode=refit)
@@ -189,6 +189,8 @@ class BaseEns(object):
             predictions[refit] = refit_stack_predictions
 
         self.predictions = predictions
+        with open(os.path.join(self.output_dir, 'predictions.pkl'), 'wb') as f:
+            pkl.dump(self.predictions, f)
 
         topk = len(stack_predictions)
         preds = []
@@ -227,7 +229,7 @@ class BaseEns(object):
 
         model_info['best_pool'] = self.evaluator.best_pool.get_best_pool_info()
         model_info['best'] = self.incumbent
-        model_info['best_info'] = self.es.get_ens_model_info()
+        # model_info['best_info'] = self.es.get_ens_model_info()
         leader_board = self.evaluator.leader_board
         sorted_head = sorted(list(leader_board['train'].keys()), key=lambda x: (-leader_board['val'][x], -leader_board['val_2'][x], -leader_board['train'][x])) 
         model_info['leader_board'] = [f"{head}: {', '.join(['%s-%.5f' % (key, leader_board[key][head]) for key in leader_board.keys()])}" for head in sorted_head]

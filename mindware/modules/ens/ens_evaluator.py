@@ -1,8 +1,6 @@
-from nose.importer import remove_path
 from sklearn.metrics._scorer import balanced_accuracy_scorer, _ThresholdScorer, _PredictScorer
 from sklearn.preprocessing import OneHotEncoder
 
-from examples.myExps.predict_frompkl import predictions
 from mindware.components.evaluators.base_evaluator import _BaseEvaluator
 
 from mindware.utils.logging_utils import get_logger
@@ -114,7 +112,7 @@ class BestPool:
             if refit != 'partial':
                 assert data_node is not None
                 ensemble_builder.refit(datanode=data_node, mode=refit)
-                predictions = ensemble_builder.predict(test_data, 'partial')
+                predictions = ensemble_builder.predict(test_data, refit)
                 for inner_idx, idx in zip(inner_idxs, idxs):
                     refit_stack_predictions[idx] = predictions[inner_idx]
 

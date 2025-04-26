@@ -67,7 +67,7 @@ if __name__ == '__main__':
     parser.add_argument('--ensemble_size', type=int, default=50, help='ensemble size')
     parser.add_argument('--ratio', type=float, default=0.4, help='ensemble size')
     parser.add_argument('--layer', type=int, default=0, help='ensemble threads')
-    parser.add_argument('--ens_thr', type=int, default=20, help='ensemble threads')
+    parser.add_argument('--thread', type=int, default=20, help='ensemble threads')
     
     parser.add_argument('--layer_upper', type=int, default=4)
     parser.add_argument('--size_upper', type=int, default=40)
@@ -196,7 +196,7 @@ if __name__ == '__main__':
                           metric=metric, data_node=train_data_node,
                           optimizer='smac',
                           time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
-                          output_dir=args.output_dir, seed=1, n_jobs=1, task_id=dataset, 
+                          output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset, 
                           val_nodes={'test': test_data_node},
                           layer_upper=args.layer_upper, size_upper=args.size_upper)
                 print(opt.get_conf(save=True))

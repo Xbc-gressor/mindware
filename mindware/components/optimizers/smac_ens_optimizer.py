@@ -44,7 +44,7 @@ class SMACEnsOptimizer(BaseOptimizer):
         _logger_kwargs = {'force_init': False}  # do not init logger in advisor
         self.config_advisor = MyAdvisor(config_space,
                                     initial_trials=4,
-                                    init_strategy='default',  # random_explore_first
+                                    init_strategy='latin_hypercube',  # default， latin_hypercube
                                     rand_prob=0.2,
                                     surrogate_type='gp',
                                     acq_type='ei',
@@ -96,6 +96,8 @@ class SMACEnsOptimizer(BaseOptimizer):
         max_sample_num = 5000 # self.RATIO_RANGE[1] * self.SIZE_RANGE[1] * (self.DROPOUT_RANGE[1] + 1)
         while True:
             config = self.config_advisor.get_suggestion().get_dictionary().copy()
+            if isinstance(self.config_space['dropout'], Constant):
+                config['dropout'] = self.config_space['dropout'].value
             size = config['ensemble_size']
             ratio = config['ratio']
             dropout = config['dropout']
