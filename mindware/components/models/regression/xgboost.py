@@ -22,7 +22,7 @@ class XGBoostRegressor(BaseRegressionModel):
         self.reg_alpha = float(reg_alpha)
         self.reg_lambda = float(reg_lambda)
         self.random_state = random_state
-        self.n_jobs = 4
+        self.n_jobs = 1
 
         self.estimator = None
 

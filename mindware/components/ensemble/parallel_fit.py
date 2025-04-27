@@ -9,6 +9,7 @@ from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.components.evaluators.cls_evaluator import get_estimator as get_cls_estimator
 from mindware.components.evaluators.rgs_evaluator import get_estimator as get_rgs_estimator
 from mindware.components.feature_engineering.parse import parse_config, construct_node
+import psutil
 
 def get_node_name(layer, key):
 
@@ -28,7 +29,10 @@ def get_estimator_name(layer, model_idx, fold):
 def parallel_fit(config, task_type, if_imbal, seed,
                  layer, model_idx, fold, folds,
                  train_index, valid_index,
-                 node_path, ori_x_path, output_dir, ori_config_path, **kwargs):
+                 node_path, ori_x_path, output_dir, ori_config_path, cpu_ids, **kwargs):
+
+    p = psutil.Process()
+    p.cpu_affinity(cpu_ids)
 
     # 第0层需要fe，并且ori_config_path不是None
     assert (layer == 0) == (ori_config_path is not None)
@@ -159,7 +163,7 @@ def parallel_fit(config, task_type, if_imbal, seed,
         estimator_path = os.path.join(output_dir, get_estimator_name(layer, model_idx, fold))
         CombinedTopKModelSaver._save([op_list, estimator], estimator_path)
 
-    return model_idx, fold, preds, need_save
+    return model_idx, fold, preds, need_save, cpu_ids
 
 
 def parallel_predict(model_idx, config_path, task_type, node_path):
@@ -293,6 +297,16 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
 
                 fold += 1
     else:
+        p = psutil.Process()
+        all_cpus = p.cpu_affinity()
+        assert len(all_cpus) > thread, f"The number of available cpus{len(all_cpus)} must be larger than the number of threads({thread})!"
+        cpu_per_sub = (len(all_cpus) - 1) // thread
+        all_sub = cpu_per_sub * thread
+        available_cpus = all_cpus[-all_sub:]
+        main_cpus = all_cpus[:-all_sub]
+        # 分开主进程和sub进程
+        logger.info(f"bind the main process to CPU cores{main_cpus}")
+        p.cpu_affinity(main_cpus)
         # 保存train node和valid nodes
         node_path = os.path.join(output_dir, get_node_name(layer, 'train'))
         with open(node_path, 'wb') as f:
@@ -334,13 +348,14 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
                         else:
                             kwargs.update({'dropout': dropout})
 
-                    if len(fs_wait) < thread:
+                    if len(fs_wait) < thread and len(available_cpus) > 0:
+                        kwargs['cpu_ids'] = [available_cpus.pop() for _ in range(cpu_per_sub)]
                         fs_wait.add(executor.submit(parallel_fit, **kwargs))
                     else:
                         fs_done, fs_wait = cfutures.wait(fs_wait, return_when=cfutures.FIRST_COMPLETED)
-                        fs_wait.add(executor.submit(parallel_fit, **kwargs))
                         for fs in fs_done:
-                            model_idx, _fold, preds, need_save = fs.result()
+                            model_idx, _fold, preds, need_save, cpu_ids = fs.result()
+                            available_cpus.extend(cpu_ids)
                             if model_idx < _n_base:
                                 if preds is not None:
                                     new_features['train'][valid_indexes[_fold-1], model_idx * n_dim:(model_idx + 1) * n_dim] = preds['train'][:, -n_dim:]
@@ -363,12 +378,15 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
                                 if head not in head_outputs:
                                     head_outputs[head] = np.zeros((data_len,) + pred.shape[1:])
                                 head_outputs[head][valid_indexes[_fold-1]] = pred
+                        kwargs['cpu_ids'] = [available_cpus.pop() for _ in range(cpu_per_sub)]
+                        fs_wait.add(executor.submit(parallel_fit, **kwargs))
                     fold += 1
 
             while len(fs_wait) > 0:
                 fs_done, fs_wait = cfutures.wait(fs_wait, return_when=cfutures.FIRST_COMPLETED)
                 for fs in fs_done:
-                    model_idx, _fold, preds, need_save = fs.result()
+                    model_idx, _fold, preds, need_save, cpu_ids = fs.result()
+                    available_cpus.extend(cpu_ids)
                     if model_idx < _n_base:
                         if preds is not None:
                             new_features['train'][valid_indexes[_fold-1], model_idx * n_dim:(model_idx + 1) * n_dim] = preds['train'][:, -n_dim:]
@@ -391,6 +409,10 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
                         if head not in head_outputs:
                             head_outputs[head] = np.zeros((data_len,) + pred.shape[1:])
                         head_outputs[head][valid_indexes[_fold-1]] = pred
+        
+        # 绑回去主进程
+        logger.info(f"bind back the main process to CPU cores{all_cpus}")
+        p.cpu_affinity(all_cpus)
 
         os.remove(node_path)
         for path in valid_paths.values():

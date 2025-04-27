@@ -43,7 +43,11 @@ class EnsembleSelection(BaseEnsembleModel):
                 y_true = self.encoder.transform(np.reshape(y_true, (len(y_true), 1))).toarray()
         elif self.task_type in CLS_TASKS and isinstance(self.metric, _PredictScorer):
             pred = np.argmax(pred, axis=-1)
-        score = self.metric._score_func(y_true, pred) * self.metric._sign
+        score = -np.inf
+        try:
+            score = self.metric._score_func(y_true, pred) * self.metric._sign
+        except:
+            self.logger.info("Error when cal score!")
         return score
 
     def equal_fit(self):

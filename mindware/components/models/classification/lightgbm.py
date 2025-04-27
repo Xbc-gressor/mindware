@@ -35,7 +35,7 @@ class LightGBM(BaseClassificationModel):
         self.var_counts = {}
         self.var_neg_corr = {}
         self.features = None
-        self.n_jobs = 4
+        self.n_jobs = 1
         
 
     def fit(self, X, Y):
@@ -233,7 +233,7 @@ class LightGBM(BaseClassificationModel):
         min_child_samples = UniformIntegerHyperparameter("min_child_samples", 5, 1000, default_value=20)
         subsample = UniformFloatHyperparameter("subsample", 0.7, 1.0, default_value=1.0, q=0.1)
         colsample_bytree = UniformFloatHyperparameter("colsample_bytree", 0.7, 1.0, default_value=1.0, q=0.1)
-        verbose = UnParametrizedHyperparameter("verbose", -1)
+        # verbose = UnParametrizedHyperparameter("verbose", -1)
         cs.add_hyperparameters([n_estimators, num_leaves, max_depth, learning_rate, min_child_samples, subsample,
-                                colsample_bytree, verbose])
+                                colsample_bytree])
         return cs
