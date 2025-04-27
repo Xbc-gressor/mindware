@@ -135,7 +135,7 @@ def get_ens_cs(**cs_args):
     meta_learner = CategoricalHyperparameter('meta_learner', ['weighted', 'linear', 'best'])  # 'lightgbm'很垃圾
     stack_layers = UniformIntegerHyperparameter('stack_layers', 0, layer_upper, default_value=0)
 
-    ensemble_size = UniformIntegerHyperparameter('ensemble_size', 2, size_upper, default_value=30, q=2)
+    ensemble_size = UniformIntegerHyperparameter('ensemble_size', 2, size_upper, default_value=10, q=2)
     ratio = UniformIntegerHyperparameter("ratio", 0, 48, default_value=40, q=4)
     # dropout = UniformIntegerHyperparameter("dropout", 0, 20, default_value=20, q=20)
     dropout = Constant("dropout", 20)
