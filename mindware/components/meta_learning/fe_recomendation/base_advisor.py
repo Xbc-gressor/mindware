@@ -116,11 +116,11 @@ class BaseAdvisor(object):
         sim_dict = self.fetch_dataset_set(dataset, datanode)
 
         sim_thr = 0.6
-        da_thr = 3
+        da_thr = 3  # 至少拿三个数据集
         res_dict = {}
         for algo in sim_dict.keys():
 
-            def_dict = self.metadata_manager._def_preprocessor[algo]
+            def_dict = self.metadata_manager._def_preprocessor[algo]  # 比默认配置要好的preprocessor
             best_dict = self.metadata_manager._best_preprocessor[algo]
             _sim_dict = sim_dict[algo]
             res_dict[algo] = []
