@@ -148,10 +148,15 @@ def evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=600, amo
     eval_num = len(opt.optimizer.perfs)
 
     scorer = opt.metric
-    pred = opt.predict(test_data, ens=False)
+    if obj_metric in ['cls_mse', 'auc']:
+        pred = opt.predict_proba(test_data, ens=False)
+        if obj_metric == 'auc':
+            pred = pred[:, 1]
+    else:
+        pred = opt.predict(test_data, ens=False)
     test_score = scorer._score_func(test_data.data[1], pred) * scorer._sign
 
-    save_path = _save_dir + '%s-%s-%s-%d-%d.pkl' % (dataset, algo, obj_metric, run_id, time_limit)
+    save_path = os.path.join(_save_dir, '%s-%s-%s-%d-%d.pkl' % (dataset, algo, obj_metric, run_id, time_limit))
     with open(save_path, 'wb') as f:
         pickle.dump([dataset, algo, eval_num, validation_score, test_score, task_type], f)
 
@@ -215,6 +220,8 @@ if __name__ == "__main__":
             for algo in algorithms:
                 for run_id in range(start_id, start_id + rep):
                     seed = seeds[run_id]
+                    evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=time_limit, amount_of_resource=amount_of_resource,
+                        seed=seed, task_type=task_type)
                     try:
                         task_id = '%s-%s-%s-%d: %s' % (dataset, algo, obj_metric, run_id, 'success')
                         evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=time_limit, amount_of_resource=amount_of_resource,

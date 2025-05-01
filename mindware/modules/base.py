@@ -548,7 +548,7 @@ class BaseAutoML(object):
 
             return fetch_predict_results(self.task_type, best_op_list, estimator, test_data)
 
-    def predict_proba(self, test_data: DataNode, refit=True, ens=True):
+    def predict_proba(self, test_data: DataNode, refit='full', ens=True):
         if self.task_type not in CLS_TASKS:
             raise AttributeError("predict_proba is not supported in regression")
         return self._predict(test_data, refit=refit, ens=ens)
