@@ -224,10 +224,10 @@ if __name__ == "__main__":
                         running_info.append(task_id)
 
                     print(task_id)
-                    with open(_save_dir + log_filename, 'a') as f:
+                    with open(os.path.join(_save_dir, log_filename), 'a') as f:
                         f.write('\n' + task_id)
 
             # Write down the error info.
             if len(running_info) > 0:
-                with open(_save_dir + 'failed-%s' % log_filename, 'w') as f:
+                with open(os.path.join(_save_dir, 'failed-%s' % log_filename), 'w') as f:
                     f.write('\n'.join(running_info))
