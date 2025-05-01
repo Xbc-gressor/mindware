@@ -10,6 +10,7 @@ from mindware.utils.logging_utils import setup_logger, get_logger
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
 import time
+import datetime
 
 
 class BaseCASHFE(BaseAutoML):
