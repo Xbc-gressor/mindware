@@ -191,10 +191,10 @@ class BaseAutoML(object):
             else:
                 op_list = {}
 
-                estimator = fetch_predict_estimator(task_type, algo_id, config,
-                                                    train_node.data[0], train_node.data[1],
-                                                    weight_balance=train_node.enable_balance,
-                                                    data_balance=train_node.data_balance)
+            estimator = fetch_predict_estimator(task_type, algo_id, config,
+                                                train_node.data[0], train_node.data[1],
+                                                weight_balance=train_node.enable_balance,
+                                                data_balance=train_node.data_balance)
 
             return op_list, estimator
 
