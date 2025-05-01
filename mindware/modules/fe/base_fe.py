@@ -99,6 +99,8 @@ class BaseFE(BaseAutoML):
             )
 
         self.timestamp = time.time()
+        self.datetime = datetime.datetime.fromtimestamp(self.timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
+        
         # Define evaluator and optimizer
         self.evaluator = None
         if self.task_type in CLS_TASKS:

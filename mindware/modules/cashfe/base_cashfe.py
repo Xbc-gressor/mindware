@@ -95,6 +95,7 @@ class BaseCASHFE(BaseAutoML):
             self.cs.add_forbidden_clauses(tmp_cs.get_forbiddens())
 
         self.timestamp = time.time()
+        self.datetime = datetime.datetime.fromtimestamp(self.timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
         # Define evaluator and optimizer
         self.evaluator = None

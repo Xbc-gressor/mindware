@@ -74,6 +74,7 @@ class BaseCASH(BaseAutoML):
             self.cs = get_cash_cs(include_algorithms=include_algorithms, task_type=self.task_type, **cs_args)
 
         self.timestamp = time.time()
+        self.datetime = datetime.datetime.fromtimestamp(self.timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
         # Define evaluator and optimizer
         self.evaluator = None
         if self.task_type in CLS_TASKS:
