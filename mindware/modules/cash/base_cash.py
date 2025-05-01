@@ -3,6 +3,7 @@ import json
 from typing import List, Union, Callable
 from sklearn.metrics._scorer import _BaseScorer
 import numpy as np
+import time
 
 from mindware.modules.base import BaseAutoML
 from mindware.utils.logging_utils import setup_logger, get_logger
@@ -72,6 +73,7 @@ class BaseCASH(BaseAutoML):
             from mindware.components.config_space.cs_builder import get_cash_cs
             self.cs = get_cash_cs(include_algorithms=include_algorithms, task_type=self.task_type, **cs_args)
 
+        self.timestamp = time.time()
         # Define evaluator and optimizer
         self.evaluator = None
         if self.task_type in CLS_TASKS:

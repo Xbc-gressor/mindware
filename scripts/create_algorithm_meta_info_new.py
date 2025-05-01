@@ -39,13 +39,15 @@ data_dir = args.data_dir
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 # cls_metrics = ['acc', 'f1', 'auc']
-# reg_metrics = ['mse', 'r2', 'mae']
+reg_metrics = ['mse', 'r2', 'mae']
 
 # cls_metrics = ['acc']
 # reg_metrics = ['mse']
 
-cls_metrics = ['f1', 'auc']
-reg_metrics = ['r2', 'mae']
+# cls_metrics = ['f1', 'auc']
+# reg_metrics = ['r2', 'mae']
+
+cls_metrics = ['cls_mse']
 
 def load_data(dataset, data_dir='./', datanode_returned=False, preprocess=True, task_type=None):
     dm = DataManager()
@@ -108,7 +110,10 @@ def load_train_test_data(dataset, data_dir='./', test_size=0.2, task_type=None, 
 
 def evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=600, amount_of_resource=100, seed=1, task_type=None):
 
-    save_path = save_dir + '%s-%s-%s-%d-%d.pkl' % (dataset, algo, obj_metric, run_id, time_limit)
+    _save_dir = os.path.join(save_dir, obj_metric)
+    if not os.path.exists(_save_dir):
+        os.makedirs(_save_dir)
+    save_path = _save_dir + '%s-%s-%s-%d-%d.pkl' % (dataset, algo, obj_metric, run_id, time_limit)
     if os.path.exists(save_path):
         with open(save_path, 'rb') as f:
             res = pickle.load(f)
@@ -130,7 +135,7 @@ def evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=600, amo
                 data_node=train_data, evaluation='holdout', resampling_params={'test_size': 0.33},
                 optimizer='block_0', inner_iter_num_per_iter=1,
                 time_limit=time_limit, amount_of_resource=amount_of_resource, per_run_time_limit=180,
-                output_dir=os.path.join(base_dir, 'data'), seed=int(seed), n_jobs=1, topk=amount_of_resource, rmfiles=True,
+                output_dir=os.path.join(base_dir, f'data/{obj_metric}'), seed=int(seed), n_jobs=1, topk=amount_of_resource, rmfiles=True,
                 ensemble_method=None, task_id=dataset
             )
 
@@ -146,7 +151,7 @@ def evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=600, amo
     pred = opt.predict(test_data, ens=False)
     test_score = scorer._score_func(test_data.data[1], pred) * scorer._sign
 
-    save_path = save_dir + '%s-%s-%s-%d-%d.pkl' % (dataset, algo, obj_metric, run_id, time_limit)
+    save_path = _save_dir + '%s-%s-%s-%d-%d.pkl' % (dataset, algo, obj_metric, run_id, time_limit)
     with open(save_path, 'wb') as f:
         pickle.dump([dataset, algo, eval_num, validation_score, test_score, task_type], f)
 
@@ -204,6 +209,7 @@ if __name__ == "__main__":
 
     for dataset in datasets:
         for obj_metric in metrics:
+            _save_dir = os.path.join(save_dir, obj_metric)
             np.random.seed(1)
             seeds = np.random.randint(low=1, high=10000, size=start_id + rep)
             for algo in algorithms:
@@ -218,10 +224,10 @@ if __name__ == "__main__":
                         running_info.append(task_id)
 
                     print(task_id)
-                    with open(save_dir + log_filename, 'a') as f:
+                    with open(_save_dir + log_filename, 'a') as f:
                         f.write('\n' + task_id)
 
-    # Write down the error info.
-    if len(running_info) > 0:
-        with open(save_dir + 'failed-%s' % log_filename, 'w') as f:
-            f.write('\n'.join(running_info))
+            # Write down the error info.
+            if len(running_info) > 0:
+                with open(_save_dir + 'failed-%s' % log_filename, 'w') as f:
+                    f.write('\n'.join(running_info))

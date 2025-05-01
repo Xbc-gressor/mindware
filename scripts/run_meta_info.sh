@@ -56,7 +56,7 @@ done
 
 
 # 最大并发数
-MAX_JOBS=10
+MAX_JOBS=12
 # 当前运行的作业数
 CURRENT_JOBS=0
 # 每个任务使用的核心数量

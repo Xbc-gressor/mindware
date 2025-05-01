@@ -9,6 +9,7 @@ from mindware.modules.base import BaseAutoML
 from mindware.utils.logging_utils import setup_logger, get_logger
 from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
+import time
 
 
 class BaseCASHFE(BaseAutoML):
@@ -92,6 +93,8 @@ class BaseCASHFE(BaseAutoML):
             self.cs.add_hyperparameters(tmp_cs.get_hyperparameters())
             self.cs.add_conditions(tmp_cs.get_conditions())
             self.cs.add_forbidden_clauses(tmp_cs.get_forbiddens())
+
+        self.timestamp = time.time()
 
         # Define evaluator and optimizer
         self.evaluator = None

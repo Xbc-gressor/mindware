@@ -183,6 +183,8 @@ class BaseAutoML(object):
             if mode == 'partial':
                 train_node, _ = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=data_node,
                                                                    resampling_params=resampling_params, seed=seed)
+            else:
+                train_node = data_node
 
             if cls.name in ['fe', 'cashfe']:
                 train_node, op_list = parse_config(train_node, config, record=True, if_imbal=if_imbal)

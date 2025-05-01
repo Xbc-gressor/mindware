@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from typing import Union, Callable
 from sklearn.metrics._scorer import _BaseScorer
 
@@ -97,6 +98,7 @@ class BaseFE(BaseAutoML):
                 Constant("%s:%s" % (self.estimator_id, key), value)
             )
 
+        self.timestamp = time.time()
         # Define evaluator and optimizer
         self.evaluator = None
         if self.task_type in CLS_TASKS:
