@@ -182,7 +182,7 @@ class EnsEvaluator(_BaseEvaluator):
         self.leader_board = dict()
         self.cache = dict()
 
-        self.topk = 10
+        self.topk = 15
         self.max_k = 3
         self.best_pool = BestPool(self.topk, self.max_k, self.output_dir, self.datetime, self.logger)
         self.comb_count = 0
