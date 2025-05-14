@@ -231,7 +231,8 @@ class BaseEns(object):
         model_info['best'] = self.incumbent
         # model_info['best_info'] = self.es.get_ens_model_info()
         leader_board = self.evaluator.leader_board
-        sorted_head = sorted(list(leader_board['train'].keys()), key=lambda x: (-leader_board['val'][x], -leader_board['val_2'][x], -leader_board['train'][x])) 
+        judge = self.evaluator.judge
+        sorted_head = sorted(list(leader_board['train'].keys()), key=lambda x: (-leader_board[judge][x], -leader_board[f'{judge}_2'][x], -leader_board['train'][x], -leader_board['train_2'][x]))
         model_info['leader_board'] = [f"{head}: {', '.join(['%s-%.5f' % (key, leader_board[key][head]) for key in leader_board.keys()])}" for head in sorted_head]
         model_info['comb_count'] = self.evaluator.comb_count
 

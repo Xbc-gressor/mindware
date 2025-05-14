@@ -40,17 +40,12 @@ def better_ens(ens1, ens2):
 
         return ens2 is None
 
-    if 'val' in ens1[1]:
-        if ens1[1]['val'] != ens2[1]['val']:
-            return ens1[1]['val'] > ens2[1]['val']
-
-    if 'val_2' in ens1[1]:
-        if ens1[1]['val_2'] != ens2[1]['val_2']:
-            return ens1[1]['val_2'] > ens2[1]['val_2']
-
-    if 'train' in ens1[1]:
-        if ens1[1]['train'] != ens2[1]['train']:
-            return ens1[1]['train'] > ens2[1]['train']
+    # Perf
+    priority_fields = ['val', 'val_2', 'train', 'train_2']
+    for field in priority_fields:
+        if field in ens1[1]:
+            if ens1[1][field] != ens2[1][field]:
+                return ens1[1][field] > ens2[1][field]
 
     if 'ensemble_size' in ens1[0] and 'ratio' in ens1[0]:
         if ens1[0]['ensemble_size'] * ens1[0]['ratio'] != ens2[0]['ensemble_size'] * ens2[0]['ratio']:

@@ -21,7 +21,7 @@ from copy import deepcopy
 
 class BestPool:
 
-    def __init__(self, topk, max_k, output_dir, datetime, logger):
+    def __init__(self, topk, max_k, output_dir, datetime, judge, logger):
         self.topk = topk
         self.max_k = max_k
         self.output_dir = output_dir
@@ -30,6 +30,7 @@ class BestPool:
         self.best_configs = [None] * self.topk
         self.inner_idxs = [None] * self.topk
         self.datetime = datetime
+        self.judge = judge
         self.logger = logger
 
     def add_config(self, can_config, learder_board, ensemble_builder, inner_idx):
@@ -64,7 +65,7 @@ class BestPool:
             CombinedTopKModelSaver.save_config([None, ensemble_builder, learder_board], model_path)
 
         self.best_model_paths[idx-1] = model_path
-        self.best_perfs[idx-1] = can_config[1]['val']
+        self.best_perfs[idx-1] = can_config[1][self.judge]
         self.best_configs[idx-1] = can_config
         self.inner_idxs[idx-1] = inner_idx
 
@@ -155,6 +156,7 @@ class EnsEvaluator(_BaseEvaluator):
             test_size = self.resampling_params['test_size']
         ss = self._get_spliter('holdout', test_size=test_size, random_state=self.seed)
 
+        self.judge = 'val'
         train_data = self.data_node.copy_(no_data=True)
         val_data = self.data_node.copy_(no_data=True)
         for train_index, test_index in ss.split(self.data_node.data[0], self.data_node.data[1]):
@@ -175,16 +177,22 @@ class EnsEvaluator(_BaseEvaluator):
 
         if val_nodes is None:
             val_nodes = {}
-        val_nodes['val'] = val_data.copy_()
-        self.val_nodes = val_nodes
+        if self.judge == 'val':
+            val_nodes['val'] = val_data.copy_()
+        elif self.judge == 'train':
+            train_data = self.data_node.copy_()
+        else:
+            raise ValueError("Wrong value for opt judge: %s" % self.judge)
+
         self.train_data = train_data
+        self.val_nodes = val_nodes
 
         self.leader_board = dict()
         self.cache = dict()
 
         self.topk = 15
         self.max_k = 3
-        self.best_pool = BestPool(self.topk, self.max_k, self.output_dir, self.datetime, self.logger)
+        self.best_pool = BestPool(self.topk, self.max_k, self.output_dir, self.datetime, self.judge, self.logger)
         self.comb_count = 0
         self.n_jobs = n_jobs
 
@@ -235,7 +243,7 @@ class EnsEvaluator(_BaseEvaluator):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             base_model_mask = self.ensemble_builder.build_ensemble(ensemble_method='stacking', ensemble_size=config['ensemble_size'], ratio=config['ratio']/100, dropout=config['dropout']/100,
-                                                                stack_layers=config['stack_layers'], meta_learner=config['meta_learner'], max_k=self.max_k, opt=True)
+                                                                stack_layers=config['stack_layers'], meta_learner=config['meta_learner'], max_k=self.max_k, opt=True, judge=self.judge)
             cache, key = self.check_cache(base_model_mask, config['dropout'])
 
             if cache:
@@ -279,7 +287,7 @@ class EnsEvaluator(_BaseEvaluator):
                 self.leader_board[key][head] = objective
 
         # 取反
-        learder_board = {key: -value for key, value in learder_board['val'].items()}
+        learder_board = {key: -value for key, value in learder_board[self.judge].items()}
         return_dict = dict()
         # Turn it into a minimization problem.
         return_dict['leader_board'] = learder_board

@@ -98,7 +98,7 @@ class EnsembleBuilder:
                                   stack_layers=stack_layers, meta_learner=meta_learner, thread=self.thread,
                                   dropout=dropout, max_k=max_k,
                                   predictions=self.predictions, base_model_mask=base_model_mask,
-                                  opt=kwargs.get('opt', False))
+                                  opt=kwargs.get('opt', False), judge=kwargs.get('judge', 'val'))
         elif ensemble_method == 'ensemble_selection':
             self.model = EnsembleSelection(stats=self.stats,
                                            ensemble_size=ensemble_size,

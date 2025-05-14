@@ -89,7 +89,7 @@ class Stacking(Blending):
                  output_dir=None, seed=None,
                  meta_learner='weighted', stack_layers = 1, thread=20,
                  skip_connect=True, retain=True, dropout=0, max_k=3,
-                 predictions=None, base_model_mask=None, opt=False):
+                 predictions=None, base_model_mask=None, opt=False, judge='val'):
         super().__init__(stats=stats,
                 ensemble_size=ensemble_size,
                 task_type=task_type, if_imbal=if_imbal,
@@ -126,6 +126,7 @@ class Stacking(Blending):
         self.last_real_loss = None
 
         self.opt = opt
+        self.judge = judge
         self.base_sms = None
         self.base_ops = None
 
@@ -313,8 +314,12 @@ class Stacking(Blending):
                 for _key in perf:
                     self.leader_board[_key][head] = perf[_key][0]
 
-            can_config = ({'meta_learner': config, 'stack_layers': layer - 1},
-                          {'train': self.leader_board['train'][head], 'val': self.leader_board['val'][head], 'val_2': self.leader_board['val_2'][head]})
+            # can_config = ({'meta_learner': config, 'stack_layers': layer - 1},
+            #               {'train': self.leader_board['train'][head], 'val': self.leader_board['val'][head], 'val_2': self.leader_board['val_2'][head]})
+
+            perf_dict = {'train': self.leader_board['train'][head], 'train_2': self.leader_board['train_2'][head]}
+            perf_dict.update({self.judge: self.leader_board[self.judge][head], f'{self.judge}_2': self.leader_board[f'{self.judge}_2'][head]})
+            can_config = ({'meta_learner': config, 'stack_layers': layer - 1}, perf_dict)
 
             if better_ens(can_config, best_config):
                 best_config = can_config
@@ -325,7 +330,7 @@ class Stacking(Blending):
 
         if new_features is not None:
             self.last_real_loss = self.cal_scores(new_features, final_labels, self.ensemble_size)
-            perfs = [(self.last_real_loss['val'][_idx], self.last_real_loss['val_2'][_idx], self.last_real_loss['train'][_idx]) for _idx in range(self.ensemble_size)]
+            perfs = [(self.last_real_loss[self.judge][_idx], self.last_real_loss[f'{self.judge}_2'][_idx], self.last_real_loss['train'][_idx], self.last_real_loss['train_2'][_idx]) for _idx in range(self.ensemble_size)]
             _best_idx = max(enumerate(perfs), key=lambda x:x[1])[0]
 
             head = f"best_idx{_best_idx}-L{layer+1}"
@@ -334,8 +339,9 @@ class Stacking(Blending):
                 perf = self.last_real_loss[key][_best_idx]
                 self.leader_board[key][head] = perf
 
-            can_config = ({'meta_learner': 'best', 'stack_layers': layer},
-                        {'train': self.last_real_loss['train'][_best_idx], 'val': self.last_real_loss['val'][_best_idx], 'val_2': self.last_real_loss['val_2'][_best_idx]})
+            perf_dict = {'train': self.last_real_loss['train'][_best_idx], 'train_2': self.last_real_loss['train_2'][_best_idx]}
+            perf_dict.update({self.judge: self.last_real_loss[self.judge][_best_idx], f'{self.judge}_2': self.last_real_loss[f'{self.judge}_2'][_best_idx]})
+            can_config = ({'meta_learner': 'best', 'stack_layers': layer}, perf_dict)
 
             if better_ens(can_config, best_config):
                 best_config = can_config
@@ -478,8 +484,7 @@ class Stacking(Blending):
                             # if better_ens(new_cans[i], old_cans[i]):
                                 # bad_mask[i] = False
 
-                        judge = 'train' if 'val' not in new_features else 'val'
-                        bad_mask = ~ (np.array(self.last_real_loss[judge]) > np.array(self.layer_loss[-1][judge]) + 1e-10)
+                        bad_mask = ~ (np.array(self.last_real_loss[self.judge]) > np.array(self.layer_loss[-1][self.judge]) + 1e-10)
                         self.logger.info("Number of models getting improved: %d" % (n_base_model - (fail_mask|bad_mask).sum()))
 
                         if self.retain:
@@ -582,8 +587,7 @@ class Stacking(Blending):
         ens_info['folds'] = [self.folds, self.sfolds]
         ens_info['stask_layers'] = self.stack_layers
         ens_info['dropout'] = self.dropout
-        judge = 'train' if 'val' not in self.leader_board else 'val'
-        sorted_head = sorted(list(self.leader_board['train'].keys()), key=lambda x: (-self.leader_board[judge][x], -self.leader_board[f'{judge}_2'][x], -self.leader_board['train'][x]))
+        sorted_head = sorted(list(self.leader_board['train'].keys()), key=lambda x: (-self.leader_board[self.judge][x], -self.leader_board[f'{self.judge}_2'][x], -self.leader_board['train'][x], -self.leader_board['train_2'][x]))
         ens_info['leader_board'] = [f"{head}: {', '.join(['%s-%.5f' % (key, self.leader_board[key][head]) for key in self.leader_board.keys()])}" for head in sorted_head]
         if self.ensemble_method == 'weighted':
             ens_info['meta_weighted'] = ','.join(['%.3f' % tmp for tmp in self.meta_learner.weights_])
