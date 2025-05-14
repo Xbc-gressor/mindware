@@ -194,14 +194,18 @@ class BaseEns(object):
 
         topk = len(stack_predictions)
         preds = []
-        if refit != 'partial':
-            for k in range(topk, 0, -1):
-                preds.append(np.mean(refit_stack_predictions[-k:], axis=0))
-            for k in range(topk, 0, -1):
-                preds.append(np.mean(refit_stack_predictions[-k:] + stack_predictions[-k:], axis=0))
+        # if refit != 'partial':
+        #     for k in range(topk, 0, -1):
+        #         preds.append(np.mean(refit_stack_predictions[-k:], axis=0))
+        #     for k in range(topk, 0, -1):
+        #         preds.append(np.mean(refit_stack_predictions[-k:] + stack_predictions[-k:], axis=0))
 
+        # for k in range(topk, 0, -1):
+        #     preds.append(np.mean(stack_predictions[-k:], axis=0))
         for k in range(topk, 0, -1):
-            preds.append(np.mean(stack_predictions[-k:], axis=0))
+            preds.append(np.mean(refit_stack_predictions[-k:], axis=0))
+        for k in range(topk, 0, -1):
+            preds.append(refit_stack_predictions[-k])
 
         return preds
 

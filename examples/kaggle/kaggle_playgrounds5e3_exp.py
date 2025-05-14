@@ -72,39 +72,41 @@ if __name__ == '__main__':
 
     id_data = pd.read_csv(os.path.join(kaggle_id, 'test.csv'))[id_name]
 
-    filter_params = {}
-    if args.n_algorithm != -1:
-        include_algorithms = None
-        filter_params['n_algorithm'] = args.n_algorithm
-    if args.n_preprocessor != -1:
-        filter_params['n_preprocessor'] = args.n_preprocessor
+    # filter_params = {}
+    # if args.n_algorithm != -1:
+    #     include_algorithms = None
+    #     filter_params['n_algorithm'] = args.n_algorithm
+    # if args.n_preprocessor != -1:
+    #     filter_params['n_preprocessor'] = args.n_preprocessor
     
-    opt = CASHFE(
-        include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
-        metric=args.metric,
-        data_node=train_data_node, evaluation=args.evaluation,
-        optimizer="block_1", inner_iter_num_per_iter=args.inner_iter_num_per_iter,
-        time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=args.per_run_time_limit,
-        output_dir=args.output_dir, seed=1, n_jobs=1,
-        ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=args.kaggle_id,
-        filter_params = filter_params,
-    )
+    # opt = CASHFE(
+    #     include_algorithms=include_algorithms, sub_optimizer='smac', task_type=task_type,
+    #     metric=args.metric,
+    #     data_node=train_data_node, evaluation=args.evaluation,
+    #     optimizer="block_1", inner_iter_num_per_iter=args.inner_iter_num_per_iter,
+    #     time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=args.per_run_time_limit,
+    #     output_dir=args.output_dir, seed=1, n_jobs=1,
+    #     ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size, task_id=args.kaggle_id,
+    #     filter_params = filter_params,
+    # )
 
-    print(opt.get_conf(save=True))  # 保存设置
-    _, stats_path = opt.run()
-    print(opt.get_model_info(save=True))  # 保存最优模型信息
-    pred_hpo = opt.predict_proba(test_data_node, ens=False)[:, 1]
+    # print(opt.get_conf(save=True))  # 保存设置
+    # _, stats_path = opt.run()
+    # print(opt.get_model_info(save=True))  # 保存最优模型信息
+    # pred_hpo = opt.predict_proba(test_data_node, ens=False)[:, 1]
 
-    result_hpo = pd.DataFrame({id_name: id_data, res_name: pred_hpo})
-    best_path = os.path.join(kaggle_id, f'best_{args.time_limit}_result.csv')
-    result_hpo.to_csv(best_path, index=False)
-    print('Result has been saved to result_hpo.csv.')
+    # result_hpo = pd.DataFrame({id_name: id_data, res_name: pred_hpo})
+    # best_path = os.path.join(kaggle_id, f'best_{args.time_limit}_result.csv')
+    # result_hpo.to_csv(best_path, index=False)
+    # print('Result has been saved to result_hpo.csv.')
     
-    pred_ens = opt.predict_proba(test_data_node, ens=True)[:, 1]
+    # pred_ens = opt.predict_proba(test_data_node, ens=True)[:, 1]
     
-    result_ens = pd.DataFrame({id_name: id_data, res_name: pred_ens})
-    result_ens.to_csv(os.path.join(kaggle_id, f'ens_{args.time_limit}_ens{args.ensemble_method}{args.ensemble_size}_result.csv'), index=False)
-    print('Ensemble result has been saved to result_ens.csv.')
+    # result_ens = pd.DataFrame({id_name: id_data, res_name: pred_ens})
+    # result_ens.to_csv(os.path.join(kaggle_id, f'ens_{args.time_limit}_ens{args.ensemble_method}{args.ensemble_size}_result.csv'), index=False)
+    # print('Ensemble result has been saved to result_ens.csv.')
+
+    stats_path = '/root/xbc/mindware/examples/kaggle/data_comp/CASHFE-block_1(1)-holdout_playground-series-s5e3_2025-05-12-08-01-51-802052/2025-05-12-08-01-56-274626_topk_config.pkl'
 
     import pickle as pkl
     with open(stats_path, 'rb') as f:
@@ -125,30 +127,30 @@ if __name__ == '__main__':
     opt.run(refit=args.refit)
     opt.get_model_info(save=True)  # 保存最优模型信息
     ens_preds = opt.predict_proba(test_data_node, refit=args.refit)
-    topk = len(ens_preds) // 3
-    for i, mode in enumerate(['refit', 'mixed', 'partial']):
+    topk = len(ens_preds) // 2
+    for i, mode in enumerate(['top', 'only']):
         for k in range(topk):
             
             pred_ens = ens_preds[i*topk+k][:, 1]
             result_ens = pd.DataFrame({id_name: id_data, res_name: pred_ens})
-            result_ens.to_csv(os.path.join(kaggle_id, f'ens_opt_{mode}deftop{topk-k}_result.csv'), index=False)
+            result_ens.to_csv(os.path.join(kaggle_id, f'ens_def_{mode}{topk-k}_result.csv'), index=False)
 
-    opt = ENS(task_type=task_type, stats=stats,
-                metric=args.metric, data_node=train_data_node,
-                optimizer='smac',
-                time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
-                output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=kaggle_id, 
-                layer_upper=args.layer_upper, size_upper=args.size_upper)
-    print(opt.get_conf(save=True))
-    opt.run(refit=args.refit)
-    opt.get_model_info(save=True)  # 保存最优模型信息
-    ens_preds = opt.predict_proba(test_data_node, refit=args.refit)
+    # opt = ENS(task_type=task_type, stats=stats,
+    #             metric=args.metric, data_node=train_data_node,
+    #             optimizer='smac',
+    #             time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
+    #             output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=kaggle_id, 
+    #             layer_upper=args.layer_upper, size_upper=args.size_upper)
+    # print(opt.get_conf(save=True))
+    # opt.run(refit=args.refit)
+    # opt.get_model_info(save=True)  # 保存最优模型信息
+    # ens_preds = opt.predict_proba(test_data_node, refit=args.refit)
 
-    topk = len(ens_preds) // 3
-    for i, mode in enumerate(['refit', 'mixed', 'partial']):
-        for k in range(topk):
+    # topk = len(ens_preds) // 2
+    # for i, mode in enumerate(['top', 'only']):
+    #     for k in range(topk):
             
-            pred_ens = ens_preds[i*topk+k][:, 1]
-            result_ens = pd.DataFrame({id_name: id_data, res_name: pred_ens})
-            result_ens.to_csv(os.path.join(kaggle_id, f'ens_{args.time_limit}_opt_{mode}top{topk-k}_result.csv'), index=False)
+    #         pred_ens = ens_preds[i*topk+k][:, 1]
+    #         result_ens = pd.DataFrame({id_name: id_data, res_name: pred_ens})
+    #         result_ens.to_csv(os.path.join(kaggle_id, f'ens_{args.time_limit}opt_{mode}{topk-k}_result.csv'), index=False)
 

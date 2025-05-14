@@ -148,13 +148,13 @@ if __name__ == '__main__':
     opt.run(refit=args.refit)
     opt.get_model_info(save=True)  # 保存最优模型信息
     ens_preds = opt.predict(test_data_node, refit=args.refit)
-    topk = len(ens_preds) // 3
-    for i, mode in enumerate(['refit', 'mixed', 'partial']):
+    topk = len(ens_preds) // 2
+    for i, mode in enumerate(['top', 'only']):
         for k in range(topk):
             
             pred_ens = dm.decode_label(ens_preds[i*topk+k])
             result_ens = pd.DataFrame({id_name: id_data, res_name: pred_ens})
-            result_ens.to_csv(os.path.join(kaggle_id, f'ens_opt_{mode}deftop{topk-k}_result.csv'), index=False)
+            result_ens.to_csv(os.path.join(kaggle_id, f'ens_def_{mode}{topk-k}_result.csv'), index=False)
 
     opt = ENS(task_type=task_type, stats=stats,
                 metric=args.metric, data_node=train_data_node,
@@ -167,11 +167,11 @@ if __name__ == '__main__':
     opt.get_model_info(save=True)  # 保存最优模型信息
     ens_preds = opt.predict(test_data_node, refit=args.refit)
 
-    topk = len(ens_preds) // 3
-    for i, mode in enumerate(['refit', 'mixed', 'partial']):
+    topk = len(ens_preds) // 2
+    for i, mode in enumerate(['top', 'only']):
         for k in range(topk):
             
             pred_ens = dm.decode_label(ens_preds[i*topk+k])
             result_ens = pd.DataFrame({id_name: id_data, res_name: pred_ens})
-            result_ens.to_csv(os.path.join(kaggle_id, f'ens_{args.time_limit}_opt_{mode}top{topk-k}_result.csv'), index=False)
+            result_ens.to_csv(os.path.join(kaggle_id, f'ens_{args.time_limit}opt_{mode}{topk-k}_result.csv'), index=False)
 
