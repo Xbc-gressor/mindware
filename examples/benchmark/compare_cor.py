@@ -42,6 +42,63 @@ def sel(file_path, topn=10):
     ranks.append(len(board))
     return ranks
 
+
+# def compare(file_path, topk=0.3):
+#     with open(file_path, 'r') as f:
+#         file = json.load(f)
+#     board = [tmp.split(', ') for tmp in file["leader_board"]]
+#     test_score = np.array([float(tmp[2].split('test-')[1]) for tmp in board])
+
+#     topn = int(len(test_score) * topk)
+#     sel_idx = np.argsort(-test_score)[:topn]
+
+#     test_score = test_score[sel_idx]
+#     head = [board[i][0].split(': ')[0] for i in sel_idx]
+
+#     layer = [int(tmp.split('-')[2][1:]) for tmp in head]
+#     ranks = list(np.argsort(-np.array(test_score)) + 1)
+#     layer_dict = {}
+#     for i in range(len(layer)):
+#         l = layer[i]
+#         r = ranks[i]
+#         if l not in layer_dict:
+#             layer_dict[l] = []
+#         layer_dict[l].append(r)
+
+#     for key in layer_dict.keys():
+#         layer_dict[key] = np.mean(layer_dict[key])
+
+#     return [layer_dict.get(tmp, 100000) for tmp in [1,2,3,4,5]]
+
+
+def compare(file_path, topk=1):
+    with open(file_path, 'r') as f:
+        file = json.load(f)
+    board = [tmp.split(', ') for tmp in file["leader_board"]]
+    test_score = np.array([float(tmp[2].split('test-')[1]) for tmp in board])
+
+    topn = int(len(test_score) * topk)
+    sel_idx = np.argsort(-test_score)[:topn]
+
+    test_score = test_score[sel_idx]
+    head = [board[i][0].split(': ')[0] for i in sel_idx]
+
+    layer = [int(tmp.split('-')[0].split('_')[0][3:]) for tmp in head]
+    # layer = [int(tmp.split('-')[0].split('_')[1][1:]) for tmp in head]
+    ranks = list(np.argsort(-np.array(test_score)) + 1)
+    layer_dict = {}
+    for i in range(len(layer)):
+        l = layer[i]
+        r = ranks[i]
+        if l not in layer_dict:
+            layer_dict[l] = []
+        layer_dict[l].append(r)
+
+    for key in layer_dict.keys():
+        layer_dict[key] = np.mean(layer_dict[key])
+
+    return [layer_dict.get(tmp, np.nan) for tmp in range(4, 50, 4)]
+
 path_lists = [
     "/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_ailerons_2025-04-28-01-36-08-029173/best_model_info.json",
     "/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_cpu_act_2025-04-28-03-06-56-426518/best_model_info.json",
@@ -117,6 +174,23 @@ avg: -0.1607, -0.0805,  0.0770, -0.0108,    84
 
 
 # 根据score选取topn个，看看test score的平均值是多少
+# cor_list = []
+# for path in path_lists:
+#     cor_list.append(sel(path, 10))
+
+# for i in range(len(cor_list)):
+#     tmp = cor_list[i]
+#     print("%3d" % i, end=': ')
+#     for t in tmp[:-1]:
+#         print("%5d" % t, end=', ')
+#     print("%5d" % tmp[-1])
+# cor_mean = np.mean(cor_list, axis=0)
+# print("avg", end=': ')
+# for t in cor_mean[:-1]:
+#     print("%5.2f" % t, end=', ')
+# print("%5d" % cor_mean[-1])
+"""
+top10
 cor_list = []
 for path in path_lists:
     cor_list.append(sel(path, 10))
@@ -132,3 +206,27 @@ print("avg", end=': ')
 for t in cor_mean[:-1]:
     print("%5.2f" % t, end=', ')
 print("%5d" % cor_mean[-1])
+"""
+
+# 看不同head的test_score
+cor_list = []
+for path in path_lists:
+    cor_list.append(compare(path, topk=0.8))
+
+for i in range(len(cor_list)):
+    tmp = cor_list[i]
+    print("%3d" % i, end=': ')
+    for t in tmp:
+        if not np.isnan(t):
+            print("%8d" % t, end=', ')
+        else:
+            print("%8s" % "nan", end=', ')
+    print()
+cor_mean = np.nanmean(cor_list, axis=0)
+print("avg", end=': ')
+for t in cor_mean:
+    if not np.isnan(t):
+        print("%8.2f" % t, end=', ')
+    else:
+        print("%8s" % "nan", end=', ')
+print()

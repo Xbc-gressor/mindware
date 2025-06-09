@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # 获取所有包含 "create_algorithm_meta_info_new.py" 的进程，获取 PID 和父进程 PID
-processes=$(ps -ef | grep "_benchmark.py" | grep -v "grep" | awk '{print $2":"$3}')
+processes=$(ps -ef | grep "benchmark_" | grep -v "grep" | awk '{print $2":"$3}')
 
 # 检查是否找到相关进程
 if [[ -z "$processes" ]]; then
-    echo "No processes containing '_benchmark.py' found."
+    echo "No processes containing 'benchmark_' found."
     exit 0
 fi
 

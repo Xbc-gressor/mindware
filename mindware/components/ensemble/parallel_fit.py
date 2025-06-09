@@ -143,7 +143,7 @@ def parallel_fit(config, task_type, if_imbal, seed,
             try:
                 estimator.fit(train_node.data[0], train_node.data[1])
             except:
-                return model_idx, fold, None, need_save
+                return model_idx, fold, None, need_save, cpu_ids
 
             # print(mid_time - start, time.time() - mid_time)
 
@@ -359,7 +359,7 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
                         for fi, fs in enumerate(fs_done):
                             model_idx, _fold, preds, need_save, cpu_ids = fs.result()
                             available_cpus.extend(cpu_ids)
-                            if fi == 0:                              
+                            if fi == 0:
                                 kwargs['cpu_ids'] = [available_cpus.pop() for _ in range(cpu_per_sub)]
                                 fs_wait.add(executor.submit(parallel_fit, **kwargs))
                             if model_idx < _n_base:

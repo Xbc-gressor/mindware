@@ -48,7 +48,7 @@ class LightGBM(BaseClassificationModel):
             self.target = Y
             X = X.values if isinstance(X, pd.DataFrame) else X
             X, Y = self.augment_data_func(X, Y)
-            print(f"Shape after augment_data_func - X: {X.shape}, y: {len(y)}")
+            print(f"Shape after augment_data_func - X: {X.shape}, y: {len(Y)}")
 
         self.estimator = LGBMClassifier(num_leaves=self.num_leaves,
                                         max_depth=self.max_depth,

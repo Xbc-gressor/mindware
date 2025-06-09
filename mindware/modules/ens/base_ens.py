@@ -32,7 +32,7 @@ class BaseEns(object):
                  optimizer='smac',
                  time_limit=600, amount_of_resource=None, per_run_time_limit=float(np.inf),
                  output_dir=None, seed=1, n_jobs=1, topk=np.inf, 
-                 task_id='test', val_nodes:dict=None, **cs_args):
+                 task_id='test', val_nodes:dict=None, judge='val', **cs_args):
 
         if optimizer not in ['smac']:
             raise ValueError('Invalid optimizer: %s for CASH!' % optimizer)
@@ -109,8 +109,11 @@ class BaseEns(object):
             seed=self.seed,
             if_imbal=self.if_imbal,
             val_nodes=val_nodes,
+            judge=judge,
             n_jobs=self.n_jobs
         )
+
+        self.judge=judge
         self.optimizer = self.build_optimizer()
         self.es = None
         self.es_list = []
@@ -237,7 +240,7 @@ class BaseEns(object):
         leader_board = self.evaluator.leader_board
         judge = self.evaluator.judge
         sorted_head = sorted(list(leader_board['train'].keys()), key=lambda x: (-leader_board[judge][x], -leader_board[f'{judge}_2'][x], -leader_board['train'][x], -leader_board['train_2'][x]))
-        model_info['leader_board'] = [f"{head}: {', '.join(['%s-%.5f' % (key, leader_board[key][head]) for key in leader_board.keys()])}" for head in sorted_head]
+        model_info['leader_board'] = [f"{head}: {', '.join(['%s-%.8e' % (key, leader_board[key][head]) for key in leader_board.keys()])}" for head in sorted_head]
         model_info['comb_count'] = self.evaluator.comb_count
 
         opt_trajectory = self.optimizer.get_opt_trajectory()
@@ -254,6 +257,7 @@ class BaseEns(object):
         # 获取对象的配置信息
         conf = {
             'name': self.name,
+            'judge': self.judge,
             'task_type': self.task_type,
             'task_id': self.task_id,
             'metric': self.metric_name,

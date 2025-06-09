@@ -218,7 +218,7 @@ class DataManager(object):
 
     def preprocess(self, input_node, task_type=CLASSIFICATION, train_phase=True):
         try:
-            input_node = self.remove_uninf_cols(input_node, train_phase=True)
+            input_node = self.remove_uninf_cols(input_node, train_phase=train_phase)
             input_node = self.impute_cols(input_node)
             input_node = self.x_preprocess(input_node)
             input_node = self.one_hot(input_node)

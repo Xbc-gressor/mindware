@@ -334,9 +334,14 @@ class BaseAutoML(object):
         config = self.incumbent.copy()
         algo_id = config['algorithm']
         if algo_id != 'neural_network':
-            op_list, estimator = self._refit_config(self.incumbent, self.data_node, task_type=self.task_type,
-                                                    if_imbal=self.if_imbal, resampling_params=self.resampling_params, seed=self.seed, mode=mode)
-            CombinedTopKModelSaver._save([op_list, estimator, self.incumbent_perf], model_path)
+            try:
+                op_list, estimator = self._refit_config(self.incumbent, self.data_node, task_type=self.task_type,
+                                                        if_imbal=self.if_imbal, resampling_params=self.resampling_params, seed=self.seed, mode=mode)
+                CombinedTopKModelSaver._save([op_list, estimator, self.incumbent_perf], model_path)
+            except:
+                print("Error when refit incumbent config, use origin model!")
+                par_model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, self.incumbent, self.datetime, mode='partial', **self.resampling_params)
+                shutil.copy(par_model_path, model_path)
 
     # train with whole data
     def refit(self, mode):
@@ -481,13 +486,20 @@ class BaseAutoML(object):
                 raise AttributeError("No stats found!")
 
             logger.info('Start to refit the best model! mode: %s!' % refit)
+            par_best_path = best_path
             best_path = CombinedTopKModelSaver.get_parse_path(best_path, mode=refit, **resampling_params)
             if os.path.exists(best_path):
                 logger.info("The best model has been refitted!")
                 best_op_list, estimator, _ = CombinedTopKModelSaver._load(best_path)
             else:
-                best_op_list, estimator = cls._refit_config(best_config, data_node, task_type=task_type, if_imbal=if_imbal, resampling_params=resampling_params, seed=seed, mode=refit)
-                CombinedTopKModelSaver._save([best_op_list, estimator, best_perf], best_path)
+                try:
+                    best_op_list, estimator = cls._refit_config(best_config, data_node, task_type=task_type, if_imbal=if_imbal, resampling_params=resampling_params, seed=seed, mode=refit)
+                    CombinedTopKModelSaver._save([best_op_list, estimator, best_perf], best_path)
+                except:
+                    print("Error when refit incumbent config, use origin model!")
+                    if os.path.exists(par_best_path):
+                        shutil.copy(par_best_path, best_path)
+                    best_op_list, estimator, _ = CombinedTopKModelSaver._load(best_path)
 
             pred = fetch_predict_results(task_type, best_op_list, estimator, test_data)
 
@@ -518,8 +530,8 @@ class BaseAutoML(object):
                 model_info['ensemble'] = es.get_ens_model_info()
             json.dump(model_info, f, indent=4)
 
-        if ensemble_method is None:
-            shutil.rmtree(output_dir)
+        # if ensemble_method is None:
+        shutil.rmtree(output_dir)
 
         if task_type in CLS_TASKS:
             if prob:

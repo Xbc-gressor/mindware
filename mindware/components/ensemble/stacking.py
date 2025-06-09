@@ -106,7 +106,7 @@ class Stacking(Blending):
         self.retain = retain
         self.dropout = dropout
         self.encoder = OneHotEncoder()
-        
+
         self.stack_layers = stack_layers
         self.thread = thread
         self.leader_board = {'train': {}}
@@ -126,6 +126,7 @@ class Stacking(Blending):
         self.last_real_loss = None
 
         self.opt = opt
+        assert judge in ['train', 'val']
         self.judge = judge
         self.base_sms = None
         self.base_ops = None
@@ -492,9 +493,9 @@ class Stacking(Blending):
                             for t in range(n_base_model):
                                 if bad_mask[t]: self.stack_models['layer_%d' % (layer+1)][t] = None
 
-                        fail_mask = np.repeat(fail_mask, n_dim)
+                        rfail_mask = np.repeat(fail_mask, n_dim)
                         for key in new_features.keys():
-                            last_features[key][:, ~fail_mask] = new_features[key][:, ~fail_mask]
+                            last_features[key][:, ~rfail_mask] = new_features[key][:, ~rfail_mask]
 
                         self.layer_loss.append(self.cal_scores(last_features, final_labels, self.ensemble_size))
 
@@ -601,7 +602,8 @@ class Stacking(Blending):
             reshape_y = np.reshape(datanode.data[1], (len(datanode.data[1]), 1))
             self.encoder.fit(reshape_y)
         # Train basic models using a part of training data
-        base_features, ori_xs = self.get_base_features(datanode, val_nodes)
+        _mode = 'partial' if self.judge == 'val' else 'full'
+        base_features, ori_xs = self.get_base_features(datanode, val_nodes, mode=_mode)
 
         final_labels = {'train': datanode.data[1]}
         if val_nodes is not None:

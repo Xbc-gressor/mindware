@@ -134,7 +134,7 @@ class BaseEvaluator(_BaseEvaluator):
     @staticmethod
     def _get_cv_data(task_type, data_node, resampling_params=None, seed=1, only_index=False):
 
-        folds = 3
+        folds = 5
         if resampling_params is not None and 'folds' in resampling_params:
             folds = resampling_params['folds']
 
@@ -144,7 +144,22 @@ class BaseEvaluator(_BaseEvaluator):
         else:
             ss = BaseRGSEvaluator._get_spliter(resampling_strategy='cv', n_splits=folds, random_state=seed, shuffle=False)
 
+        all_classes = set(np.unique(y))
         for train_index, val_index in ss.split(X, y):
+            if task_type in CLS_TASKS:
+                train_classes = set(y[train_index])
+                missing_classes = all_classes - train_classes
+                if missing_classes:
+                    for cls in missing_classes:
+                        # 从验证集中找到该类别的一个样本
+                        cls_indices_in_val = np.where(y[val_index] == cls)[0]
+                        if cls_indices_in_val.size > 0:
+                            # 交换第一个找到的样本
+                            swap_idx = cls_indices_in_val[0]
+                            # 更新索引
+                            train_index = np.append(train_index, val_index[swap_idx])
+                            val_index = np.delete(val_index, swap_idx)
+
             if only_index:
                 yield(train_index, val_index)
             else:

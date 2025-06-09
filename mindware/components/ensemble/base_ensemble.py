@@ -65,20 +65,25 @@ class BaseEnsembleModel(object):
                         continue
 
                     self.logger.info("Refit model %d[%s], path: %s" % (model_cnt, config['algorithm'], save_path))
-                    op_list, estimator, perf = CombinedTopKModelSaver._load(model_path)
+                    par_op_list, par_estimator, perf = CombinedTopKModelSaver._load(model_path)
 
                     if mode == 'full':
-                        if op_list == {}:
-                            _node = datanode.copy_()
-                        else:
-                            _node, op_list = parse_config(datanode, config, record=True,
-                                                        if_imbal=self.if_imbal)
+                        try:
+                            if par_op_list == {}:
+                                op_list = {}
+                                _node = datanode.copy_()
+                            else:
+                                _node, op_list = parse_config(datanode, config, record=True,
+                                                            if_imbal=self.if_imbal)
 
-                        estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
-                                                            _node.data[0], _node.data[1],
-                                                            weight_balance=_node.enable_balance,
-                                                            data_balance=_node.data_balance)
-                        CombinedTopKModelSaver._save(items=[op_list, estimator, perf], save_path=save_path)
+                            estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
+                                                                _node.data[0], _node.data[1],
+                                                                weight_balance=_node.enable_balance,
+                                                                data_balance=_node.data_balance)
+                            CombinedTopKModelSaver._save(items=[op_list, estimator, perf], save_path=save_path)
+                        except:
+                            print("Error when refit, use partial model!")
+                            CombinedTopKModelSaver._save(items=[par_op_list, par_estimator, perf], save_path=save_path)
                     else:
                         folds = 3
                         if self.resampling_params is not None and 'folds' in self.resampling_params:
@@ -88,20 +93,27 @@ class BaseEnsembleModel(object):
                         fold = 1
                         for train_node, _, _, _ in BaseEvaluator._get_cv_data(task_type=self.task_type, data_node=datanode,
                                                                     resampling_params=self.resampling_params, seed=self.seed):
-                            if op_list == {}:
-                                _node = train_node.copy_()
-                            else:
-                                _node, op_list = parse_config(train_node, config, record=True,
-                                                            if_imbal=self.if_imbal)
-
-                            estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
-                                                                _node.data[0], _node.data[1],
-                                                                weight_balance=_node.enable_balance,
-                                                                data_balance=_node.data_balance)
-
                             key = get_kfold_name(folds=folds, fold=fold, seed=self.seed, shuffle=False)
-                            op_list_dict[key] = op_list
-                            estimator_dict[key] = estimator
+                            try:
+                                if par_op_list == {}:
+                                    op_list = {}
+                                    _node = train_node.copy_()
+                                else:
+                                    _node, op_list = parse_config(train_node, config, record=True,
+                                                                if_imbal=self.if_imbal)
+
+                                estimator = fetch_predict_estimator(self.task_type, config['algorithm'], config,
+                                                                    _node.data[0], _node.data[1],
+                                                                    weight_balance=_node.enable_balance,
+                                                                    data_balance=_node.data_balance)
+
+                                op_list_dict[key] = op_list
+                                estimator_dict[key] = estimator
+                            except:
+                                print("Error when refit, use partial model!")
+                                op_list_dict[key] = par_op_list
+                                estimator_dict[key] = par_estimator
+
                             fold += 1
 
                         CombinedTopKModelSaver._save(items=[op_list_dict, estimator_dict, perf], save_path=save_path)

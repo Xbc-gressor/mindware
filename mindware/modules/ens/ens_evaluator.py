@@ -110,12 +110,16 @@ class BestPool:
             for inner_idx, idx in zip(inner_idxs, idxs):
                 stack_predictions[idx] = predictions[inner_idx]
 
-            if refit != 'partial':
-                assert data_node is not None
-                ensemble_builder.refit(datanode=data_node, mode=refit)
-                predictions = ensemble_builder.predict(test_data, refit)
+            if self.judge == 'train':
                 for inner_idx, idx in zip(inner_idxs, idxs):
                     refit_stack_predictions[idx] = predictions[inner_idx]
+            else:
+                if refit != 'partial':
+                    assert data_node is not None
+                    ensemble_builder.refit(datanode=data_node, mode=refit)
+                    predictions = ensemble_builder.predict(test_data, refit)
+                    for inner_idx, idx in zip(inner_idxs, idxs):
+                        refit_stack_predictions[idx] = predictions[inner_idx]
 
         stack_predictions = stack_predictions[none_num:]
         if refit != 'partial':
@@ -129,7 +133,7 @@ class EnsEvaluator(_BaseEvaluator):
             self, fixed_config=None, scorer=None, stats=None, data_node=None, task_type=0,
             resampling_strategy='cv', resampling_params=None,
             timestamp=None, output_dir=None, seed=1,
-            if_imbal=False, val_nodes:dict=None, n_jobs=1
+            if_imbal=False, val_nodes:dict=None, judge='val', n_jobs=1
     ):
 
         self.fixed_config = fixed_config
@@ -156,7 +160,7 @@ class EnsEvaluator(_BaseEvaluator):
             test_size = self.resampling_params['test_size']
         ss = self._get_spliter('holdout', test_size=test_size, random_state=self.seed)
 
-        self.judge = 'val'
+        self.judge = judge
         train_data = self.data_node.copy_(no_data=True)
         val_data = self.data_node.copy_(no_data=True)
         for train_index, test_index in ss.split(self.data_node.data[0], self.data_node.data[1]):
