@@ -219,7 +219,7 @@ def average_loss_correlation(y_true, Y_pred_base_models: List[np.ndarray], weigh
     corr_matrix = np.abs(np.corrcoef(loss_per_bm))
 
     # Set all values to nan except for the upper triangle of the matrix
-    upper = corr_matrix[np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool)]
+    upper = corr_matrix[np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool_)]
 
     # Replace nan values with 0 because it is equal to no correlation if something is just a constant predictor
     upper = np.nan_to_num(upper)

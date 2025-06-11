@@ -439,7 +439,7 @@ class BaseAutoML(object):
                        test_data: DataNode = None, stats=None,
                        resampling_params=None,
                        ensemble_method=None, ensemble_size=None, refit='full', prob=False, output_dir='./data', seed=1,
-                       task_id='test'):
+                       task_id='test', thread=2, **ens_args):
         print("Predicting with stats")
         if resampling_params is None:
             resampling_params = {}
@@ -504,15 +504,25 @@ class BaseAutoML(object):
             pred = fetch_predict_results(task_type, best_op_list, estimator, test_data)
 
         else:
-            _, valid_node = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=data_node,
+            train_node, valid_node = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=data_node,
                                                 resampling_params=resampling_params, seed=seed)
             es = EnsembleBuilder(stats=stats, valid_node=valid_node,
                                  task_type=task_type, if_imbal=if_imbal,
                                  metric=metric, resampling_params=resampling_params,
-                                 output_dir=output_dir, seed=seed)
-            es.build_ensemble(ensemble_method=ensemble_method, ensemble_size=ensemble_size)
-            datanode = data_node if ensemble_method == 'stacking' else valid_node
-            es.fit(datanode=datanode)
+                                 output_dir=output_dir, seed=seed, thread=thread)
+            
+            start = time.time()
+            # es.build_ensemble(ensemble_method=ensemble_method, ensemble_size=ensemble_size, judge='train', **ens_args)
+            # datanode = data_node if ensemble_method == 'stacking' else valid_node
+            # es.fit(datanode=datanode)
+
+            val_nodes = ens_args.pop('val_nodes')
+            val_nodes['val'] = valid_node
+            es.build_ensemble(ensemble_method=ensemble_method, ensemble_size=ensemble_size, judge='val', **ens_args)
+            datanode = train_node if ensemble_method == 'stacking' else valid_node
+            es.fit(datanode=datanode, val_nodes=val_nodes)
+
+            end = time.time()
             if refit != 'partial':
                 es.refit(datanode=data_node, mode=refit)
             pred = es.predict(test_data, refit=refit)
@@ -525,13 +535,15 @@ class BaseAutoML(object):
             }
             json.dump(conf, f, indent=4)
         with open(os.path.join(output_dir, 'best_model_info.json'), 'w') as f:
-            model_info = {'best': (best_config['algorithm'], best_config, best_path)}
             if ensemble_method is not None:
-                model_info['ensemble'] = es.get_ens_model_info()
+                ens_args.update({'ensemble_method': ensemble_method, 'ensemble_size': ensemble_size})
+                model_info = {'ens_args': ens_args, 'cost': end-start, 'ensemble': es.get_ens_model_info()}
+            else:
+                model_info = {'best': (best_config['algorithm'], best_config, best_path)}
             json.dump(model_info, f, indent=4)
 
-        # if ensemble_method is None:
-        shutil.rmtree(output_dir)
+        if ensemble_method is None:
+            shutil.rmtree(output_dir)
 
         if task_type in CLS_TASKS:
             if prob:

@@ -170,13 +170,7 @@ def parallel_predict(model_idx, config_path, task_type, node_path):
 
     op_list, model, _ = CombinedTopKModelSaver._load(config_path)
     valid_node = CombinedTopKModelSaver._load(node_path)
-    valid_node = construct_node(valid_node, op_list)
-    X_valid, y_valid = valid_node.data
-
-    if task_type in CLS_TASKS:
-        y_valid_pred = model.predict_proba(X_valid)
-    else:
-        y_valid_pred = model.predict(X_valid)
+    y_valid_pred = fetch_predict_results(task_type, op_list, model, valid_node)
 
     return model_idx, y_valid_pred
 
@@ -187,6 +181,9 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
     # 如果是第0层，要把训练好的模型保存到原始的文件夹中，用ori_config_paths控制
     # 如果是第0层，需要FE，用need_fe控制
     # stack_configs: [[base model configs], [head configs]]
+
+    if len(stack_configs[0]) + len(stack_configs[1]) == 0:
+        return None, None, None, None, None
 
     assert (layer == 0) == (ori_config_paths is not None)
     if not os.path.exists(output_dir):

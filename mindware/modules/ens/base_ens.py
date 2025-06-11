@@ -39,7 +39,6 @@ class BaseEns(object):
         if evaluation not in ['cv']:
             raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
 
-
         self.metric_name = 'unknown'
         if isinstance(metric, str):
             self.metric_name = metric

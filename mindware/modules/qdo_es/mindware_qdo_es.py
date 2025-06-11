@@ -1,4 +1,8 @@
 import numpy as np
+import pickle as pkl
+import os
+import json
+import time
 
 from mindware.components.utils.constants import *
 from mindware.components.feature_engineering.transformation_graph import DataNode
@@ -7,9 +11,11 @@ from mindware.modules.base_evaluator import BaseCLSEvaluator, BaseRGSEvaluator
 from mindware.components.ensemble.base_ensemble import BaseEnsembleModel
 from mindware.components.feature_engineering.parse import construct_node
 from mindware.modules.base_evaluator import fetch_predict_results
+from mindware.components.ensemble.parallel_fit import parallel_predict
 
 from mindware.modules.qdo_es.qdo.qdo_es import QDOEnsembleSelection
 from mindware.modules.qdo_es.util.metrics import make_metric, AbstractMetric
+import concurrent.futures as cfutures
 
 def get_metric(metric:str):
     if metric in ["accuracy", "acc"]:
@@ -66,13 +72,16 @@ def clean_config(config):
 
 
 class QDO_ES(BaseEnsembleModel):
+
+    name = 'QDO_ES'
     
     def __init__(self, stats, n_iterations:int, batch_size:int, task_type, data_node:DataNode,
                  metric:str = 'acc', evaluation:str ='holdout',
                  resampling_params =dict(), 
                  output_dir=None,
                  if_imbal=False,
-                 seed=1, n_jobs=1,):
+                 seed=1, n_jobs=1,
+                 task_id='test', time_limit=3600):
         
 
         super().__init__(stats,
@@ -91,15 +100,20 @@ class QDO_ES(BaseEnsembleModel):
         
         assert metric in SUPPORT_METRIC,f"Not support this metric :{metric}"
         
+        self.metric_name = 'unknown'
+        if isinstance(metric, str):
+            self.metric_name = metric
         self.metric = get_metric(metric)
         
         
         self.data_node = data_node.copy_()
-        self.n_jobs = n_jobs
+        self.thread = n_jobs
     
 
         #TODO: only support holdout now.
-        self.resampling_strategy = evaluation
+        self.evaluation = evaluation
+        self.task_id = task_id
+        self.time_limit = time_limit
 
         self.train_data = self.data_node.copy_(no_data=True)
         self.val_data = self.data_node.copy_(no_data=True)
@@ -118,6 +132,13 @@ class QDO_ES(BaseEnsembleModel):
         self.val_data.data = [_x_val, _y_val]
 
 
+        path = 'QDO_ES-b%d(%d)-%s_%s_%s' % (
+            self.batch_size, self.seed, self.evaluation, self.task_id, self.datetime
+        )
+        self.output_dir = os.path.join(output_dir, path)
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+
         self.predictions, base_models, configs = self.build_predictions(self.stats, self.val_data, self.task_type)
 
         from mindware.modules.qdo_es.qdo.behavior_spaces import bs_configspace_similarity_and_loss_correlation
@@ -127,9 +148,11 @@ class QDO_ES(BaseEnsembleModel):
         self.model = QDOEnsembleSelection(
             base_models=base_models,
             configs=configs,
+            n_jobs=2,
             n_iterations= n_iterations,
             score_metric= self.metric,
-            behavior_space = bs
+            behavior_space = bs,
+            time_limit=time_limit
         )
 
 
@@ -142,31 +165,74 @@ class QDO_ES(BaseEnsembleModel):
 
         return ss
     
+    
     def build_predictions(self, stats, valid_node, task_type):
+        start = time.time()
+
         predictions = []
         base_models = []
         configs = []
-        model_cnt = 0
-        for algo_id in stats.keys():
-            model_to_eval = stats[algo_id]
-            for idx, (config, _, path) in enumerate(model_to_eval):
-                op_list, model, _ = CombinedTopKModelSaver._load(path)
-                base_models.append(model)
-                configs.append(clean_config(config))
-                _node = valid_node.copy_()
-                _node = construct_node(_node, op_list)
-                X_valid, y_valid = _node.data
+        if self.thread == 1:
+            model_cnt = 0
+            for algo_id in stats.keys():
+                model_to_eval = stats[algo_id]
+                for idx, (config, _, path) in enumerate(model_to_eval):
+                    op_list, model, _ = CombinedTopKModelSaver._load(path)
+                    base_models.append(model)
+                    configs.append(clean_config(config))
+                    predictions.append(fetch_predict_results(task_type, op_list, model, valid_node))
 
-                if task_type in CLS_TASKS:
-                    y_valid_pred = model.predict_proba(X_valid)
-                else:
-                    y_valid_pred = model.predict(X_valid)
-                predictions.append(y_valid_pred)
+                    model_cnt += 1
+        else:
+            output_dir = os.path.join(self.output_dir, 'ensemble_tmp')
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
 
-                model_cnt += 1
+            all_model_cnt = 0
+            for algo_id in stats.keys():
+                all_model_cnt += len(stats[algo_id])
+
+            predictions = [None] * all_model_cnt
+            node_path = os.path.join(output_dir, 'valid_node.pkl')
+            with open(node_path, 'wb') as f:
+                pkl.dump(valid_node, f)
+
+            with cfutures.ProcessPoolExecutor(max_workers=self.thread) as executor:
+                fs_wait = set()
+
+                model_cnt = 0
+                for algo_id in stats.keys():
+                    model_to_eval = stats[algo_id]
+                    for idx, (config, _, path) in enumerate(model_to_eval):
+                        _, model, _ = CombinedTopKModelSaver._load(path)
+                        base_models.append(model)
+                        configs.append(clean_config(config))
+                        kwargs = {
+                            'model_idx': model_cnt,'config_path': path, 'task_type': task_type, 'node_path': node_path
+                        }
+
+                        if len(fs_wait) < self.thread:
+                            fs_wait.add(executor.submit(parallel_predict, **kwargs))
+                        else:
+                            fs_done, fs_wait = cfutures.wait(fs_wait, return_when=cfutures.FIRST_COMPLETED)
+                            fs_wait.add(executor.submit(parallel_predict, **kwargs))
+                            for fs in fs_done:
+                                model_idx, pred = fs.result()
+                                predictions[model_idx] = pred
+
+                        model_cnt += 1
+
+                while len(fs_wait) > 0:
+                    fs_done, fs_wait = cfutures.wait(fs_wait, return_when=cfutures.FIRST_COMPLETED)
+                    for fs in fs_done:
+                        model_idx, pred = fs.result()
+                        predictions[model_idx] = pred
+
+            os.remove(node_path)
+
+        print(f"Build predictions with {self.thread} threads cost: {time.time() - start}s!")
 
         return predictions, base_models, configs
-    
 
     def get_weights(self):
         y_val = self.val_data.data[1]
@@ -176,7 +242,7 @@ class QDO_ES(BaseEnsembleModel):
         self.base_model_mask[self.weights_ != 0] = True
         return self.model.weights_
     
-    def predict(self, data, refit='full'):
+    def _predict(self, data, refit='full'):
         predictions = []
         cur_idx = 0
         for algo_id in self.stats.keys():
@@ -204,3 +270,48 @@ class QDO_ES(BaseEnsembleModel):
         else:
             raise ValueError("The dimensions of ensemble predictions"
                              " and ensemble weights do not match!")
+    
+    def predict(self, data, refit='full'):
+
+        can_pred = self._predict(data, refit)
+        if self.task_type in CLS_TASKS:
+            can_pred = np.argmax(can_pred, axis=-1)
+        
+        return can_pred
+
+
+    def predict_proba(self, data, refit='full'):
+
+        can_pred = self._predict(data, refit)
+        
+        return can_pred
+    
+    def get_model_info(self, save=False):
+        model_info = dict()
+
+        model_info['weights'] = list(self.weights_)
+
+        if save:
+            with open(os.path.join(self.output_dir, 'best_model_info.json'), 'w') as f:
+                json.dump(model_info, f, indent=4)
+
+        return model_info
+
+
+    def get_conf(self, save=False):
+        # 获取对象的配置信息
+        conf = {
+            'name': self.name,
+            'task_type': self.task_type,
+            'task_id': self.task_id,
+            'metric': self.metric_name,
+            'time_limit': self.time_limit,
+            'seed': self.seed,
+            'if_imbal': self.if_imbal,
+        }
+
+        if save:
+            with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:
+                json.dump(conf, f, indent=4)
+
+        return conf

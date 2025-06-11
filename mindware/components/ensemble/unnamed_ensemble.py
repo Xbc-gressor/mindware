@@ -18,6 +18,13 @@ def outliers_mask_iqr(data):
 
 def choose_base_models_regression(predictions, labels, num_model, ratio = 0.49):
     n, s = predictions.shape  # 矩阵维度
+
+    if ratio == -1: # 随机
+        z = np.zeros(n, dtype=int)
+        top_k_indices = np.random.choice(n, num_model, replace=False)
+        z[top_k_indices] = 1
+        return z
+    
     # y - f_h(x)
     dif = labels - predictions
     _G = dif @ dif.T 
@@ -74,6 +81,13 @@ def choose_base_models_classification(predictions, labels, num_model, ratio = 0.
     if len(labels.shape) == 1:
         labels = OneHotEncoder().fit_transform(np.reshape(labels, (len(labels), 1))).toarray()
     n, s, c = predictions.shape  # 矩阵维度 n:模型数量, c:类别
+
+    if ratio == -1: # 随机
+        z = np.zeros(n, dtype=int)
+        top_k_indices = np.random.choice(n, num_model, replace=False)
+        z[top_k_indices] = 1
+        return z
+    
     # y - f_h(x)
     dif = labels - predictions
     _G = np.zeros((c, n, n))

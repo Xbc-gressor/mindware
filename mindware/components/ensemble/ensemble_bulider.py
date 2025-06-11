@@ -78,7 +78,7 @@ class EnsembleBuilder:
                                  task_type=self.task_type, if_imbal=self.if_imbal,
                                  metric=self.metric, resampling_params=self.resampling_params,
                                  output_dir=self.output_dir, seed=self.seed,
-                                 predictions=self.predictions, base_model_mask=base_model_mask)
+                                 predictions=None, base_model_mask=base_model_mask)
         elif ensemble_method == 'blending':
             self.model = Blending(stats=self.stats,
                                   ensemble_size=ensemble_size,
@@ -87,7 +87,7 @@ class EnsembleBuilder:
                                   output_dir=self.output_dir, seed=self.seed,
                                   meta_learner=meta_learner, 
                                   dropout=dropout,
-                                  predictions=self.predictions, base_model_mask=base_model_mask)
+                                  predictions=None, base_model_mask=base_model_mask)
         elif ensemble_method == 'stacking':
             max_k = kwargs.get('max_k', 1)
             self.model = Stacking(stats=self.stats,
@@ -97,7 +97,7 @@ class EnsembleBuilder:
                                   output_dir=self.output_dir, seed=self.seed,
                                   stack_layers=stack_layers, meta_learner=meta_learner, thread=self.thread,
                                   dropout=dropout, max_k=max_k,
-                                  predictions=self.predictions, base_model_mask=base_model_mask,
+                                  predictions=None, base_model_mask=base_model_mask,
                                   opt=kwargs.get('opt', False), judge=kwargs.get('judge', 'val'))
         elif ensemble_method == 'ensemble_selection':
             self.model = EnsembleSelection(stats=self.stats,

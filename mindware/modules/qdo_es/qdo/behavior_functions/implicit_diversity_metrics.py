@@ -34,7 +34,7 @@ def config_space_gower_similarity(input_metadata: Tuple[Dict[str, Union[int, flo
 
         for i_k in identical_keys:
 
-            if isinstance(bm_md_1[i_k], str) or i_k not in ranges.keys():
+            if isinstance(bm_md_1[i_k], str) or isinstance(bm_md_2[i_k], str) or i_k not in ranges.keys():
                 # -- Assume it is a categorical hyperparameter/choice
                 if bm_md_1[i_k] == bm_md_2[i_k]:
                     distance_scores.append(0)  # Identical means absolute similar / close

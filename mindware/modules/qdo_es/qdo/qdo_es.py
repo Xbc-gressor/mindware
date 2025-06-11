@@ -1,5 +1,5 @@
 import os
-
+import time
 import numpy as np
 
 from typing import List, Optional, Union, Callable, Dict
@@ -91,7 +91,7 @@ class QDOEnsembleSelection(AbstractWeightedEnsemble):
                  emitter_vars: Optional[dict] = None, batch_size: int = 20,
                  emitter_method: str = "DiscreteWeightSpaceEmitter", emitter_initialization_method: str = "AllL1",
                  random_state: Optional[Union[int, np.random.RandomState]] = None,
-                 show_analysis=False, n_jobs: int = -1) -> None:
+                 show_analysis=False, n_jobs: int = -1, time_limit=3600) -> None:
 
         # The following just tells our wrapper/supper that we want to have prediction probabilities as input for fit
         super().__init__(base_models, "predict_proba")
@@ -159,6 +159,8 @@ class QDOEnsembleSelection(AbstractWeightedEnsemble):
                 n_jobs = len(os.sched_getaffinity(0))
             self._n_jobs = n_jobs
             self._use_mp = True
+
+        self.time_limit = time_limit
 
     def ensemble_fit(self, predictions: List[np.ndarray], labels: np.ndarray) -> AbstractWeightedEnsemble:
         # -- Input Validation
@@ -386,7 +388,9 @@ class QDOEnsembleSelection(AbstractWeightedEnsemble):
             optimize_stats["Archive Size"].append(0)
             optimize_stats["Max Objective"].append(self.init_iteration_results[0])
 
-        for itr in range(1, self.internal_n_iterations + 1):
+        start = time.time()
+        itr = 1
+        while time.time() - start <= self.time_limit:
             # Get solutions
             print(f'Iteration: {itr}')
             sols = opt.ask()
@@ -401,27 +405,44 @@ class QDOEnsembleSelection(AbstractWeightedEnsemble):
             # Log stats
             optimize_stats["Archive Size"].append(len(opt.archive))
             optimize_stats["Max Objective"].append(float(opt.archive.stats.obj_max))
+            itr += 1
+        
+        # for itr in range(1, self.internal_n_iterations + 1):
+        #     # Get solutions
+        #     print(f'Iteration: {itr}')
+        #     sols = opt.ask()
 
-        # -- Rest Iteration, required if wanted number of evaluations can not be evenly
-        #    distributed across batches.
-        if self.n_rest_evaluations:
-            sols = opt.ask()
-            org_length = len(sols)
-            sols = sols[:self.n_rest_evaluations, :]
+        #     # Evaluate solutions
+        #     objs, bcs = self._evaluate_batch_of_solutions(sols, predictions, labels)
 
-            objs, bcs = self._evaluate_batch_of_solutions(sols, predictions, labels)
+            
+        #     # Report back and restart
+        #     opt.tell(objs, bcs)
 
-            # Get some existing behavior values and a worse objective value
-            dummy_obj = objs[0]
-            dummy_bc = bcs[0, :]
+        #     # Log stats
+        #     optimize_stats["Archive Size"].append(len(opt.archive))
+        #     optimize_stats["Max Objective"].append(float(opt.archive.stats.obj_max))
 
-            # fill rest of the solutions with dummy values
-            objs = np.hstack([objs, [dummy_obj] * (org_length - len(sols))])
-            bcs = np.vstack([bcs, [dummy_bc] * (org_length - len(sols))])
+        # # -- Rest Iteration, required if wanted number of evaluations can not be evenly
+        # #    distributed across batches.
+        # if self.n_rest_evaluations:
+        #     sols = opt.ask()
+        #     org_length = len(sols)
+        #     sols = sols[:self.n_rest_evaluations, :]
 
-            opt.tell(objs, bcs)
-            optimize_stats["Archive Size"].append(len(opt.archive))
-            optimize_stats["Max Objective"].append(float(opt.archive.stats.obj_max))
+        #     objs, bcs = self._evaluate_batch_of_solutions(sols, predictions, labels)
+
+        #     # Get some existing behavior values and a worse objective value
+        #     dummy_obj = objs[0]
+        #     dummy_bc = bcs[0, :]
+
+        #     # fill rest of the solutions with dummy values
+        #     objs = np.hstack([objs, [dummy_obj] * (org_length - len(sols))])
+        #     bcs = np.vstack([bcs, [dummy_bc] * (org_length - len(sols))])
+
+        #     opt.tell(objs, bcs)
+        #     optimize_stats["Archive Size"].append(len(opt.archive))
+        #     optimize_stats["Max Objective"].append(float(opt.archive.stats.obj_max))
 
         self.optimize_stats_ = optimize_stats
 
