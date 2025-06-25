@@ -154,7 +154,7 @@ class BaseAutoML(object):
         algo_id = config['algorithm']
 
         if mode == 'cv':
-            folds = 3
+            folds = 5
             if resampling_params is not None and 'folds' in resampling_params:
                 folds = resampling_params['folds']
 
@@ -504,7 +504,7 @@ class BaseAutoML(object):
             pred = fetch_predict_results(task_type, best_op_list, estimator, test_data)
 
         else:
-            train_node, valid_node = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=data_node,
+            _, valid_node = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=data_node,
                                                 resampling_params=resampling_params, seed=seed)
             es = EnsembleBuilder(stats=stats, valid_node=valid_node,
                                  task_type=task_type, if_imbal=if_imbal,
@@ -512,16 +512,9 @@ class BaseAutoML(object):
                                  output_dir=output_dir, seed=seed, thread=thread)
             
             start = time.time()
-            # es.build_ensemble(ensemble_method=ensemble_method, ensemble_size=ensemble_size, judge='train', **ens_args)
-            # datanode = data_node if ensemble_method == 'stacking' else valid_node
-            # es.fit(datanode=datanode)
-
-            val_nodes = ens_args.pop('val_nodes')
-            val_nodes['val'] = valid_node
-            es.build_ensemble(ensemble_method=ensemble_method, ensemble_size=ensemble_size, judge='val', **ens_args)
-            datanode = train_node if ensemble_method == 'stacking' else valid_node
-            es.fit(datanode=datanode, val_nodes=val_nodes)
-
+            es.build_ensemble(ensemble_method=ensemble_method, ensemble_size=ensemble_size, judge='train', **ens_args)
+            datanode = data_node if ensemble_method == 'stacking' else valid_node
+            es.fit(datanode=datanode)
             end = time.time()
             if refit != 'partial':
                 es.refit(datanode=data_node, mode=refit)

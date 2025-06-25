@@ -73,24 +73,33 @@ def parallel_fit(config, task_type, if_imbal, seed,
             if kwargs['mode'] == 'partial':
                 _mode += kwargs['mode']
             cv_path = CombinedTopKModelSaver.get_parse_path(ori_config_path, _mode, folds=folds)
+            need_retrain = True
             if os.path.exists(cv_path):
-                op_list_dict, estimator_dict, _ = CombinedTopKModelSaver._load(cv_path)
-                key = get_kfold_name(folds=folds, fold=fold, seed=seed, shuffle=False)
-                op_list, estimator = op_list_dict[key], estimator_dict[key]
-            else:
+                try:
+                    op_list_dict, estimator_dict, _ = CombinedTopKModelSaver._load(cv_path)
+                    key = get_kfold_name(folds=folds, fold=fold, seed=seed, shuffle=False)
+                    op_list, estimator = op_list_dict[key], estimator_dict[key]
+                    need_retrain = False
+                except:
+                    print("Read model failed, retain!")
+            if need_retrain:
                 try:
                     # train_node, op_list = parse_config(train_node, config, record=True, if_imbal=if_imbal)
                     # 用全数据做，效果好一点
-                    _, op_list = parse_config(data_node, config, record=True, if_imbal=if_imbal)
-                    # op_list, _, _ = CombinedTopKModelSaver._load(ori_config_path)
-                    train_node = construct_node(train_node.copy_(), op_list)
+                    try:
+                        _, op_list = parse_config(data_node, config, record=True, if_imbal=if_imbal)
+                        # op_list, _, _ = CombinedTopKModelSaver._load(ori_config_path)
+                        train_node = construct_node(train_node.copy_(), op_list)
+                    except:
+                        op_list = {}
+                    x_p1, y_p1 = train_node.data
+                    # 和下面直接fit的区别在于是否考虑数据分布不均匀的smote
+                    estimator = fetch_predict_estimator(task_type, config['algorithm'], config, x_p1, y_p1,
+                                                        weight_balance=train_node.enable_balance,
+                                                        data_balance=train_node.data_balance)
                 except:
-                    op_list = {}
-                x_p1, y_p1 = train_node.data
-                # 和下面直接fit的区别在于是否考虑数据分布不均匀的smote
-                estimator = fetch_predict_estimator(task_type, config['algorithm'], config, x_p1, y_p1,
-                                                    weight_balance=train_node.enable_balance,
-                                                    data_balance=train_node.data_balance)
+                    print("Training base model failed, use original model!")
+                    op_list, estimator, _ = CombinedTopKModelSaver._load(ori_config_path)
         else:
             # start = time.time()
             n_base_model = kwargs['n_base_model']

@@ -1,4 +1,7 @@
 #!/bin/bash
+# 初始化任务列表
+declare -a TASKS
+
 cls_datasets=( \
     "hypothyroid(2)" "spectf" "mfeat-morphological(2)" "fri_c3_1000_50" "fri_c3_1000_25" "splice" "puma32H" "covertype" "mnist_784" "fri_c2_1000_25" \
     "adult" "kr-vs-kp" "glass" "adult-census" "letter(2)" "delta_ailerons" "balloon" "fri_c2_1000_50" "car(2)" "satimage" "car(1)" "semeion" \
@@ -11,24 +14,35 @@ cls_datasets=( \
     "cpu_small" "isolet" "houses" "abalone" "winequality_red" "waveform-5000(1)" "fri_c2_1000_5" "mfeat-factors(2)" "fri_c3_1000_5" "usps" "puma8NH" \
     "yeast" "fri_c0_1000_50" "colleges_usnews" "pollen" "magic_telescope" "mfeat-factors(1)" "colleges_aaup" "pendigits" "mfeat-zernike(2)" "sylva_prior" \
     "ailerons")
-
-# cls_datasets=("kc1" "sick" "cpu_act" "ailerons" "mv")
-
 echo "${#cls_datasets[@]}"
 
-# 初始化任务列表
-declare -a TASKS
-
 start_idx=0
-end_idx=108
+end_idx=109
 length=$((end_idx - start_idx + 1))
 # 提取子数组
 subset=("${cls_datasets[@]:$start_idx:$length}")
 # 打印提取的子数组
 echo "Subset (index $start_idx to $end_idx):"
+# for item in "${subset[@]}"; do
+#     echo "python benchmark_cls.py --n_algorithm 6 --n_preprocessor 6 --time_limit 3600 --job_id $item --output_dir ./benchmark_data"
+#     TASKS+=("python benchmark_cls.py --n_algorithm 6 --n_preprocessor 6 --time_limit 3600 --job_id $item --output_dir ./benchmark_data")
+# done
+
+# cls_datasets=("kc1" "sick" "cpu_act" "ailerons" "mv")
+
+# for item in "${subset[@]}"; do
+#     echo "python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type CLS --job_id $item --output_dir ./benchmark_data --ensemble_method stacking --meta_learner linear"
+#     TASKS+=("python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type CLS --job_id $item --output_dir ./benchmark_data --ensemble_method stacking --meta_learner linear")
+# done
+
+# for item in "${subset[@]}"; do
+#     echo "python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type CLS --job_id $item --output_dir ./benchmark_data --time_limit 3600 --thread 6"
+#     TASKS+=("python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type CLS --job_id $item --output_dir ./benchmark_data --time_limit 3600 --thread 6")
+# done
+
 for item in "${subset[@]}"; do
-    echo "python benchmark_cls.py --n_algorithm 6 --n_preprocessor 6 --time_limit 3600 --job_id $item --output_dir ./benchmark_data"
-    TASKS+=("python benchmark_cls.py --n_algorithm 6 --n_preprocessor 6 --time_limit 3600 --job_id $item --output_dir ./benchmark_data")
+    echo "python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type CLS --job_id $item --output_dir ./benchmark_data --time_limit 3600 --thread 20 --ensemble_method stacking --meta_learner linear"
+    TASKS+=("python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type CLS --job_id $item --output_dir ./benchmark_data --time_limit 3600 --thread 20 --ensemble_method stacking --meta_learner linear")
 done
 
 rgs_datasets=( \
@@ -48,10 +62,20 @@ length=$((end_idx - start_idx + 1))
 subset=("${rgs_datasets[@]:$start_idx:$length}")
 # 打印提取的子数组
 echo "Subset (index $start_idx to $end_idx):"
+# for item in "${subset[@]}"; do
+#     echo "python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type RGS --time_limit 3600 --job_id $item --output_dir ./benchmark_data  --thread 6"
+#     TASKS+=("python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type RGS --time_limit 3600 --job_id $item --output_dir ./benchmark_data  --thread 6")
+# done
+
 for item in "${subset[@]}"; do
-    echo "python benchmark_rgs.py --n_algorithm 6 --n_preprocessor 6 --time_limit 7200 --job_id $item --output_dir ./benchmark_data"
-    TASKS+=("python benchmark_rgs.py --n_algorithm 6 --n_preprocessor 6 --time_limit 7200 --job_id $item --output_dir ./benchmark_data")
+    echo "python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type RGS --job_id $item --output_dir ./benchmark_data --time_limit 3600 --thread 20 --ensemble_method stacking --meta_learner linear"
+    TASKS+=("python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type RGS --job_id $item --output_dir ./benchmark_data --time_limit 3600 --thread 20 --ensemble_method stacking --meta_learner linear")
 done
+
+# for item in "${subset[@]}"; do
+#     echo "python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type RGS --job_id $item --output_dir ./benchmark_data --time_limit 7200 --thread 7"
+#     TASKS+=("python benchmark_mindware.py --n_algorithm 6 --n_preprocessor 6 --task_type RGS --job_id $item --output_dir ./benchmark_data --time_limit 7200 --thread 7")
+# done
 
 # 最大并发数
 MAX_JOBS=4

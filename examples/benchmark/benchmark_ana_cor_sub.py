@@ -7,31 +7,54 @@ from scipy.stats import spearmanr, kendalltau
 data_dir = './benchmark_data'
 sel_ens = [20]
 
-data_path_dict = [
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_ailerons_2025-05-09-17-59-32-356337/',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_bank32nh_2025-05-09-20-57-50-315934/',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_cpu_act_2025-05-09-17-59-32-290140',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_cpu_act_2025-05-09-19-41-37-953602',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_debutanizer_2025-05-09-19-38-01-715415',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_kc1_2025-05-09-17-59-32-751841',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_Moneyball_2025-05-09-17-59-32-444422',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_mv_2025-05-09-20-37-44-855607',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_puma8NH_2025-05-09-20-30-52-474765',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_sick_2025-05-09-19-13-38-843859'
-]
+# train cv
+# data_path_dict = [
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_ailerons_2025-05-09-17-59-32-356337/',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_bank32nh_2025-05-09-20-57-50-315934/',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_cpu_act_2025-05-09-17-59-32-290140',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_cpu_act_2025-05-09-19-41-37-953602',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_debutanizer_2025-05-09-19-38-01-715415',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_kc1_2025-05-09-17-59-32-751841',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_Moneyball_2025-05-09-17-59-32-444422',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_mv_2025-05-09-20-37-44-855607',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_puma8NH_2025-05-09-20-30-52-474765',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_sick_2025-05-09-19-13-38-843859'
+# ]
 
-data_path_dict = [
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_ailerons_2025-05-10-11-00-32-156864',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_bank32nh_2025-05-10-14-00-24-751453',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_cpu_act_2025-05-10-11-00-32-112640',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_cpu_act_2025-05-10-12-39-11-493134',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_debutanizer_2025-05-10-12-32-47-106061',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_kc1_2025-05-10-11-00-32-511556',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_Moneyball_2025-05-10-11-00-32-258461',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_mv_2025-05-10-13-38-10-931808',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_puma8NH_2025-05-10-13-24-24-047920',
-    '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_sick_2025-05-10-12-07-08-665399'
-]
+# val
+# data_path_dict = [
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_ailerons_2025-05-10-11-00-32-156864',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_bank32nh_2025-05-10-14-00-24-751453',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_cpu_act_2025-05-10-11-00-32-112640',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_cpu_act_2025-05-10-12-39-11-493134',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_debutanizer_2025-05-10-12-32-47-106061',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_kc1_2025-05-10-11-00-32-511556',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_Moneyball_2025-05-10-11-00-32-258461',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_mv_2025-05-10-13-38-10-931808',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_puma8NH_2025-05-10-13-24-24-047920',
+#     '/root/mindware/examples/benchmark/res_ensopt_dropout_data_maxk/ENS-smac(1)-cv_sick_2025-05-10-12-07-08-665399'
+# ]
+
+data_path_dict = []
+for base_dir in ['./benchmark_data/data_CLS_3600', './benchmark_data/data_RGS_3600']:
+    for sub_dir in os.listdir(base_dir):
+        sub_dir = os.path.join(base_dir, sub_dir)
+        valid_ds = []
+        for sub2_dir in os.listdir(sub_dir):
+            if not sub2_dir.startswith('ENS-'): continue
+            config_path = os.path.join(sub_dir, sub2_dir, './config.json')
+            best_path = os.path.join(sub_dir, sub2_dir, './best_model_info.json')
+            if not os.path.exists(config_path) or not os.path.exists(best_path):
+                continue
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            if config['time_limit'] == 1:
+                continue
+
+            valid_ds.append(os.path.join(sub_dir, sub2_dir))
+
+        if len(valid_ds) > 0:
+            data_path_dict.append(sorted(valid_ds)[-1])
 
 # data_path_dict = [
 #     '/root/mindware/examples/benchmark/benchmark_data/ENS-smac(1)-cv_ailerons_2025-06-08-03-48-29-730898',
@@ -72,7 +95,7 @@ for sub_dir in data_path_dict:
     task_id = config['task_id']
     if task_id not in tar_dict[task_type]:
         tar_dict[task_type][task_id] = {}
-    d = best_config["best_pool"][0]["dropout"]
+    d = 20
     if d not in tar_dict[task_type][task_id]:
         tar_dict[task_type][task_id][d] = []
     tar_dict[task_type][task_id][d] += best_config["leader_board"]
@@ -91,13 +114,18 @@ for task_type, datasets in opt_data_dict.items():
             for dropout in sel_ens:
                 leaderboard = dropouts[dropout]
                 tmp_list = [tmp.split(', ') for tmp in leaderboard]
-                sub_len = len(tmp_list)
-                train_score = [float(tmp[0].split('train-')[1]) for tmp in tmp_list][:sub_len]
-                val_score = [float(tmp[4].split('val-')[1]) for tmp in tmp_list][:sub_len]
-                test_score = [float(tmp[2].split('test-')[1]) for tmp in tmp_list][:sub_len]
-
+                
+                train_score = np.array([float(tmp[0].split('train-')[1]) for tmp in tmp_list])
+                train2_score = np.array([float(tmp[1].split('train_2-')[1]) for tmp in tmp_list])
+                val_score = np.array([float(tmp[4].split('val-')[1]) for tmp in tmp_list])
+                val2_score = np.array([float(tmp[5].split('val_2-')[1]) for tmp in tmp_list])
+                test_score = np.array([float(tmp[2].split('test-')[1]) for tmp in tmp_list])
+                train_val_score = train_score + val_score
+                
+                sub_len = len(train_score) // 2
+                valid_index = np.argsort(val2_score)[-sub_len:]
                 # tmp_score = [train_score[i] + val_score[i] for i in range(sub_len)]
-                cor = spearmanr(train_score, test_score)[0]
+                cor = spearmanr(val2_score[valid_index], test_score[valid_index])[0]
                 # cor = spearmanr(train_score, test_score)[0]
                 cor_dict[task_type][_dataset][dropout] = cor
         except Exception as e:

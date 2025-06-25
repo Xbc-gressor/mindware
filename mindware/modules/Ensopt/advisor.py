@@ -168,7 +168,6 @@ class MyAdvisor(Advisor):
 
         num_config_evaluated = len(history)
         num_config_successful = history.get_success_count()
-
         if len(self.initial_configurations) > 0:
             res = self.initial_configurations[0]
             self.initial_configurations = self.initial_configurations[1:]
@@ -240,16 +239,13 @@ class MyAdvisor(Advisor):
                                                      X=X, Y=Y)
 
             # optimize acquisition function
-            challengers = self.acq_optimizer.maximize(
-                acquisition_function=self.acquisition_function,
-                history=history,
+            challengers = self.optimizer.maximize(
+                runhistory=history,
                 num_points=5000,
             )
             if return_list:
                 # Caution: return_list doesn't contain random configs sampled according to rand_prob
                 return challengers
-
-            self.early_stop_ei(history, challengers=challengers)
 
             for config in challengers:
                 if config not in history.configurations:

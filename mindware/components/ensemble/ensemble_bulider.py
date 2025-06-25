@@ -49,28 +49,39 @@ class EnsembleBuilder:
 
     def build_ensemble(self, ensemble_method, ensemble_size, **kwargs):
         ratio = kwargs.get('ratio', 0.4)
-        dropout = kwargs.get('dropout', 0.2)
+        dropout = kwargs.get('dropout', 0)
         self.logger.info(f"Ensemble size: {ensemble_size}, ratio: {ratio}, dropout: {dropout}")
         stack_layers = kwargs.get('stack_layers', 5)
         meta_learner = kwargs.get('meta_learner', 'auto')
 
-        if len(self.predictions) < ensemble_size:
+        base_model_mask = None
+        if len(self.predictions) < ensemble_size:  # 全选
             self.logger.info("The number of models is less than the ensemble size. "
                              "Set the ensemble size to the number of models.")
             ensemble_size = len(self.predictions)
+            base_model_mask = np.full(len(self.predictions), True)
+        else:
+            if ensemble_size == -1: #选择每个模型里面最好的
+                base_model_mask = np.full(len(self.predictions), False)
+                model_cnt = 0
+                for algo_id in self.stats.keys():
+                    base_model_mask[model_cnt] = True
+                    model_cnt += len(self.stats[algo_id])
 
-        base_model_mask = None
-        if ensemble_method not in ["ensemble_selection"]:
-            y_valid = self.valid_node.data[1]
-            if self.task_type in CLS_TASKS:
-                base_model_mask = choose_base_models_classification(
-                    np.array(self.predictions), np.array(y_valid), ensemble_size, ratio=ratio
-                )
+                ensemble_size = np.sum(base_model_mask)
+
             else:
-                base_model_mask = choose_base_models_regression(
-                    np.array(self.predictions), np.array(y_valid), ensemble_size, ratio=ratio
-                )
-            ensemble_size = sum(base_model_mask)
+                if ensemble_method not in ["ensemble_selection"]:
+                    y_valid = self.valid_node.data[1]
+                    if self.task_type in CLS_TASKS:
+                        base_model_mask = choose_base_models_classification(
+                            np.array(self.predictions), np.array(y_valid), ensemble_size, ratio=ratio
+                        )
+                    else:
+                        base_model_mask = choose_base_models_regression(
+                            np.array(self.predictions), np.array(y_valid), ensemble_size, ratio=ratio
+                        )
+                    ensemble_size = sum(base_model_mask)
 
         if ensemble_method == 'bagging':
             self.model = Bagging(stats=self.stats,
@@ -96,7 +107,7 @@ class EnsembleBuilder:
                                   metric=self.metric, resampling_params=self.resampling_params,
                                   output_dir=self.output_dir, seed=self.seed,
                                   stack_layers=stack_layers, meta_learner=meta_learner, thread=self.thread,
-                                  dropout=dropout, max_k=max_k,
+                                  dropout=dropout, max_k=max_k, retain=kwargs.get('retain', True),
                                   predictions=None, base_model_mask=base_model_mask,
                                   opt=kwargs.get('opt', False), judge=kwargs.get('judge', 'val'))
         elif ensemble_method == 'ensemble_selection':

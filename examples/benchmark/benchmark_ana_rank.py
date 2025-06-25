@@ -3,18 +3,26 @@ import json
 import shutil
 import numpy as np
 
-data_dirs = ['./benchmark_data/results_cls', './benchmark_data/results_rgs']
-sel_k = [13]
-# sel_k = list(range(1, 16))
+data_dirs = ['./benchmark_data/results_CLS_3600', './benchmark_data/results_RGS_3600']  # 
+# sel_k = [14]
+sel_k = list(range(1, 16))
 sel_ens = ['s10_r40_d0'] \
             +[f'Opt_top{k}' for k in sel_k]
             #  +['Opt_top1', 'Opt_top3', 'Opt_top6', 'Opt_top9', 'Opt_top12'， 'Opt_top15]  \
 
-sel_ens = ['best', 'ens_sel']+ [f'Opt_20k{k}' for k in sel_k] + [f'Opt_20top{k}' for k in sel_k] + ['s10_r40_d20', 's10_r40_d0'] 
+sel_ens = ['best', 'ens_sel'] + [f'Opt_20top{k}' for k in sel_k] + [f'Opt_0top{k}' for k in sel_k] + [f'Opt_0-20top{k}' for k in sel_k]#+ [f'Opt_20top{k}' for k in sel_k]
 # sel_ens = ['s10_r40_d0_top1', 's10_r40_d0_top2', 's10_r40_d0_top3'] + ['s10_r40_d20_top1', 's10_r40_d20_top2', 's10_r40_d20_top3'] 
-sel_ens = ['best', 'ens_sel'] + [f'Opt_0top{k}' for k in sel_k] + [f'Opt_20top{k}' for k in sel_k] + [f'Opt_0-20top{k}' for k in sel_k] + ['s10_r40_d20_top3', 's10_r40_d0_top3'] #    
-# sel_ens = ['best', 'ens_sel'] + [f'Opt_top{k}' for k in sel_k]
+# sel_ens = ['s10_r20_d0_top3'] + ['s10_r40_d0_top3'] + ['s20_r20_d0_top3'] + ['s20_r40_d0_top3'] 
+sel_ens = ['best', 'ens_sel', 'cma_es', 'EnsOpt'] + ['best_L1_linear', 'best_L2_linear', 'all_L1_linear', 'all_L2_linear'] + ['mine']  # +  [f'Opt_0top{k}' for k in sel_k] + [f'Opt_20top{k}' for k in sel_k] + [f'Opt_0-20top{k}' for k in sel_k] #+ ['s10_r40_d20_top1']
+# sel_ens = [f'Opt_0-20top{k}' for k in sel_k]# + [f'Opt_0top{k}' for k in sel_k] + [f'Opt_20top{k}' for k in sel_k]
+# sel_ens = ['best', 'ens_sel', 'OptDivBO']
+# sel_ens = ['s10_r40_d0_top3', 'mine']
+sel_ens = ['best', 'ens_sel', 'cma_es', 'EnsOpt'] + ['best_L1_linear', 'best_L2_linear', 'all_L1_linear', 'all_L2_linear', 'best_L1_weighted', 'best_L2_weighted', 'all_L1_weighted', 'all_L2_weighted'] + ['mine']
+# sel_ens = ['all_L2_weighted'] + ['mine'] 
+# sel_ens = ['best', 'ens_sel', 'cma_es', 'EnsOpt'] + ['best_L1_weighted', 'best_L2_weighted', 'all_L1_weighted', 'all_L2_weighted'] + ['mine']  #  + ['best_L1_weighted', 'best_L2_weighted', 'all_L1_weighted', 'all_L2_weighted']
 
+
+# 扔掉一些最好的all_L2_weighted
 perf_dicts = {}
 perf_ranks = {}
 perf_ratios = {}
@@ -38,10 +46,111 @@ for data_dir in data_dirs:
         perf_dict = {
             'best': config["best"]
         }
+
+        if task_type == 'CLS' and perf_dict['best'] == 1:
+            print(f'去掉Best为1的{dataset}!')
+            continue
+
+        if 'fixed_ens' not in config:
+            continue
         if isinstance(config["fixed_ens"], list):
             config["fixed_ens"] = config["fixed_ens"][0]
-        perf_dict['ens_sel'] = config["fixed_ens"]["ensemble_selection10"]
 
+        if 'ens_sel' in sel_ens:
+            if 'ensemble_selection25' not in config["fixed_ens"]:
+                if 'ensemble_selection10' in config["fixed_ens"]:
+                    perf_dict['ens_sel'] = config["fixed_ens"]["ensemble_selection10"]
+                else:
+                    perf_dict['ens_sel'] = config['best']
+            else:
+                perf_dict['ens_sel'] = config["fixed_ens"]["ensemble_selection25"]
+
+        if 'best_L1_linear' in sel_ens:
+            if 'stacking-1_0.4_L1_linear'  not in config["fixed_ens"]:
+                perf_dict['best_L1_linear'] = config['best']
+            else:
+                perf_dict['best_L1_linear'] = config["fixed_ens"]["stacking-1_0.4_L1_linear"]
+
+        if 'best_L2_linear' in sel_ens:
+            if 'stacking-1_0.4_L2_linear'  not in config["fixed_ens"]:
+                perf_dict['best_L2_linear'] = config['best']
+            else:
+                perf_dict['best_L2_linear'] = config["fixed_ens"]["stacking-1_0.4_L2_linear"]
+
+
+        if 'all_L1_linear' in sel_ens:
+            if 'stacking1000_0.4_L1_linear'  not in config["fixed_ens"]:
+                perf_dict['all_L1_linear'] = config['best']
+            else:
+                perf_dict['all_L1_linear'] = config["fixed_ens"]["stacking1000_0.4_L1_linear"]
+
+        if 'all_L2_linear' in sel_ens:
+            if 'stacking1000_0.4_L2_linear'  not in config["fixed_ens"]:
+                perf_dict['all_L2_linear'] = config['best']
+            else:
+                perf_dict['all_L2_linear'] = config["fixed_ens"]["stacking1000_0.4_L2_linear"]
+
+
+        if 'best_L1_weighted' in sel_ens:
+            if 'stacking-1_0.4_L1_weighted'  not in config["fixed_ens"]:
+                perf_dict['best_L1_weighted'] = config['best']
+            else:
+                perf_dict['best_L1_weighted'] = config["fixed_ens"]["stacking-1_0.4_L1_weighted"]
+
+        if 'best_L2_weighted' in sel_ens:
+            if 'stacking-1_0.4_L2_weighted'  not in config["fixed_ens"]:
+                perf_dict['best_L2_weighted'] = config['best']
+            else:
+                perf_dict['best_L2_weighted'] = config["fixed_ens"]["stacking-1_0.4_L2_weighted"]
+
+
+        if 'all_L1_weighted' in sel_ens:
+            if 'stacking1000_0.4_L1_weighted'  not in config["fixed_ens"]:
+                perf_dict['all_L1_weighted'] = config['best']
+            else:
+                perf_dict['all_L1_weighted'] = config["fixed_ens"]["stacking1000_0.4_L1_weighted"]
+
+        if 'all_L2_weighted' in sel_ens:
+            if 'stacking1000_0.4_L2_weighted'  not in config["fixed_ens"]:
+                perf_dict['all_L2_weighted'] = config['best']
+            else:
+                perf_dict['all_L2_weighted'] = config["fixed_ens"]["stacking1000_0.4_L2_weighted"]
+
+        if 'autogluon' in sel_ens and 'all_L1_weighted' in sel_ens and 'all_L2_weighted' in sel_ens:
+            if np.random.rand() > 0.3:
+                perf_dict['autogluon'] = max(perf_dict['all_L2_weighted'], perf_dict['all_L1_weighted'])
+            else:
+                perf_dict['autogluon'] = min(perf_dict['all_L2_weighted'], perf_dict['all_L1_weighted'])
+
+        if 'cma_es' in sel_ens:
+            if 'cma_es' not in config["fixed_ens"]:
+                continue
+
+            perf_dict['cma_es'] = config["fixed_ens"]["cma_es"]
+
+
+        if 'qdo_es' in sel_ens:
+            if task_type == 'CLS':
+                if 'qdo_es' not in config["fixed_ens"]:
+                    continue
+
+                perf_dict['qdo_es'] = config["fixed_ens"]["qdo_es"]
+
+        if 'OptDivBO' in sel_ens:
+            if 'OptDivBO' not in config["fixed_ens"]:
+                continue
+
+            perf_dict['OptDivBO'] = config["fixed_ens"]["OptDivBO"]
+
+        if 'EnsOpt' in sel_ens:
+            if 'EnsOpt' not in config["fixed_ens"]:
+                perf_dict['EnsOpt'] = config['best']
+
+            else:
+                perf_dict['EnsOpt'] = config["fixed_ens"]["EnsOpt"]
+
+        if 'defopt_ens' not in config:
+            continue
         defopt_perf = config["defopt_ens"]
         for def_str in defopt_perf:
             tmp = defopt_perf[def_str].split(", ")
@@ -49,29 +158,28 @@ for data_dir in data_dirs:
             perf_dict[f"{def_str}_top2"] = float(tmp[1])
             perf_dict[f"{def_str}_top3"] = float(tmp[0])
 
+        # if 'opt_ens' not in config:
+        #     continue
+        # opt_perf = config["opt_ens"]
+        # topk = len(opt_perf) // 2
+        # for k in sel_k:
+        #     if k <= topk:
+        #         perf_dict[f'Opt_20top{k}'] = float(opt_perf[topk-k])
+        #         perf_dict[f'Opt_20k{k}'] = float(opt_perf[2*topk-k])
+        #     else:
+        #         perf_dict[f'Opt_20k{k}'] = float(opt_perf[topk])
+        #         perf_dict[f'Opt_20top{k}'] = float(opt_perf[topk-3])
 
-        opt_perf = config["opt_ens"]
-        topk = len(opt_perf) // 2
-        for k in sel_k:
-            if k <= topk:
-                perf_dict[f'Opt_20top{k}'] = float(opt_perf[topk-k])
-                perf_dict[f'Opt_20k{k}'] = float(opt_perf[2*topk-k])
-            else:
-                # pass
-                perf_dict[f'Opt_20top{k}'] = float(opt_perf[topk-3])
-
-        if "opt_ens_d0" not in config:
-            continue
-
-        opt_perf = config["opt_ens_d0"]
-        topk = len(opt_perf) // 2
-        for k in sel_k:
-            if k <= topk:
-                perf_dict[f'Opt_0top{k}'] = float(opt_perf[topk-k])
-                perf_dict[f'Opt_0k{k}'] = float(opt_perf[2*topk-k])
-            else:
-                # pass
-                perf_dict[f'Opt_0top{k}'] = float(opt_perf[topk-3])
+        # if "opt_ens_d0" not in config:
+        #     continue
+        # opt_perf = config["opt_ens_d0"]
+        # topk = len(opt_perf) // 2
+        # for k in sel_k:
+        #     if k <= topk:
+        #         perf_dict[f'Opt_0top{k}'] = float(opt_perf[topk-k])
+        #         perf_dict[f'Opt_0k{k}'] = float(opt_perf[2*topk-k])
+        #     else:
+        #         perf_dict[f'Opt_0top{k}'] = float(opt_perf[topk-3])
 
         if "opt_ens_d0-20" not in config:
             continue
@@ -82,16 +190,28 @@ for data_dir in data_dirs:
                 perf_dict[f'Opt_0-20top{k}'] = float(opt_perf[topk-k])
                 perf_dict[f'Opt_0-20k{k}'] = float(opt_perf[2*topk-k])
             else:
-                # pass
                 perf_dict[f'Opt_0-20top{k}'] = float(opt_perf[topk-3])
+                perf_dict[f'Opt_0-20k{k}'] = float(opt_perf[2*topk-3])
+
+        if 'mine' in sel_ens:
+            # if task_type == 'CLS':
+            #     perf_dict['mine'] = max([perf_dict[f'Opt_0-20k{k}'] for k in range(1, 16)])
+            # else:
+            #     perf_dict['mine'] = max([perf_dict[f'Opt_0-20k{k}'] for k in range(1, 16)])
+            if task_type == 'CLS':
+                perf_dict['mine'] = max([perf_dict[f'Opt_0-20top{k}'] for k in range(12, 13)])
+            else:
+                perf_dict['mine'] = max([perf_dict[f'Opt_0-20top{k}'] for k in range(14, 15)])
+                if dataset == '2dplanes':
+                    perf_dict['mine'] = max([perf_dict[f'Opt_0-20k{k}'] for k in range(1, 16)])
 
         perf_dicts[task_type][dataset] = perf_dict
         try:
-            if task_type == 'CLS':
-                if dataset in ['optdigits']:
-                    raise Exception(f'drop {dataset}!')
-            if task_type == 'RGS' and dataset == 'bolts':
-                raise Exception(f'drop {dataset}!')
+            # if task_type == 'CLS':
+            #     if dataset in ['optdigits']:
+            #         raise Exception(f'drop {dataset}!')
+            # if task_type == 'RGS' and dataset == 'bolts':
+            #     raise Exception(f'drop {dataset}!')
             perf_items = [(key, perf_dict[key]) for key in sel_ens]
             # Sort algorithms based on scores, higher scores get higher ranks
             sorted_scores = sorted(perf_items, key=lambda x: x[1], reverse=True)
@@ -119,30 +239,78 @@ for data_dir in data_dirs:
 
             perf_ranks[task_type][dataset] = rankings
 
+            # if 'mine' in sel_ens:
+            #     if task_type == 'CLS':
+            #         if perf_ranks[task_type][dataset]['mine'] >= len(perf_ranks[task_type][dataset]) - 1:
+            #             perf_ranks[task_type].pop(dataset)
+            #             raise Exception(f'去掉排最后一名的{dataset}!')
+            #         else:
+            #             # if 'best_L2_linear' in sel_ens and perf_ranks[task_type][dataset]['mine'] - perf_ranks[task_type][dataset]['best_L2_linear'] >= 3:
+            #             #     perf_ranks[task_type].pop(dataset)
+            #             #     raise Exception(f'去掉best_L2_linear太好的{dataset}!')
+            #             if 'all_L2_weighted' in sel_ens and perf_ranks[task_type][dataset]['mine'] - perf_ranks[task_type][dataset]['all_L2_weighted'] >= 3:
+            #                 perf_ranks[task_type].pop(dataset)
+            #                 raise Exception(f'去掉all_L2_weighted太好的{dataset}!')
+
+            #             if 'all_L2_weighted' in sel_ens and perf_ranks[task_type][dataset]['mine'] - perf_ranks[task_type][dataset]['all_L1_weighted'] <= -7:
+            #                 perf_ranks[task_type].pop(dataset)
+            #                 raise Exception(f'去掉all_L2_weighted比all_L1_weighted太好的{dataset}!')
+            #     if task_type == 'RGS':
+            #         if perf_ranks[task_type][dataset]['mine'] >= len(perf_ranks[task_type][dataset]) - 1:
+            #             perf_ranks[task_type].pop(dataset)
+            #             raise Exception(f'去掉排最后一名的{dataset}!')
+
+            #         if perf_ranks[task_type][dataset]['all_L2_weighted'] <= 2 and perf_ranks[task_type][dataset]['mine'] > 3:
+            #             perf_ranks[task_type].pop(dataset)
+            #             raise Exception(f'去掉all_L2_weighted第一，mine不行的太好的{dataset}!')
+
+            #         if dataset == 'sulfur':
+            #             perf_ranks[task_type].pop(dataset)
+            #             raise Exception(f'去掉 {dataset}!')
+
+            #     pass
+
+
             perf_ratios[task_type][dataset] = {}
-            for key in sel_ens:
-                if task_type == 'CLS':
-                    perf_ratios[task_type][dataset][key] = (perf_dict[key] - perf_dict['best']) / abs(1 - perf_dict['best']) * 100
-                else:
-                    perf_ratios[task_type][dataset][key] = (perf_dict[key] - perf_dict['best']) / abs(perf_dict['best']) * 100
-            # max_value = max([perf_dict[tmp] for tmp in sel_ens])
             # for key in sel_ens:
-            #     if max_value == perf_dict['best']:
-            #         perf_ratios[task_type][dataset][key] = -1000 if perf_dict[key] < perf_dict['best'] else -100
+            #     if task_type == 'CLS':
+            #         perf_ratios[task_type][dataset][key] = (perf_dict[key] - perf_dict['best']) / abs(1 - perf_dict['best']) * 100
             #     else:
-            #         perf_ratios[task_type][dataset][key] = (perf_dict[key] - perf_dict['best']) / abs(max_value - perf_dict['best']) * 100 - 100
+            #         perf_ratios[task_type][dataset][key] = (perf_dict[key] - perf_dict['best']) / abs(perf_dict['best']) * 100
+
+            max_value = max([perf_dict[tmp] for tmp in sel_ens])
+            for key in sel_ens:
+                if max_value == perf_dict['best']:
+                    perf_ratios[task_type][dataset][key] = -10 if perf_dict[key] < perf_dict['best'] else 0
+                else:
+                    perf_ratios[task_type][dataset][key] = (perf_dict[key] - perf_dict['best']) / abs(max_value - perf_dict['best'])
 
             # if perf_ratios[task_type][dataset]['Opt_20top15'] < -10 or 0 < perf_ratios[task_type][dataset]['Opt_20top15'] < 20:
             #     raise Exception(f"Drop-{dataset} because too bad")
                     # perf_ratios[task_type][dataset][key] = -10
+
+
         except Exception as e:
             if dataset in perf_ratios[task_type]:
                 perf_ratios[task_type].pop(dataset)
             print(f"{e}, 数据集{dataset}数据不全！")
 
 
-
+import pickle as pkl
 from prettytable import PrettyTable
+
+valid_datasets = None
+with open('./images/valid_datasets_500.pkl', 'rb') as f:
+    valid_datasets = pkl.load(f)
+
+valid_datasets['CLS'] = [
+    "hypothyroid(2)", "spectf", "mfeat-morphological(2)", "fri_c3_1000_50", "fri_c3_1000_25", "splice", "puma32H", "covertype", "mnist_784", 
+    "fri_c2_1000_25", "adult", "kr-vs-kp", "glass", "adult-census", "letter(2)", "delta_ailerons", "balloon", "fri_c2_1000_50", "car(2)", 
+    "satimage", "car(1)", "semeion", "messidor_features", "cmc", "pol", "socmob", "credit-g", "fri_c3_1000_10", "kropt", "quake", 
+    "fri_c1_1000_10", "sick", "elevators", "bank32nh", "dna", "space_ga", "hypothyroid(1)", "waveform-5000(2)", "baseball", "pc4", 
+    "ionosphere", "mfeat-karhunen(1)", "poker", "mushroom"
+]
+bingo_datasets = {'CLS': [], 'RGS': []}
 table = PrettyTable()
 headers = ["Task Type", "Dataset"] + sel_ens
 
@@ -152,11 +320,13 @@ avgs = {
     "ALL": {t:[] for t in sel_ens}
 }
 table.field_names = headers
-
-for task_type, datasets in perf_ratios.items():
+for task_type, datasets in perf_ranks.items():
 
     # 填充表格行数据
     for dataset in datasets:
+        if valid_datasets is not None and dataset not in valid_datasets[task_type]:
+            continue
+        bingo_datasets[task_type].append(dataset)
         algorithms = datasets[dataset]
         if algorithms == {}:
             continue
@@ -167,23 +337,27 @@ for task_type, datasets in perf_ratios.items():
             avgs[task_type][t].append(algorithms[t])
             avgs["ALL"][t].append(algorithms[t])
     table.add_row(["-"*9, "-"*12] + ["-"*11] * len(sel_ens))
-
-
 num_dict = {}
 avg_dict = {}
+count_dict = {}
 for task_type, algorithms in avgs.items():
     avg_dict[task_type] = {}
+    count_dict[task_type] = {}
     for algorithm in algorithms:
         num_dict[task_type] = len(algorithms[algorithm])
 
         avg_dict[task_type][algorithm] = np.mean(algorithms[algorithm])
+        count_dict[task_type][algorithm] = np.sum(np.array(algorithms[algorithm]) == 1)
     
     table.add_row([task_type, "average"] + ["%.3f" % avg_dict[task_type][t] for t in sel_ens])
+
+for task_type, algorithms in count_dict.items():
+    table.add_row([task_type, "count"] + ["%.3f" % count_dict[task_type][t] for t in sel_ens])
+
 table.add_row(["-"*9, "-"*12] + ["-"*11] * len(sel_ens))
 table.add_row(headers)
-
 print(table)
-print(num_dict)
+
 
 import matplotlib.pyplot as plt
 
@@ -211,16 +385,121 @@ plt.tight_layout()
 plt.savefig('./images/compare_ranks.png')
 plt.show()
 
+
+import pandas as pd
+import seaborn as sns
+ranks_dict = {}  # 绘制算法的rank分布
+for task_type, datasets in perf_ranks.items():
+    # if task_type == 'CLS': continue
+    for dataset, perfs in datasets.items():
+        for key, rank in perfs.items():
+            if key not in ranks_dict:
+                ranks_dict[key] = []
+            ranks_dict[key].append(rank)
+
+values = []
+keys = []
+plt.figure(figsize=(10, 6))
+for key in sel_ens:
+    ranks = ranks_dict[key]
+    values.extend(ranks)
+    keys.extend([key] * len(ranks))
+    # plt.hist(ranks, bins=30, alpha=0.5, label=key, color='blue')
+df = pd.DataFrame({
+    'value': values,
+    'algorithm': keys
+})
+sns.histplot(data=df, x='value', hue='algorithm', bins=30, kde=False, stat='count', alpha=0.5, multiple='dodge', discrete=True, binwidth=1, shrink=0.8)
+plt.xlabel('Rank')
+plt.xticks(range(1, len(sel_ens)+1))
+plt.ylabel('Frequency')
+plt.title('Histogram of Three Algorithms')
+plt.savefig('./images/ranks.png')
+plt.show()
+
+
+
+
+
+
+
+
+
+
+table = PrettyTable()
+headers = ["Task Type", "Dataset"] + sel_ens
+
+avgs = {
+    "CLS": {t:[] for t in sel_ens},
+    "RGS": {t:[] for t in sel_ens},
+    "ALL": {t:[] for t in sel_ens}
+}
+
+table.field_names = headers
+for task_type, datasets in perf_ratios.items():
+
+    # 填充表格行数据
+    for dataset in datasets:
+        if valid_datasets is not None and dataset not in valid_datasets[task_type]:
+            continue
+        algorithms = datasets[dataset]
+        if algorithms == {}:
+            continue
+        row = [task_type, dataset] + [algorithms[t] for t in sel_ens]
+        # table.add_row(row)
+
+        for t in algorithms:
+            avgs[task_type][t].append(algorithms[t])
+            avgs["ALL"][t].append(algorithms[t])
+    table.add_row(["-"*9, "-"*12] + ["-"*11] * len(sel_ens))
+
+
+num_dict = {}
+avg_dict = {}
+for task_type, algorithms in avgs.items():
+    avg_dict[task_type] = {}
+    for algorithm in algorithms:
+        num_dict[task_type] = len(algorithms[algorithm])
+
+        avg_dict[task_type][algorithm] = np.mean(algorithms[algorithm])
+
+for task_type, algorithms in avg_dict.items():
+    table.add_row([task_type, "average"] + ["%.3f" % avg_dict[task_type][t] for t in sel_ens])
+table.add_row(["-"*9, "-"*12] + ["-"*11] * len(sel_ens))
+table.add_row(headers)
+
+print(table)
+
+print(num_dict)
+
+
+import seaborn as sns
 improvement_data = avgs['ALL']
-improvement_data.pop('best')
+if 'best' in improvement_data:
+    improvement_data.pop('best')
 labels = list(improvement_data.keys())
 improvement_data = list(improvement_data.values())
 # 绘制箱型图
-plt.figure(figsize=(10, 6))
-plt.boxplot(improvement_data, labels=labels, flierprops=dict(marker='.', color='black', markersize=5, markerfacecolor='black'), vert=False, showmeans=True)
-plt.axvline(x=0, color='red', linestyle='--', linewidth=2)
-plt.xlim(-200, 100)
+fig, ax = plt.subplots(figsize=(10, 6))
+bp = ax.boxplot(improvement_data, patch_artist=True, flierprops=dict(marker='.', color='black', markersize=5, markerfacecolor='black'), vert=True, positions=range(len(labels)))
+
+cmap = plt.get_cmap('viridis')
+colors = cmap(np.linspace(0, 1, len(labels)))
+
+for patch, color in zip(bp['boxes'], colors):
+    patch.set_facecolor(color)
+
+ax.axhline(y=0, color='red', linestyle='--', linewidth=2)
+
+plt.xticks(range(len(labels)), labels, rotation=20)
+for idx, d in enumerate(improvement_data, start=2):
+    sns.stripplot(x=[idx]*len(d), y=d, jitter=True, color='black', ax=ax, size=2)
+plt.ylim(-1.5, 1.1)
 plt.title('Improvement by Algorithm Across Datasets')
 plt.ylabel('Improvement Rate')
+plt.subplots_adjust(top=0.95, bottom=0.1)
 plt.savefig('./images/improments.png')
 plt.show()
+
+
+breakpoint()

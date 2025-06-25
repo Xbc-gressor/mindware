@@ -4,6 +4,7 @@ from typing import List, Union, Callable
 from sklearn.metrics._scorer import _BaseScorer
 import numpy as np
 import time
+import shutil
 import datetime
 
 from mindware.modules.base import BaseAutoML
@@ -12,6 +13,7 @@ from mindware.components.utils.constants import CLS_TASKS
 from mindware.components.feature_engineering.transformation_graph import DataNode
 from .optimizer.myOptimizer import SMACEnsOptimizer
 from mindware.components.utils.topk_saver import load_combined_transformer_estimator, CombinedTopKModelSaver
+from mindware.modules.base import fetch_predict_results
 
 from mindware.components.feature_engineering.parse import construct_node
 from .algorithm.ens_pooling import avging as ens_pooling
@@ -26,7 +28,7 @@ class BaseEnsOpt(BaseAutoML):
                  time_limit=600, amount_of_resource=None, per_run_time_limit=600,
                  output_dir='./data', seed=1, n_jobs=1, topk=50, rmfiles=False,
                  ensemble_method=None, ensemble_size=5, task_id='test',
-                 filter_params=None):
+                 include_preprocessors=None, filter_params=None):
 
         super(BaseEnsOpt, self).__init__(
             task_type=task_type,
@@ -46,7 +48,7 @@ class BaseEnsOpt(BaseAutoML):
             raise ValueError('Invalid evaluation: %s for CASH!' % evaluation)
         self.ens_size = ens_size
         self.include_algorithms = include_algorithms
-        path = 'CASH-%s(%d)-%s_%s_%s' % (
+        path = 'EnsOpt-%s(%d)-%s_%s_%s' % (
             optimizer, self.seed, self.evaluation, self.task_id, self.datetime
         )
         self.output_dir = os.path.join(output_dir, path)
@@ -74,6 +76,21 @@ class BaseEnsOpt(BaseAutoML):
         else:
             from mindware.components.config_space.cs_builder import get_cash_cs
             self.cs = get_cash_cs(include_algorithms=include_algorithms, task_type=self.task_type, **cs_args)
+            include_algorithms = list(self.cs['algorithm'].choices)
+        from mindware.components.config_space.cs_builder import get_fe_cs
+
+        if self.filter_params is not None and 'n_preprocessor' in self.filter_params:
+            n_prep = self.filter_params['n_preprocessor']
+            include_preprocessors_dict = self._recommand_preps(self.task_type, task_id=self.task_id, data_node=self.data_node, metric=self.metric_name, n_prep=n_prep, include_algorithms=include_algorithms, include_preprocessors=include_preprocessors)
+            include_preprocessors = []
+            for preps in include_preprocessors_dict.values():
+                include_preprocessors.extend(preps)
+            include_preprocessors = list(set(include_preprocessors))
+            
+        tmp_cs = get_fe_cs(self.task_type, include_preprocessors=include_preprocessors, if_imbal=self.if_imbal, **cs_args)
+        self.cs.add_hyperparameters(tmp_cs.get_hyperparameters())
+        self.cs.add_conditions(tmp_cs.get_conditions())
+        self.cs.add_forbidden_clauses(tmp_cs.get_forbiddens())
 
         self.timestamp = time.time()
         self.datetime = datetime.datetime.fromtimestamp(self.timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
@@ -105,6 +122,7 @@ class BaseEnsOpt(BaseAutoML):
                 seed=self.seed)
         self.optimizer = self.build_optimizer(name='cash', sub_optimizer=sub_optimizer)
         self.steps = 0
+
     def _get_logger(self, optimizer_name):
         logger_name = 'MindWare-CASH-task_type%d-%s(%d)' % (self.task_type, optimizer_name, self.seed)
         setup_logger(os.path.join(self.output_dir, '%s.log' % str(logger_name)))
@@ -152,6 +170,45 @@ class BaseEnsOpt(BaseAutoML):
                 self.iterate()
                 self.steps += 1
 
+        valid_config = []
+        for idx, config in enumerate(self.es.model_config):
+            if config is None:
+                continue
+            if not isinstance(config, dict):
+                config = config.get_dictionary().copy()
+            else:
+                config = config.copy()
+            par_model_path = '%s_%s.joblib' % (self.datetime, CombinedTopKModelSaver.get_configuration_id(config))
+            valid_config.append(par_model_path)
+
+        if refit == 'full':
+            for idx, config in enumerate(self.es.model_config):
+                if config is None:
+                    continue
+                if not isinstance(config, dict):
+                    config = config.get_dictionary().copy()
+                else:
+                    config = config.copy()
+                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime, mode=refit, **self.resampling_params)
+                algo_id = config['algorithm']
+                if algo_id != 'neural_network':
+                    try:
+                        op_list, estimator = self._refit_config(config, self.data_node, task_type=self.task_type,
+                                                                if_imbal=self.if_imbal, resampling_params=self.resampling_params, seed=self.seed, mode=refit)
+                        CombinedTopKModelSaver._save([op_list, estimator, self.incumbent_perf], model_path)
+                    except:
+                        print("Error when refit incumbent config, use origin model!")
+                        par_model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime, mode='partial', **self.resampling_params)
+                        shutil.copy(par_model_path, model_path)
+
+
+        for file in os.listdir(self.output_dir):
+            if not file.endswith('.joblib') or file.startswith('full_'):
+                continue
+
+            if file not in valid_config:
+                os.remove(os.path.join(self.output_dir, file))
+
         return self.incumbent_perf
     
     def build_optimizer(self, name='hpo', **kwargs):
@@ -160,53 +217,39 @@ class BaseEnsOpt(BaseAutoML):
             time_limit=self.time_limit, evaluation_limit=self.amount_of_resource,
             per_run_time_limit=self.per_run_time_limit,
             inner_iter_num_per_iter=self.inner_iter_num_per_iter, timestamp=self.timestamp,
-            output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs, topk=self.topk
+            output_dir=self.output_dir, seed=self.seed, n_jobs=self.n_jobs, topk=self.topk, task_type=self.task_type
         )
 
         return optimizer
-
-    # def _predict(self, test_data: DataNode, refit='full'):
-    #     try:
-    #         best_op_list, estimator = load_combined_transformer_estimator(self.output_dir, self.incumbent,
-    #                                                                         self.datetime)
-    #     except Exception as e:
-    #         if self.evaluation == 'cv':
-    #             raise AttributeError("Please call refit() for cross-validation!")
-    #         else:
-    #             raise e
-    #     test_data_node = test_data.copy_()
-    #     test_data_node = construct_node(test_data_node, best_op_list)
-
-    #     if self.task_type in CLS_TASKS:
-    #         return estimator.predict_proba(test_data_node.data[0])
-    #     else:
-    #         return estimator.predict(test_data_node.data[0])
         
     def _predict(self, test_data: DataNode, refit='full'):
         # 先不做refit(论文就是这样),其实只有CLS的
         preds = []
-        for model in self.es.model_pool:
-            if not model:
+        for idx, config in enumerate(self.es.model_config):
+            if config is None:
                 continue
-            if self.task_type in CLS_TASKS:
-                pred = model.predict_proba(test_data.data[0])
+            if not isinstance(config, dict):
+                config = config.get_dictionary().copy()
             else:
-                pred = model.predict(test_data.data[0])
+                config = config.copy()
+            model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime, mode=refit, **self.resampling_params)
+            best_op_list, estimator, _ = CombinedTopKModelSaver._load(model_path)
+            pred = fetch_predict_results(self.task_type, best_op_list, estimator, test_data)
+
             preds.append(pred)
         # 概率直接取平均
         return np.array(preds).mean(axis=0)
 
     def predict(self, test_data: DataNode, refit='full'):
-        preds = self._predict(test_data, refit=refit)
+        pred = self._predict(test_data, refit=refit)
 
-        results = []
-        for pred in preds:
-            if self.task_type in CLS_TASKS:
-                results.append(np.argmax(pred, axis=-1))
-            else:
-                results.append(pred)
+        result = None
+        if self.task_type in CLS_TASKS:
+            result = np.argmax(pred, axis=-1)
+        else:
+            result = pred
 
-        return results
+        return result
     
     def get_conf(self, save=False):
         # 获取对象的配置信息
@@ -224,6 +267,12 @@ class BaseEnsOpt(BaseAutoML):
             'output_dir': self.output_dir,
             'seed': self.seed,
         }
+
+        from ConfigSpace.hyperparameters import Constant
+        if isinstance(self.cs['algorithm'], Constant):
+            conf['include_algorithms'] = [self.cs['algorithm'].value]
+        else:
+            conf['include_algorithms'] = self.cs['algorithm'].choices
 
         if save:
             with open(os.path.join(self.output_dir, 'config.json'), 'w') as f:

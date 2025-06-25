@@ -98,12 +98,6 @@ class Stacking(Blending):
                 meta_learner=meta_learner, 
                 predictions=predictions, base_model_mask=base_model_mask)
 
-        self.opt = opt
-        if not self.opt:
-            assert max_k == 1
-            assert meta_learner in ['weighted', 'linear']
-            retain = False
-
         self.ensemble_method = "stacking"
         self.stack_models = None
         self.layer_loss = []
@@ -131,6 +125,10 @@ class Stacking(Blending):
 
         self.last_real_loss = None
 
+        self.opt = opt
+        if not self.opt:
+            assert max_k == 1
+            assert meta_learner in ['weighted', 'linear']
 
         assert judge in ['train', 'val']
         self.judge = judge
@@ -441,117 +439,164 @@ class Stacking(Blending):
         _key = list(base_features.keys())[0]
         n_dim = base_features[_key].shape[1] // n_base_model
         last_features = deepcopy(base_features)
+        new_features = {}
+
+        # best_config = None
+        # best_head = None
 
         stack_predictions = [None] * self.best_stack.max_k
-
-        if train:
-            need_last_train = True # 是否需要再训练
-            if self.thread > 1: save_ori_x(ori_xs, _output_dir)
-
+        if self.stack_layers > 0:
             for layer in range(self.stack_layers):
-                
-                fail_mask = np.full(n_base_model, False)
-                if self.lock:
-                    self.check_stack(layer+1, last_features, final_labels, train)
-                    sms = self.stack_models[f'layer_{layer+1}']
+
+                if train:
+
+                    new_node = DataManager(last_features['train'], final_labels['train']).get_data_node(last_features['train'], final_labels['train'])
+                    val_nodes = {}
+                    for key in last_features:
+                        if key == 'train': continue
+                        val_nodes[key] = DataManager(last_features[key], final_labels[key]).get_data_node(last_features[key], final_labels[key])
+                    if self.thread > 1: save_ori_x(ori_xs, _output_dir)
+
+                    fail_mask = np.full(n_base_model, False)
+                    if self.lock:
+                        sms = self.stack_models[f'layer_{layer+1}']
+                        for i in range(len(sms)):
+                            if sms[i] is None: fail_mask[i] = True
+
+                    sms, _, new_features, head_output, cost = layer_fit(stack_configs=stack_configs, new_node=new_node, ori_xs=ori_xs['train'], n_base_model=n_base_model,
+                                                                    task_type=self.task_type, if_imbal=self.if_imbal, seed=self.seed,
+                                                                    layer=layer+1, thread=self.thread, folds=self.sfolds, output_dir=_output_dir, logger=self.logger, metric=self.metric,
+                                                                    skip_mask=fail_mask, val_nodes=val_nodes, dropout=self.dropout)
+                    self.stack_models[f'layer_{layer+1}'] = sms
                     for i in range(len(sms)):
                         if sms[i] is None: fail_mask[i] = True
 
-                new_node = DataManager(last_features['train'], final_labels['train']).get_data_node(last_features['train'], final_labels['train'])
-                val_nodes = {}
-                for key in last_features:
-                    if key == 'train': continue
-                    val_nodes[key] = DataManager(last_features[key], final_labels[key]).get_data_node(last_features[key], final_labels[key])
+                    if self.lock:
+                        # refit meta_learner
+                        self.check_stack(layer+1, last_features, final_labels, train)
+                        fail_mask = np.repeat(fail_mask, n_dim)
+                        for key in new_features.keys():
+                            last_features[key][:, ~fail_mask] = new_features[key][:, ~fail_mask]
+                    else:
+                        self.register_leader(head_output, new_features, last_features, final_labels, layer+1)
+                        # _best_config, _best_head = self.register_leader(head_output, new_features, last_features, final_labels, layer+1)
+                        # if better_ens(_best_config, best_config):
+                        #     best_config = _best_config
+                        #     best_head = _best_head
+                        self.logger.info(f"Cost of Layer{layer+1} training with {self.thread} threads: {cost}s")
 
-                sms, _, new_features, head_output, cost = layer_fit(stack_configs=stack_configs, new_node=new_node, ori_xs=ori_xs['train'], n_base_model=n_base_model,
-                                                                task_type=self.task_type, if_imbal=self.if_imbal, seed=self.seed,
-                                                                layer=layer+1, thread=self.thread, folds=self.sfolds, output_dir=_output_dir, logger=self.logger, metric=self.metric,
-                                                                skip_mask=fail_mask, val_nodes=val_nodes, dropout=self.dropout)
-                self.stack_models[f'layer_{layer+1}'] = sms
-                for i in range(len(sms)):
-                    if sms[i] is None: fail_mask[i] = True
+                        self.train_cost.append(cost)
 
-                if self.lock:
-                    # refit meta_learner
-                    fail_mask = np.repeat(fail_mask, n_dim)
-                    for key in new_features.keys():
-                        last_features[key][:, ~fail_mask] = new_features[key][:, ~fail_mask]
+                        # new_cans = [({'meta_learner': 'best', 'stack_layers': layer+1}, {'train': self.last_real_loss['train'][i], 'val': self.last_real_loss['val'][i], 'val_2': self.last_real_loss['val_2'][i]}) for i in range(self.ensemble_size)]
+                        # old_cans = [({'meta_learner': 'best', 'stack_layers': layer}, {'train': self.layer_loss[-1]['train'][i], 'val': self.layer_loss[-1]['val'][i], 'val_2': self.layer_loss[-1]['val_2'][i]}) for i in range(self.ensemble_size)]
+
+                        # bad_mask = np.full(self.ensemble_size, True)
+                        # for i in range(self.ensemble_size):
+                            # if better_ens(new_cans[i], old_cans[i]):
+                                # bad_mask[i] = False
+
+                        if self.opt and self.retain:
+                            bad_mask = ~ (np.array(self.last_real_loss[self.judge]) > np.array(self.layer_loss[-1][self.judge]) + 1e-10)
+                            fail_mask |= bad_mask
+                            for t in range(n_base_model):
+                                if bad_mask[t]: self.stack_models['layer_%d' % (layer+1)][t] = None
+
+                            self.logger.info("Number of models getting improved: %d" % (n_base_model - fail_mask.sum()))
+
+                        rfail_mask = np.repeat(fail_mask, n_dim)
+                        for key in new_features.keys():
+                            last_features[key][:, ~rfail_mask] = new_features[key][:, ~rfail_mask]
+
+                        self.layer_loss.append(self.cal_scores(last_features, final_labels, self.ensemble_size))
+
+                        if np.all(fail_mask):
+                            self.logger.info("None model gets improved! early stop!")
+                            # if not (best_head.startswith('best_') and best_head.endswith(f'L{layer+2}')):
+                            #     self.stack_models.pop('layer_%d' % (layer+1))
+                            break
+                        else:
+                            if layer == self.stack_layers - 1 and not self.lock:
+                                new_node = DataManager(last_features['train'], final_labels['train']).get_data_node(last_features['train'], final_labels['train'])
+                                _, _, _, head_output, cost = layer_fit(stack_configs=[[], stack_configs[1]], new_node=new_node, ori_xs=ori_xs['train'], n_base_model=n_base_model,
+                                                                    task_type=self.task_type, if_imbal=self.if_imbal, seed=self.seed,
+                                                                    layer=layer+2, thread=self.thread, folds=self.sfolds, output_dir=_output_dir, logger=self.logger, metric=self.metric)
+
+                                self.register_leader(head_output, None, last_features, final_labels, layer+2)
+                                # _best_config, _best_head = self.register_leader(head_output, None, last_features, final_labels, layer+2)
+                                # if better_ens(_best_config, best_config):
+                                #     best_config = _best_config
+                                #     best_head = _best_head
                 else:
-                    self.register_leader(head_output, new_features, last_features, final_labels, layer+1)
-                    self.logger.info(f"Cost of Layer{layer+1} training with {self.thread} threads: {cost}s")
-                    self.train_cost.append(cost)
 
-                    if self.retain:
-                        bad_mask = ~ (np.array(self.last_real_loss[self.judge]) > np.array(self.layer_loss[-1][self.judge]) + 1e-10)
-                        fail_mask |= bad_mask
-                        for t in range(n_base_model):
-                            if bad_mask[t]: self.stack_models['layer_%d' % (layer+1)][t] = None
+                    predictions = self.check_stack(layer + 1, last_features, final_labels, train)
+                    for idx, pre in enumerate(predictions):
+                        if pre is not None:
+                            stack_predictions[idx] = pre
+                    new_node = DataManager(last_features['test'], None).get_data_node(last_features['test'], None)
+                    sms = self.stack_models['layer_%d' % (layer+1)]
+                    for key in last_features.keys():
+                        new_features[key] = np.zeros_like(last_features[key])
+                        for suc_cnt, config in enumerate(stack_configs[0]):
+                            estimators = sms[suc_cnt]
+                            if estimators is not None:
+                                for estimator in estimators:
+                                    _new_node = new_node
+                                    if ori_xs is not None:
+                                        _new_node = new_node.copy_(no_data=True)
+                                        _new_node.data = (np.hstack([ori_xs[key][suc_cnt], last_features[key]]), None)
+                                    pred = fetch_predict_results(self.task_type, {}, estimator, _new_node)
+                                    if len(pred.shape) == 1:
+                                        pred = pred.reshape(-1, 1)
+                                    new_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] += pred[:, -n_dim:] / len(estimators)
+                            else:
+                                new_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = last_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim]
 
-                        self.logger.info("Number of models getting improved: %d" % (n_base_model - fail_mask.sum()))
+                    last_features = deepcopy(new_features)
 
-                    rfail_mask = np.repeat(fail_mask, n_dim)
-                    for key in new_features.keys():
-                        last_features[key][:, ~rfail_mask] = new_features[key][:, ~rfail_mask]
+        else:
+            if train and not self.lock:
+                self.register_leader(None, None, last_features, final_labels, 1)
+                # _best_config, _best_head = self.register_leader(None, None, last_features, final_labels, 1)
+                # if better_ens(_best_config, best_config):
+                #     best_config = _best_config
+                #     best_head = _best_head   
 
-                    self.layer_loss.append(self.cal_scores(last_features, final_labels, self.ensemble_size))
 
-                    if np.all(fail_mask):
-                        self.logger.info("None model gets improved! early stop!")
-                        need_last_train = False
-                        break
-
-            if self.lock:
-                self.check_stack(self.stack_layers+1, last_features, final_labels, train)
-
-            else:
-                if not self.opt or need_last_train:
-                    new_node = DataManager(last_features['train'], final_labels['train']).get_data_node(last_features['train'], final_labels['train'])
-                    _, _, _, head_output, cost = layer_fit(stack_configs=[[], stack_configs[1]], new_node=new_node, ori_xs=None, n_base_model=n_base_model,
-                                                        task_type=self.task_type, if_imbal=self.if_imbal, seed=self.seed,
-                                                        layer=self.stack_layers+1, thread=self.thread, folds=self.sfolds, output_dir=_output_dir, logger=self.logger, metric=self.metric)
-
-                    self.register_leader(head_output, None, last_features, final_labels, self.stack_layers+1)
-
-                self.clear_stack()  # 清掉多余的堆叠
-                self.lock = True  # 锁定
-
+        if train:
             if self.thread > 1:
                 rm_ori_x(ori_xs, _output_dir)
 
+            if self.lock:
+                self.check_stack(self.stack_layers+1, last_features, final_labels, train)
+            else:
+                # self.final_labels = final_labels
+                # self.ori_x = {}
+                # for key in ori_xs.keys():
+                #     self.ori_x[key] = ori_xs[key]
 
+                # tmp = best_head.split('-')
+                # self.meta_method = tmp[0]
+                # best_layer = int(tmp[1][1:])
+                # self.stack_layers = best_layer - 1
+
+                # self.best_config = best_config
+                # if 'best_' in self.meta_method:
+                #     best_idx = int(self.meta_method.split('_')[1][3:])
+                #     for i in range(len(self.stack_models[f'layer_{self.stack_layers}'])):
+                #         if i != best_idx:
+                #             self.stack_models[f'layer_{self.stack_layers}'][i] = None
+
+                # tmp = best_head.split('-')
+                # self.meta_method = tmp[0]
+                # self.best_config = best_config
+
+                self.clear_stack()  # 清掉多余的堆叠
+                self.lock = True  # 锁定
         else:
-
-            new_features = {}
-            for layer in range(self.stack_layers):
-                predictions = self.check_stack(layer + 1, last_features, final_labels, train)
-                for idx, pre in enumerate(predictions):
-                    if pre is not None:
-                        stack_predictions[idx] = pre
-                new_node = DataManager(last_features['test'], None).get_data_node(last_features['test'], None)
-                sms = self.stack_models['layer_%d' % (layer+1)]
-                for key in last_features.keys():
-                    new_features[key] = np.zeros_like(last_features[key])
-                    for suc_cnt, config in enumerate(stack_configs[0]):
-                        estimators = sms[suc_cnt]
-                        if estimators is not None:
-                            for estimator in estimators:
-                                _new_node = new_node
-                                if ori_xs is not None:
-                                    _new_node = new_node.copy_(no_data=True)
-                                    _new_node.data = (np.hstack([ori_xs[key][suc_cnt], last_features[key]]), None)
-                                pred = fetch_predict_results(self.task_type, {}, estimator, _new_node)
-                                if len(pred.shape) == 1:
-                                    pred = pred.reshape(-1, 1)
-                                new_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] += pred[:, -n_dim:] / len(estimators)
-                        else:
-                            new_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim] = last_features[key][:, suc_cnt * n_dim:(suc_cnt + 1) * n_dim]
-                last_features = deepcopy(new_features)
-
             predictions = self.check_stack(self.stack_layers+1, last_features, final_labels, train)
             for idx, pre in enumerate(predictions):
                 if pre is not None:
                     stack_predictions[idx] = pre
-
 
         return stack_predictions
 
@@ -562,7 +607,7 @@ class Stacking(Blending):
         ens_info['stask_layers'] = self.stack_layers
         ens_info['dropout'] = self.dropout
         sorted_head = sorted(list(self.leader_board[self.judge].keys()), key=lambda x: (-self.leader_board[self.judge][x], -self.leader_board[f'{self.judge}_2'][x], -self.leader_board['train'][x], -self.leader_board['train_2'][x]))
-        ens_info['leader_board'] = [f"{head}: {', '.join(['%s-%.5f' % (key, self.leader_board[key][head]) for key in self.leader_board.keys()])}" for head in sorted_head]
+        ens_info['leader_board'] = [f"{head}: {', '.join(['%s-%.8e' % (key, self.leader_board[key][head]) for key in self.leader_board.keys()])}" for head in sorted_head]
         if self.ensemble_method == 'weighted':
             ens_info['meta_weighted'] = ','.join(['%.3f' % tmp for tmp in self.meta_learner.weights_])
         ens_info['thread'] = self.thread

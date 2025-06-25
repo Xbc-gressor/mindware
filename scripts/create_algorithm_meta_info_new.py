@@ -220,8 +220,6 @@ if __name__ == "__main__":
             for algo in algorithms:
                 for run_id in range(start_id, start_id + rep):
                     seed = seeds[run_id]
-                    evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=time_limit, amount_of_resource=amount_of_resource,
-                        seed=seed, task_type=task_type)
                     try:
                         task_id = '%s-%s-%s-%d: %s' % (dataset, algo, obj_metric, run_id, 'success')
                         evaluate_ml_algorithm(dataset, algo, run_id, obj_metric, time_limit=time_limit, amount_of_resource=amount_of_resource,

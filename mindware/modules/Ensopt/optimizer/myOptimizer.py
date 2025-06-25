@@ -1,10 +1,12 @@
 # License: MIT
 
 import time
+import os
 from typing import List
 from tqdm import tqdm
 import numpy as np
 from openbox import logger
+import datetime
 from openbox.optimizer.base import BOBase
 from openbox.utils.constants import SUCCESS, FAILED, TIMEOUT
 from openbox.utils.limit import run_obj_func
@@ -14,20 +16,21 @@ from mindware.components.optimizers.base_optimizer import BaseOptimizer, MAX_INT
 from mindware.modules.Ensopt.advisor import MyAdvisor
 from mindware.modules.ens.ens_utils import better_ens
 from copy import deepcopy
-from mindware.modules.ens.ens_evaluator import EnsEvaluator
+from mindware.modules.Ensopt.evaluator.ensOpt_evaluator import CASHCLSEvaluator
 from ConfigSpace import Constant
 from mindware.components.utils.constants import *
+from copy import copy
 
 class SMACEnsOptimizer(BaseOptimizer):
 
     def __init__(
-            self, evaluator: EnsEvaluator, config_space, data_node, name, eval_type, es, ens_size: int = 5,
+            self, evaluator: CASHCLSEvaluator, config_space, data_node, name, eval_type, es, ens_size: int = 5,
             time_limit=None, evaluation_limit=None,
             per_run_time_limit=300, per_run_mem_limit=1024, 
             inner_iter_num_per_iter=1, timestamp=None, 
             logging_dir='logs',
             task_id='OpenBox',
-            output_dir='./', seed=1, n_jobs=1, topk=50):
+            output_dir='./', seed=1, n_jobs=1, topk=50, task_type=CLASSIFICATION):
         super(SMACEnsOptimizer, self).__init__(evaluator=evaluator, config_space=config_space, name=name, eval_type=eval_type, 
                                             time_limit=time_limit, evaluation_limit=evaluation_limit, 
                                             per_run_time_limit=per_run_time_limit, per_run_mem_limit=per_run_mem_limit, 
@@ -40,6 +43,7 @@ class SMACEnsOptimizer(BaseOptimizer):
         self.evaluator = evaluator
         self.per_run_time_limit = per_run_time_limit
         self.config_space = config_space
+        self.task_type = task_type
         if task_id is None:
             raise ValueError('Task id is not SPECIFIED. Please input task id first.')
 
@@ -58,6 +62,7 @@ class SMACEnsOptimizer(BaseOptimizer):
         self.iteration_id = 0
         self.incumbent_config = None
         self.incumbent_perf = -np.inf
+        self.datetime = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d-%H-%M-%S-%f')
 
 
     def get_history(self) -> History:
@@ -103,30 +108,22 @@ class SMACEnsOptimizer(BaseOptimizer):
         print(self.es.model_pool)
         # get configuration suggestion from advisor
         model_idx = steps % self.ens_size
-        self.es.delete_model(model_idx)  # 删除列表内相应idx的模型
-        run_histor_configs = self.config_advisor.get_history().configurations
-        loss_lst = []
-        for config in run_histor_configs:
-            # 在evaluator内训练模型
-            obj_args, obj_kwargs = (config, self.es), dict()
-            result = run_obj_func(self.evaluator, obj_args, obj_kwargs, timeout)
-            # 更新history中的objectives
-            # parse result
-            ret, timeout_status, traceback_msg, elapsed_time = (
-                result['result'], result['timeout'], result['traceback'], result['elapsed_time'])
-            if timeout_status:
-                trial_state = TIMEOUT
-            elif traceback_msg is not None:
-                trial_state = FAILED
-                logger.error(f'Exception in objective function:\n{traceback_msg}\nconfig: {config}')
-            else:
-                trial_state = SUCCESS
 
-            if trial_state == SUCCESS:
-                objectives, constraints, extra_info = parse_result(ret)
+        self.es.delete_model(model_idx, self.output_dir, self.datetime)  # 删除列表内相应idx的模型
+
+        _, val_node = self.evaluator._get_train_valid_data(self.task_type, self.data_node, seed=self.seed)
+
+        run_histor_obs = self.config_advisor.get_history().observations
+        loss_lst = []
+        for obs in run_histor_obs:
+            pred = obs.extra_info['pred']
+
+            if self.task_type in CLS_TASKS:
+                score = self.evaluator.loss(self.es, pred, val_node.data[1])
             else:
-                objectives, constraints, extra_info = self.FAILED_PERF.copy(), None, None
-            loss_lst.append(objectives)
+                score = self.evaluator.rgs_loss(self.es, pred, val_node.data[1])
+
+            loss_lst.append([score])
         # 修改一个objective即可
 
         observations = []
@@ -146,44 +143,57 @@ class SMACEnsOptimizer(BaseOptimizer):
         # TODO:把历史给到evaluator内
         result = run_obj_func(self.evaluator, obj_args, obj_kwargs, timeout)
 
-        # parse result
-        ret, timeout_status, traceback_msg, elapsed_time = (
-            result['result'], result['timeout'], result['traceback'], result['elapsed_time'])
-        if timeout_status:
-            trial_state = TIMEOUT
-        elif traceback_msg is not None:
-            trial_state = FAILED
-            logger.error(f'Exception in objective function:\n{traceback_msg}\nconfig: {config}')
-        else:
-            trial_state = SUCCESS
+        if result['traceback'] is not None:
+            print(result['traceback'])
 
-        if trial_state == SUCCESS:
-            objectives, constraints, extra_info = parse_result(ret)
-        else:
-            objectives, constraints, extra_info = self.FAILED_PERF.copy(), None, None
+        if result['traceback'] is None and result['result'] is not None:
+            # new_pred = result['result'].pop('pred')
+            new_pred = np.load(os.path.join(self.output_dir, './pred.npy'))
+            os.remove(os.path.join(self.output_dir, './pred.npy'))
+            # parse result
+            ret, timeout_status, traceback_msg, elapsed_time = (
+                result['result'], result['timeout'], result['traceback'], result['elapsed_time'])
+            if timeout_status:
+                trial_state = TIMEOUT
+            elif traceback_msg is not None:
+                trial_state = FAILED
+                logger.error(f'Exception in objective function:\n{traceback_msg}\nconfig: {config}')
+            else:
+                trial_state = SUCCESS
 
+            if trial_state == SUCCESS:
+                objectives, constraints, extra_info = parse_result(ret)
+            else:
+                objectives, constraints, extra_info = self.FAILED_PERF.copy(), None, None
 
-        observation = Observation(
-            config=config, objectives=objectives, constraints=constraints,
-            trial_state=trial_state, elapsed_time=elapsed_time, extra_info=extra_info,
-        )
-        
-        self.config_advisor.update_observation(observation)
+            if extra_info is None:
+                extra_info = {}
+            extra_info['pred'] = new_pred
+            observation = Observation(
+                config=config, objectives=objectives, constraints=constraints,
+                trial_state=trial_state, elapsed_time=elapsed_time, extra_info=extra_info,
+            )
+            self.config_advisor.update_observation(observation)
+            loss_lst.append(objectives)
 
-        
-        loss_lst.append(objectives)
-        # print(loss_lst)
-        # 更新es_pool
-        best_config_idx = np.argmin([loss[0] for loss in loss_lst])
-        best_config = self.config_advisor.get_history().configurations[best_config_idx]
-        self.es.replace_model(self.evaluator.train_estimator(best_config), model_idx)
-        
-        # self.update_saver([config], [objectives[0]])
-        if trial_state == SUCCESS:
-            self.configs.append(config)
-            self.perfs.append(-objectives[0])
+            if trial_state == SUCCESS:
+                self.configs.append(config)
+                self.perfs.append(-objectives[0])
+            if self.config_advisor.num_constraints > 0:
+                logger.info('Iter %d, objectives: %s. constraints: %s.' % (self.iteration_id, objectives, constraints))
+            else:
+                logger.info('Iter %d, objectives: %s.' % (self.iteration_id, objectives))
 
         run_history = self.config_advisor.get_history()
+        # print(loss_lst)
+        # 更新es_pool
+        if len(loss_lst) > 0:
+            best_config_idx = np.argmin([tmp[0] for tmp in loss_lst])
+            best_config = run_history.configurations[best_config_idx]
+            best_pred = run_history.observations[best_config_idx].extra_info['pred']
+            self.es.replace_model(None, best_config, best_pred, model_idx)
+        # self.update_saver([config], [objectives[0]])
+
         if len(run_history.get_incumbents()) > 0:
             incumbent = run_history.get_incumbents()[0]
             self.incumbent_config, self.incumbent_perf = incumbent.config.get_dictionary().copy(), incumbent.objectives[0]
@@ -192,10 +202,6 @@ class SMACEnsOptimizer(BaseOptimizer):
 
         self.iteration_id += 1
         # Logging
-        if self.config_advisor.num_constraints > 0:
-            logger.info('Iter %d, objectives: %s. constraints: %s.' % (self.iteration_id, objectives, constraints))
-        else:
-            logger.info('Iter %d, objectives: %s.' % (self.iteration_id, objectives))
         return self.incumbent_perf, iteration_cost, self.incumbent_config
 
     def get_opt_trajectory(self):
@@ -207,6 +213,6 @@ class SMACEnsOptimizer(BaseOptimizer):
         return trajectory
 
     def get_incumbent_config(self):
-        incumbent_config = self.incumbent_config.copy()
+        incumbent_config = copy(self.incumbent_config)
 
         return incumbent_config

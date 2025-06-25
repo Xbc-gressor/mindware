@@ -123,7 +123,7 @@ if __name__ == '__main__':
             if os.path.exists(tmp_path):
                 import pickle as pkl
                 stats_paths = pkl.load(open(tmp_path, 'rb'))
-                for tmp in stats_paths[task_type][True]:
+                for tmp in stats_paths[task_type][True].get(args.time_limit, []):
                     if tmp[0] == dataset:
                         stats_path = tmp[1]
                         break
@@ -170,7 +170,7 @@ if __name__ == '__main__':
                     tmp = stats[key][i]
                     stats[key][i] = (tmp[0], tmp[1], os.path.join(dir_name, os.path.basename(tmp[2])))
 
-            tar_dir = os.path.join(args.output_dir, f'results_{task_str}')
+            tar_dir = os.path.join(args.output_dir, f'results_{task_str}_{args.time_limit}')
             if not os.path.exists(tar_dir):
                 os.makedirs(tar_dir)
             tar_file = os.path.join(tar_dir, f'{dataset}.json')
@@ -193,158 +193,294 @@ if __name__ == '__main__':
                 perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
                 res_dict['best'] = perf
 
-            if 'size_exp' not in res_dict:
-                res_dict['size_exp'] = {}
+
+            # if 'retain_exp' not in res_dict:
+            #     res_dict['retain_exp'] = {}
+            # import datetime
+            # from mindware.modules.base_evaluator import BaseEvaluator
+            # from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
+            # from mindware.utils.functions import is_imbalanced_dataset
+            # from copy import deepcopy
+            # import time
+            # import shutil
+            # from mindware.utils.logging_utils import setup_logger
+
+            # _path = 'Retain-(%s)-%s_%s' % (
+            #     task_str, dataset, datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
+            # )
+            # output_dir = os.path.join(args.output_dir, _path)
+            # if not os.path.exists(output_dir):
+            #     os.makedirs(output_dir)
+            # logger_name = 'MindWare-Retain-(%d)' % (1)
+            # setup_logger(os.path.join(output_dir, '%s.log' % str(logger_name)))
+
+            # if_imbal = False
+            # if task_type in CLS_TASKS:
+            #     if_imbal = is_imbalanced_dataset(train_data_node)
+            # train_node, valid_node = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=train_data_node, seed=1)
+            # val_nodes = {'test': test_data_node, 'val': valid_node}
+
+            # es = EnsembleBuilder(stats=stats, valid_node=valid_node,
+            #         task_type=task_type, if_imbal=if_imbal,
+            #         metric=scorer,
+            #         output_dir=output_dir, seed=1, thread=args.thread)
+            # for ens_size in [10]:
+            #     for ratio in [0.4]:
+            #         for retain in [False, True]:
+            #             ratio_str = f'_{ratio}'
+            #             layer = f'_L{args.layer+1}'
+            #             meta = f'_{args.meta_learner}'
+            #             ens_str = f'stacking{ens_size}{ratio_str}{layer}{meta}_retain{retain}'
+
+            #             if ens_str not in res_dict['retain_exp']:
+            #                 es.build_ensemble(
+            #                     ensemble_method='stacking', ensemble_size=ens_size, ratio=ratio, judge='val', opt=True,
+            #                     stack_layers=4, meta_learner='auto', val_nodes=val_nodes, retain=retain
+            #                 )
+            #                 es.fit(datanode=train_node, val_nodes=val_nodes)
+            #                 model_info = es.get_ens_model_info()
+            #                 res_dict['retain_exp'][ens_str] = deepcopy((model_info['layer_loss'], model_info['leader_board']))
+
+            # shutil.rmtree(output_dir)
+
+            # if 'size_exp' not in res_dict:
+            #     res_dict['size_exp'] = {}
+            # if args.ensemble_method:
+            #     import datetime
+            #     from mindware.modules.base_evaluator import BaseEvaluator
+            #     from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
+            #     from mindware.utils.functions import is_imbalanced_dataset
+            #     from copy import deepcopy
+            #     import time
+            #     import shutil
+            #     from mindware.utils.logging_utils import setup_logger
+
+            #     _path = 'STA-(%s)-%s_%s' % (
+            #         task_str, dataset, datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
+            #     )
+            #     output_dir = os.path.join(args.output_dir, _path)
+            #     if not os.path.exists(output_dir):
+            #         os.makedirs(output_dir)
+            #     logger_name = 'MindWare-STA-(%d)' % (1)
+            #     setup_logger(os.path.join(output_dir, '%s.log' % str(logger_name)))
+
+            #     if_imbal = False
+            #     if task_type in CLS_TASKS:
+            #         if_imbal = is_imbalanced_dataset(train_data_node)
+            #     train_node, valid_node = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=train_data_node, seed=1)
+            #     val_nodes = {'test': test_data_node, 'val': valid_node}
+
+            #     es = EnsembleBuilder(stats=stats, valid_node=valid_node,
+            #             task_type=task_type, if_imbal=if_imbal,
+            #             metric=scorer,
+            #             output_dir=output_dir, seed=1, thread=args.thread)
+            #     for ens_size in [5, 10, 20, 30, 40]:
+            #         for ratio in [-1, 0, 0.1, 0.2, 0.3, 0.4]:
+            #             ratio_str = f'_{ratio}'
+            #             layer = f'_L{args.layer+1}'
+            #             meta = f'_{args.meta_learner}'
+            #             ens_str = f'stacking{ens_size}{ratio_str}{layer}{meta}'
+
+            #             if ens_str not in res_dict['size_exp']:
+            #                 es.build_ensemble(ensemble_method='stacking', ensemble_size=ens_size, ratio=ratio, judge='val', stack_layers=args.layer, meta_learner=args.meta_learner, val_nodes=val_nodes)
+            #                 es.fit(datanode=train_node, val_nodes=val_nodes)
+
+            #                 res_dict['size_exp'][ens_str] = deepcopy(es.get_ens_model_info()['leader_board'])
+
+            #     shutil.rmtree(output_dir)
+
+            if 'fixed_ens' not in res_dict:
+                res_dict['fixed_ens'] = {}
             if args.ensemble_method:
-                ratio = f'_{args.ratio}' if args.ensemble_method in ['blending', 'stacking'] else ''
-                layer = f'_L{args.layer+1}' if args.ensemble_method in ['blending', 'stacking'] else ''
-                meta = f'_{args.meta_learner}' if args.ensemble_method in ['blending', 'stacking'] else ''
-                ens_str = f'{args.ensemble_method}{args.ensemble_size}{ratio}{layer}{meta}' if args.ensemble_method is not None else 'none'
+                # ensemble_size = args.ensemble_size
+                # layer = args.layer
+                for layer in [0, 1]:
+                    for ensemble_size in [1000, -1]:
+                        ratio = f'_{args.ratio}' if args.ensemble_method in ['blending', 'stacking'] else ''
+                        layer_str = f'_L{layer+1}' if args.ensemble_method in ['blending', 'stacking'] else ''
+                        meta = f'_{args.meta_learner}' if args.ensemble_method in ['blending', 'stacking'] else ''
+                        ens_str = f'{args.ensemble_method}{ensemble_size}{ratio}{layer_str}{meta}' if args.ensemble_method is not None else 'none'
 
-                if ens_str not in res_dict['size_exp']:
-                    ens_pred = OPT._predict_stats(task_type, metric, data_node=train_data_node, test_data=test_data_node, stats=stats,
-                                                resampling_params={'folds': 5, 'stack_layers': args.layer},
-                                                ensemble_method=args.ensemble_method, ensemble_size=args.ensemble_size,
-                                                refit=args.refit, output_dir=args.output_dir, task_id=dataset, thread=args.thread, ratio=args.ratio, stack_layers=args.layer, meta_learner=args.meta_learner, val_nodes={'test': test_data_node})
-                    ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
-                    res_dict['size_exp'][ens_str] = ens_perf
+                        if ensemble_size == 1000 or ens_str not in res_dict['fixed_ens']:
+                            ens_pred = OPT._predict_stats(task_type, metric, data_node=train_data_node, test_data=test_data_node, stats=stats,
+                                                        resampling_params={'folds': 5},
+                                                        ensemble_method=args.ensemble_method, ensemble_size=ensemble_size,
+                                                        refit=args.refit, output_dir=args.output_dir, task_id=dataset, thread=args.thread, ratio=args.ratio, stack_layers=layer, meta_learner=args.meta_learner, retain=False)
+                            ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
+                            res_dict['fixed_ens'][ens_str] = ens_perf
 
-            for baseline in ['cma_es', 'qdo_es', f'neural_es-{args.mode}']:
-                if baseline in res_dict['fixed_ens']: continue
-                if task_str == 'RGS' and baseline == 'qdo_es': continue
-                if baseline == 'cma_es':
-                    from mindware.modules.cma_es.mindware_cma_es import CMA_ES
-                    cma_es = CMA_ES(
-                        stats = stats, n_iterations=1000, batch_size=25, task_type=task_type, data_node = train_data_node,
-                        metric=metric, output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset,
-                        time_limit=args.time_limit
-                    )
+                            with open(tar_file, 'w') as f:
+                                json.dump(res_dict, f, indent=4)
 
-                    print(cma_es.get_conf(save=True))
-                    cma_es.get_weights()
-                    print(cma_es.get_model_info(save=True))  # 保存最优模型信息
-                    cma_es.refit(train_data_node, mode='full')
-                    baseline_pred = cma_es.predict(test_data_node)
-                if baseline == 'qdo_es':
-                    from mindware.modules.qdo_es.mindware_qdo_es import QDO_ES
-                    qdo_es = QDO_ES(
-                        stats = stats, n_iterations= 10, batch_size=20, task_type=task_type, data_node = train_data_node,
-                        metric=metric, output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset,
-                        time_limit=args.time_limit
-                    )
-                    print(qdo_es.get_conf(save=True))
-                    qdo_es.get_weights()
-                    qdo_es.refit(train_data_node, mode='full')
-                    print(qdo_es.get_model_info(save=True))  # 保存最优模型信息
-                    baseline_pred = qdo_es.predict(test_data_node)
-                if baseline.startswith('neural_es'):
-                    from mindware.modules.neural_ensemble.base_neural_ens import Neural_ensemble
-                    neural_es = Neural_ensemble(task_type=task_type, stats=stats, mode = args.mode,
-                        data_node=train_data_node, output_dir=args.output_dir,
-                        seed=1, val_size = 0.33, metric=metric, batch_size = 128, epoch = args.epoch, n_jobs=args.thread, task_id=dataset
-                    )  # 默认配置
-                    neural_es.get_conf(save=True)  # 保存设置
+            # for baseline in ['EnsOpt']:  # , 'qdo_es', f'neural_es-{args.mode}', 'cma_es'
+            #     if baseline not in ['EnsOpt'] and baseline in res_dict['fixed_ens']: continue
+            #     if task_str == 'RGS' and baseline == 'qdo_es': continue
+            #     if baseline == 'cma_es':
+            #         from mindware.modules.cma_es.mindware_cma_es import CMA_ES
+            #         cma_es = CMA_ES(
+            #             stats = stats, n_iterations=10000, batch_size=25, task_type=task_type, data_node = train_data_node,
+            #             metric=metric, output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset,
+            #             time_limit=args.time_limit
+            #         )
 
-                    neural_es.run()
-                    neural_es.get_model_info(save=True)  # 保存最优模型信息
-                    baseline_pred = neural_es.predict(test_data_node)
-                    
-                baseline_perf = scorer._score_func(test_data_node.data[1], baseline_pred) * scorer._sign
-                res_dict['fixed_ens'][baseline] = baseline_perf
+            #         print(cma_es.get_conf(save=True))
+            #         cma_es.get_weights()
+            #         print(cma_es.get_model_info(save=True))  # 保存最优模型信息
+            #         cma_es.refit(train_data_node, mode='full')
+            #         baseline_pred = cma_es.predict(test_data_node)
+            #     if baseline == 'qdo_es':
+            #         from mindware.modules.qdo_es.mindware_qdo_es import QDO_ES
+            #         qdo_es = QDO_ES(
+            #             stats = stats, n_iterations= 10000, batch_size=20, task_type=task_type, data_node = train_data_node,
+            #             metric=metric, output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset,
+            #             time_limit=args.time_limit
+            #         )
+            #         print(qdo_es.get_conf(save=True))
+            #         qdo_es.get_weights()
+            #         qdo_es.refit(train_data_node, mode='full')
+            #         print(qdo_es.get_model_info(save=True))  # 保存最优模型信息
+            #         baseline_pred = qdo_es.predict(test_data_node)
+            #     if baseline.startswith('neural_es'):
+            #         from mindware.modules.neural_ensemble.base_neural_ens import Neural_ensemble
+            #         neural_es = Neural_ensemble(task_type=task_type, stats=stats, mode = args.mode,
+            #             data_node=train_data_node, output_dir=args.output_dir,
+            #             seed=1, val_size = 0.33, metric=metric, batch_size = 128, epoch = args.epoch, n_jobs=args.thread, task_id=dataset
+            #         )  # 默认配置
+            #         neural_es.get_conf(save=True)  # 保存设置
+
+            #         neural_es.run()
+            #         neural_es.get_model_info(save=True)  # 保存最优模型信息
+            #         baseline_pred = neural_es.predict(test_data_node)
+            #     if baseline == 'OptDivBO':
+            #         from mindware.modules.optdivbo.mindware_divbo import Optdivbo
+
+            #         model = Optdivbo(iter_num = 10000 , ens_size=25, include_algorithms=include_algorithms, metric=metric,
+            #                         task_type=task_type, data_node=train_data_node, test_node=test_data_node, time_limit_per_trial=300, task_id=dataset,
+            #                         time_limit=args.time_limit * 2, output_dir=args.output_dir, seed=1,
+            #                         filter_params=filter_params)
+
+            #         _, baseline_pred = model.run()
+
+            #     if baseline == 'EnsOpt':
+            #         from mindware.modules.Ensopt.base_EnsOpt import BaseEnsOpt
+
+            #         ens_opt = BaseEnsOpt(
+            #             include_algorithms=inc_alg, task_type=task_type, ens_size = 12,
+            #             metric=metric,
+            #             data_node=train_data_node, resampling_params=None,
+            #             time_limit=args.time_limit * 2, amount_of_resource=int(1e6), per_run_time_limit=300,
+            #             output_dir=args.output_dir, seed=1, n_jobs=1, task_id=dataset,
+            #             filter_params=filter_params
+            #         )
+            #         ens_opt.get_conf(save=True)  # 保存设置
+
+            #         ens_opt.run(refit=args.refit)
+            #         ens_opt.get_model_info(save=True)  # 保存最优模型信息
+            #         baseline_pred = ens_opt.predict(test_data_node)
+
+            #     baseline_perf = scorer._score_func(test_data_node.data[1], baseline_pred) * scorer._sign
+            #     res_dict['fixed_ens'][baseline] = baseline_perf
+
+            # with open(tar_file, 'w') as f:
+            #     json.dump(res_dict, f, indent=4)
 
 
-            defopt_ens_dict = {}
-            if 'defopt_ens' in res_dict:
-                defopt_ens_dict = res_dict['defopt_ens']
+            # defopt_ens_dict = {}
+            # if 'defopt_ens' in res_dict:
+            #     defopt_ens_dict = res_dict['defopt_ens']
 
-            for size_def, ratio_def, dropout_def in [
-                (10, 20, 20), (10, 40, 20), (20, 20, 20), (20, 40, 20),
-                (10, 20, 0), (10, 40, 0), (20, 20, 0), (20, 40, 0)
-                ]:
-                key = f's{size_def}_r{ratio_def}_d{dropout_def}'
-                if key not in defopt_ens_dict:
-                    opt = ENS(task_type=task_type, stats=stats,
-                                metric=metric, data_node=train_data_node,
-                                optimizer='smac',
-                                time_limit=1, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
-                                output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset, 
-                                val_nodes={'test': test_data_node},
-                                layer_upper=args.layer_upper, size_upper=args.size_upper,
-                                size_default=size_def, ratio_default=ratio_def, dropout_default=dropout_def)
+            # # for size_def, ratio_def, dropout_def in [
+            # #     (10, 20, 20), (10, 40, 20), (20, 20, 20), (20, 40, 20),
+            # #     (10, 20, 0), (10, 40, 0), (20, 20, 0), (20, 40, 0)
+            # #     ]:
+            # for size_def, ratio_def, dropout_def in [
+            #     (10, 40, 0)
+            #     ]:
+            #     key = f's{size_def}_r{ratio_def}_d{dropout_def}'
+            #     if key not in defopt_ens_dict:
+            #         opt = ENS(task_type=task_type, stats=stats,
+            #                     metric=metric, data_node=train_data_node,
+            #                     optimizer='smac',
+            #                     time_limit=1, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
+            #                     output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset,
+            #                     val_nodes={'test': test_data_node},
+            #                     layer_upper=args.layer_upper, size_upper=args.size_upper,
+            #                     size_default=size_def, ratio_default=ratio_def, dropout_default=dropout_def)
 
-                    print(opt.get_conf(save=True))
-                    opt.run(refit=args.refit)
-                    print(opt.get_model_info(save=True))  # 保存最优模型信息
-                    ens_def_preds = opt.predict(test_data_node, refit=args.refit)
-                    ens_def_perfs = []
-                    for ens_def_pred in ens_def_preds:
-                        ens_def_perf = scorer._score_func(test_data_node.data[1], ens_def_pred) * scorer._sign
-                        ens_def_perfs.append(str(ens_def_perf))
-                    ens_def_perf = ', '.join(ens_def_perfs)
-                    defopt_ens_dict[key] = ens_def_perf
-            res_dict['defopt_ens'] = defopt_ens_dict
+            #         print(opt.get_conf(save=True))
+            #         opt.run(refit=args.refit)
+            #         print(opt.get_model_info(save=True))  # 保存最优模型信息
+            #         ens_def_preds = opt.predict(test_data_node, refit=args.refit)
+            #         ens_def_perfs = []
+            #         for ens_def_pred in ens_def_preds:
+            #             ens_def_perf = scorer._score_func(test_data_node.data[1], ens_def_pred) * scorer._sign
+            #             ens_def_perfs.append(str(ens_def_perf))
+            #         ens_def_perf = ', '.join(ens_def_perfs)
+            #         defopt_ens_dict[key] = ens_def_perf
+            # res_dict['defopt_ens'] = defopt_ens_dict
+            # with open(tar_file, 'w') as f:
+            #     json.dump(res_dict, f, indent=4)
 
-            if 'opt_ens' not in res_dict:
-                opt = ENS(task_type=task_type, stats=stats,
-                            metric=metric, data_node=train_data_node,
-                            optimizer='smac',
-                            time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
-                            output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset,
-                            val_nodes={'test': test_data_node},
-                            layer_upper=args.layer_upper, size_upper=args.size_upper)
+            # if 'opt_ens' not in res_dict:
+            #     opt = ENS(task_type=task_type, stats=stats,
+            #                 metric=metric, data_node=train_data_node,
+            #                 optimizer='smac',
+            #                 time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
+            #                 output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset,
+            #                 val_nodes={'test': test_data_node},
+            #                 layer_upper=args.layer_upper, size_upper=args.size_upper)
 
-                print(opt.get_conf(save=True))
-                opt.run(refit=args.refit)
-                print(opt.get_model_info(save=True))  # 保存最优模型信息
-                ens_opt_preds = opt.predict(test_data_node, refit=args.refit)
-                ens_opt_perfs = []
-                for ens_opt_pred in ens_opt_preds:
-                    ens_opt_perf = scorer._score_func(test_data_node.data[1], ens_opt_pred) * scorer._sign
-                    ens_opt_perfs.append(str(ens_opt_perf))
+            #     print(opt.get_conf(save=True))
+            #     opt.run(refit=args.refit)
+            #     print(opt.get_model_info(save=True))  # 保存最优模型信息
+            #     ens_opt_preds = opt.predict(test_data_node, refit=args.refit)
+            #     ens_opt_perfs = []
+            #     for ens_opt_pred in ens_opt_preds:
+            #         ens_opt_perf = scorer._score_func(test_data_node.data[1], ens_opt_pred) * scorer._sign
+            #         ens_opt_perfs.append(str(ens_opt_perf))
 
-                res_dict['opt_ens'] = ens_opt_perfs
+            #     res_dict['opt_ens'] = ens_opt_perfs
 
-            if 'opt_ens_d0' not in res_dict:
-                opt = ENS(task_type=task_type, stats=stats,
-                            metric=metric, data_node=train_data_node,
-                            optimizer='smac',
-                            time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
-                            output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset,
-                            val_nodes={'test': test_data_node},
-                            layer_upper=args.layer_upper, size_upper=args.size_upper, dropout_default=0)
+            # if 'opt_ens_d0' not in res_dict:
+            #     opt = ENS(task_type=task_type, stats=stats,
+            #                 metric=metric, data_node=train_data_node,
+            #                 optimizer='smac',
+            #                 time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
+            #                 output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset,
+            #                 val_nodes={'test': test_data_node},
+            #                 layer_upper=args.layer_upper, size_upper=args.size_upper, dropout_default=0)
 
-                print(opt.get_conf(save=True))
-                opt.run(refit=args.refit)
-                print(opt.get_model_info(save=True))  # 保存最优模型信息
-                ens_opt_preds = opt.predict(test_data_node, refit=args.refit)
-                ens_opt_perfs = []
-                for ens_opt_pred in ens_opt_preds:
-                    ens_opt_perf = scorer._score_func(test_data_node.data[1], ens_opt_pred) * scorer._sign
-                    ens_opt_perfs.append(str(ens_opt_perf))
+            #     print(opt.get_conf(save=True))
+            #     opt.run(refit=args.refit)
+            #     print(opt.get_model_info(save=True))  # 保存最优模型信息
+            #     ens_opt_preds = opt.predict(test_data_node, refit=args.refit)
+            #     ens_opt_perfs = []
+            #     for ens_opt_pred in ens_opt_preds:
+            #         ens_opt_perf = scorer._score_func(test_data_node.data[1], ens_opt_pred) * scorer._sign
+            #         ens_opt_perfs.append(str(ens_opt_perf))
 
-                res_dict['opt_ens_d0'] = ens_opt_perfs
+            #     res_dict['opt_ens_d0'] = ens_opt_perfs
 
-            if 'opt_ens_d0-20' not in res_dict:
-                opt = ENS(task_type=task_type, stats=stats,
-                            metric=metric, data_node=train_data_node,
-                            optimizer='smac',
-                            time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
-                            output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset,
-                            val_nodes={'test': test_data_node},
-                            layer_upper=args.layer_upper, size_upper=args.size_upper, dropout_default=0)
+            # if 'opt_ens_d0-20' not in res_dict:
+            #     opt = ENS(task_type=task_type, stats=stats,
+            #                 metric=metric, data_node=train_data_node,
+            #                 optimizer='smac',
+            #                 time_limit=args.time_limit, amount_of_resource=int(1e6), per_run_time_limit=float(np.inf),
+            #                 output_dir=args.output_dir, seed=1, n_jobs=args.thread, task_id=dataset,
+            #                 val_nodes={'test': test_data_node},
+            #                 layer_upper=args.layer_upper, size_upper=args.size_upper, dropout_default=0)
 
-                print(opt.get_conf(save=True))
-                opt.run(refit=args.refit)
-                print(opt.get_model_info(save=True))  # 保存最优模型信息
-                ens_opt_preds = opt.predict(test_data_node, refit=args.refit)
-                ens_opt_perfs = []
-                for ens_opt_pred in ens_opt_preds:
-                    ens_opt_perf = scorer._score_func(test_data_node.data[1], ens_opt_pred) * scorer._sign
-                    ens_opt_perfs.append(str(ens_opt_perf))
+            #     print(opt.get_conf(save=True))
+            #     opt.run(refit=args.refit)
+            #     print(opt.get_model_info(save=True))  # 保存最优模型信息
+            #     ens_opt_preds = opt.predict(test_data_node, refit=args.refit)
+            #     ens_opt_perfs = []
+            #     for ens_opt_pred in ens_opt_preds:
+            #         ens_opt_perf = scorer._score_func(test_data_node.data[1], ens_opt_pred) * scorer._sign
+            #         ens_opt_perfs.append(str(ens_opt_perf))
 
-                res_dict['opt_ens_d0-20'] = ens_opt_perfs
+            #     res_dict['opt_ens_d0-20'] = ens_opt_perfs
 
-            
 
             # if 'opt_ens_train' not in res_dict:
             #     opt = ENS(task_type=task_type, stats=stats,

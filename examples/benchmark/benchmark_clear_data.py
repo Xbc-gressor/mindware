@@ -7,8 +7,9 @@ data_dir = './benchmark_data'
 path_dict = {0:{}, 4:{}}
 
 for sub_dir in os.listdir(data_dir):
-    if sub_dir.startswith('CASHFE') or sub_dir.startswith('results'):
-        continue
+    # if sub_dir.startswith('CASHFE') or sub_dir.startswith('results'):
+    #     continue
+    if not sub_dir.startswith('CMA_ES-'): continue
     config_path = os.path.join(data_dir, sub_dir, './config.json')
     best_path = os.path.join(data_dir, sub_dir, './best_model_info.json')
     if not os.path.exists(config_path) or not os.path.exists(best_path):
@@ -28,8 +29,10 @@ for sub_dir in os.listdir(data_dir):
     if task_id not in path_dict[task_type]:
         path_dict[task_type][task_id] = {}
     best_one = best_config["best_pool"][0]
-    a, b, c = best_one["ensemble_size"], best_one["ratio"], best_one["dropout"]
-    ens_str = f"{a}_{b}_{c}"
+    # a, b, c = best_one["ensemble_size"], best_one["ratio"], best_one["dropout"]
+    # ens_str = f"{a}_{b}_{c}"
+    # ens_str = config['time_limit']
+    ens_str = f"{config['ensemble_method']}_{config['size']}"
     if ens_str not in path_dict[task_type][task_id]:
         path_dict[task_type][task_id][ens_str] = []
 

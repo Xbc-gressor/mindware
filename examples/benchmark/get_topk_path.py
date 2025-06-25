@@ -22,11 +22,12 @@ def get_task_info(folder):
             config = json.load(f)
             task_id = config.get('task_id')
             task_type = config.get('task_type')
+            time_limit = config.get('time_limit')
             has_filter_params = 'filter_params' in config and len(config['filter_params']) > 0
-            return task_id, task_type, has_filter_params
+            return task_id, task_type, has_filter_params, time_limit
     except Exception as e:
         print(f"Error reading {config_path}: {e}")
-        return None, None, None
+        return None, None, None, None
 
 def get_topk_config_paths(folder):
     return glob.glob(os.path.join(folder, '*topk_config.pkl'))
@@ -43,24 +44,26 @@ def main(parent_folder):
                 if not sub3folder.startswith('CASHFE-'): continue
                 sub4folder_path = os.path.join(subsubfolder, sub3folder)
                 if os.path.isdir(sub4folder_path):
-                    task_id, task_type, has_filter_params = get_task_info(sub4folder_path)
+                    task_id, task_type, has_filter_params, time_limit = get_task_info(sub4folder_path)
                     if task_id is not None and task_type is not None:
                         topk_paths = get_topk_config_paths(sub4folder_path)
                         for path in topk_paths:
-                            task_data.append((task_type, has_filter_params, task_id, path))
+                            task_data.append((task_type, has_filter_params, task_id, time_limit, path))
 
     # Sort the data
     task_data.sort(key=lambda x: (x[0], not x[1], cls_rank.index(x[2]) if x[0]==0 else rgs_rank.index(x[2])))
 
     res_dict = OrderedDict()
     # Output the sorted paths
-    for a, b, c, path in task_data:
+    for a, b, c, d, path in task_data:
         # print(a, b, c, path)
         if a not in res_dict:
             res_dict[a] = OrderedDict()
         if b not in res_dict[a]:
-            res_dict[a][b] = []
-        res_dict[a][b].append((c, path))
+            res_dict[a][b] = OrderedDict()
+        if d not in res_dict[a][b]:
+            res_dict[a][b][d] = []
+        res_dict[a][b][d].append((c, path))
 
     # for key, value in res_dict.items():
     #     for subkey, subvalue in value.items():

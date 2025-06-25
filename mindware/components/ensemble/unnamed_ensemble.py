@@ -68,7 +68,7 @@ def choose_base_models_regression(predictions, labels, num_model, ratio = 0.49):
 
     mask_idx = np.where(mask)[0]
     for i in top_k_indices:
-        print((mask_idx[i],G[i][i]))
+        print((mask_idx[i],G[i][i] / (1 - ratio)))
 
     top_k_indices = mask_idx[top_k_indices]
     z = np.zeros(n, dtype=int)

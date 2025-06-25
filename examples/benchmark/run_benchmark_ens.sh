@@ -138,10 +138,11 @@ declare -a TASKS
 
 # find refit_data/ -type f -name 'cv*' -exec rm {} +
 
-for i in 3 0 1 2 4; do
-    TASKS+=("python cls_benchmark.py --time_limit 3600 --refit full --job_idx $i --Opt ens --optimizer block_1 --output_dir ./res_ensopt_dropout_data_maxk --output_file res_ensopt_data_maxk.txt --stats_path ${cls_fil[$i]}")
-    TASKS+=("python rgs_benchmark.py --size_upper 30 --time_limit 7200 --refit full --job_idx $i --Opt ens --optimizer block_1 --output_dir ./res_ensopt_dropout_data_maxk --output_file res_ensopt_data_maxk.txt --stats_path ${rgs_fil[$i]}")
-done
+# for i in 3 0 1 2 4; do
+#     TASKS+=("python cls_benchmark.py --time_limit 3600 --refit full --job_idx $i --Opt ens --optimizer block_1 --output_dir ./res_ensopt_dropout_data_maxk --output_file res_ensopt_data_maxk.txt --stats_path ${cls_fil[$i]}")
+#     TASKS+=("python rgs_benchmark.py --size_upper 30 --time_limit 7200 --refit full --job_idx $i --Opt ens --optimizer block_1 --output_dir ./res_ensopt_dropout_data_maxk --output_file res_ensopt_data_maxk.txt --stats_path ${rgs_fil[$i]}")
+# done
+
 # j=4
 # TASKS+=("python cls_benchmark.py --time_limit 3600 --refit full --job_idx $j --Opt ens --optimizer block_1 --output_dir ./res_ensopt_data --output_file res_ensopt_data.txt --stats_path ${cls_fil[$j]}")
 # TASKS+=("python rgs_benchmark.py --size_upper 30 --time_limit 7200 --refit full --job_idx $j --Opt ens --optimizer block_1 --output_dir ./res_ensopt_data --output_file res_ensopt_data.txt --stats_path ${rgs_fil[$j]}")
@@ -152,11 +153,11 @@ done
 # done
 
 # 最大并发数
-MAX_JOBS=4
+MAX_JOBS=12
 # 当前运行的作业数
 CURRENT_JOBS=0
 # 每个任务使用的核心数量
-CORES_PER_TASK=24
+CORES_PER_TASK=8
 # 总核心数量
 TOTAL_CORES=96
 

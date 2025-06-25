@@ -12,7 +12,7 @@ from mindware.components.evaluators.base_evaluator import _BaseEvaluator
 from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 
 from mindware.components.utils.constants import *
-from mindware.components.feature_engineering.parse import construct_node
+from mindware.components.feature_engineering.parse import parse_config, construct_node
 
 
 def get_kfold_name(folds, fold, seed, shuffle=False):
@@ -161,38 +161,41 @@ class BaseEvaluator(_BaseEvaluator):
 
         raise NotImplementedError
     
-    def loss(self, es, x_val, y_val):
-        pred_lst = []
-        for model in es.model_pool:
-            if not model:
+    @staticmethod
+    def loss(es, pred, y_val):
+        pred_lst = [pred]
+        for idx, _pred in enumerate(es.model_pred):
+            if _pred is None:
                 continue
-            preds = model.predict(x_val)
-            pred_lst.append(preds)
+            pred_lst.append(_pred)
         pred_array = np.array(pred_lst)
-        # model_num,sample
-        if y_val.ndim == 1:
-            y_val = y_val.reshape(1, -1)
-        margin_loss = np.mean(pred_array * y_val, axis=-1)
-        loss = 0
-        for m_loss in margin_loss:
-            loss += (1 - m_loss) ** 2 / 2
-        return loss / len(margin_loss)
+        pred_label = np.argmax(pred_array, axis=-1)
+        binary_loss = 1 - 2 * (pred_label != y_val) 
+        margin_loss = np.mean(binary_loss, axis=0)
+        margin_loss = (1 - margin_loss) ** 2 / 4
+        return np.mean(margin_loss)
 
-    def rgs_loss(self, es, x_val, y_val):
-        pred_lst = []
-        for model in es.model_pool:
-            if not model:
+    @staticmethod
+    def rgs_loss(es, pred, y_val):
+        pred_lst = [pred]
+        for idx, _pred in enumerate(es.model_pred):
+            if _pred is None:
                 continue
-            preds = model.predict(x_val)
-            # 计算mse
-            mse_loss = np.mean((preds - y_val) ** 2)
-            pred_lst.append(mse_loss)
+            pred_lst.append(_pred)
+
+        pred_array = np.array(pred_lst)
+        pred_mean = np.mean(pred_array, axis=0)
+        mse_loss = np.mean((pred_mean - y_val) ** 2)
         # 所有模型mse的平均值
-        return np.array(pred_lst).mean(axis=0)
+        return mse_loss
+
     @staticmethod
     def _get_parse_data_node(config, train_node, val_node, if_imbal, record=True):
+        data_node, op_list = parse_config(train_node, config, record=record, if_imbal=if_imbal)
+        _val_node = val_node.copy_()
+        _val_node = construct_node(_val_node, op_list)
 
-        return {}, train_node, val_node
+        return op_list, data_node, _val_node
     
     def train_estimator(self, config):
         # Convert Configuration into dictionary
@@ -219,6 +222,7 @@ class BaseEvaluator(_BaseEvaluator):
             estimator = fetch_predict_estimator(self.task_type, estimator_id=estimator_id, config=config,
                                                 X_train=_x_train, y_train=_y_train,
                                                 weight_balance=train_node.enable_balance, data_balance=train_node.data_balance)
+
         return estimator
     
     def __call__(self, config, es=None, **kwargs):
@@ -247,96 +251,27 @@ class BaseEvaluator(_BaseEvaluator):
                 warnings.filterwarnings("ignore")
 
                 train_node, val_node = self._get_train_valid_data(self.task_type, self.data_node, self.resampling_params, seed=self.seed)
-                op_list, train_node, val_node = self._get_parse_data_node(config, train_node, val_node, self.if_imbal, record=True)
+                op_list, _train_node, _val_node = self._get_parse_data_node(config, train_node, val_node, self.if_imbal, record=True)
 
-            _x_train, _y_train = train_node.data
-            _x_val, _y_val = val_node.data
+            _x_train, _y_train = _train_node.data
 
             estimator = fetch_predict_estimator(self.task_type, estimator_id=estimator_id, config=config,
                                                 X_train=_x_train, y_train=_y_train,
-                                                weight_balance=train_node.enable_balance, data_balance=train_node.data_balance)
-            
-            es.replace_model(estimator)
+                                                weight_balance=_train_node.enable_balance, data_balance=_train_node.data_balance)
+
+            pred = fetch_predict_results(self.task_type, op_list, estimator, val_node)
+
+            model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
+            CombinedTopKModelSaver.save_config([op_list, estimator, score], model_path)
+            self.logger.info("Model saved to %s" % model_path)
             # 本身就是min问题，-一下后续再-一下就回来了，所以还是min问题
             if self.task_type in CLS_TASKS:
-                score = -self.loss(es, _x_val, _y_val)
+                score = self.loss(es, pred, val_node.data[1])
             else:
-                score = -self.rgs_loss(es, _x_val, _y_val)
-
-        elif 'cv' in self.resampling_strategy:
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore")
-
-                folds = 3
-                if self.resampling_params is not None and 'folds' in self.resampling_params:
-                    folds = self.resampling_params['folds']
-
-                op_list_dict = dict()
-                estimator_dict = dict()
-                score_dict = dict()
-                fold = 1
-                for train_node, val_node, _, _ in self._get_cv_data(self.task_type, self.data_node, self.resampling_params, seed=self.seed):
-
-                    op_list, train_node, val_node = self._get_parse_data_node(config, train_node, val_node, self.if_imbal, record=True)
-
-                    _x_train, _y_train = train_node.data
-                    _x_val, _y_val = val_node.data
-
-                    estimator = fetch_predict_estimator(self.task_type, estimator_id=estimator_id, config=config, 
-                                                        X_train=_x_train, y_train=_y_train, 
-                                                        weight_balance=train_node.enable_balance, data_balance=train_node.data_balance)
-                    score = self.scorer(estimator, _x_val, _y_val)
-
-                    key = get_kfold_name(folds=folds, fold=fold, seed=self.seed, shuffle=False)
-                    op_list_dict[key] = op_list
-                    estimator_dict[key] = estimator
-                    score_dict[key] = score
-                    fold += 1
-                score = np.mean(list(score_dict.values()))
-
-                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime, mode='cv', folds=folds)
-                CombinedTopKModelSaver.save_config([op_list_dict, estimator_dict, score_dict], model_path)
-
-                self.logger.info("Model saved to %s" % model_path)
-
-        elif 'partial' in self.resampling_strategy:
-            # Prepare data node.
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore")
-
-                train_node, val_node = self._get_train_valid_data(self.task_type, self.data_node, self.resampling_params, seed=self.seed)
-                op_list, train_node, val_node = self._get_parse_data_node(config, train_node, val_node, self.if_imbal, record=True)
-
-            _x_train, _y_train = train_node.data
-
-            _val_index = None
-            _act_x_train, _act_y_train = None, None
-            if downsample_ratio != 1:
-                down_ss = self.__class__._get_spliter(self.resampling_strategy, test_size=downsample_ratio,
-                                            random_state=self.seed)
-                for _, _val_index in down_ss.split(_x_train, _y_train):
-                    _act_x_train, _act_y_train = _x_train[_val_index], _y_train[_val_index]
-            else:
-                _act_x_train, _act_y_train = _x_train, _y_train
-                _val_index = list(range(len(_x_train)))
-
-            _x_val, _y_val = val_node.data
-
-            estimator = fetch_predict_estimator(self.task_type, estimator_id=estimator_id, config=config, 
-                                                X_train=_act_x_train, y_train=_act_y_train, 
-                                                weight_balance=train_node.enable_balance, data_balance=train_node.data_balance)
-            score = self.scorer(estimator, _x_val, _y_val)
+                score = self.rgs_loss(es, pred, val_node.data[1])
 
         else:
             raise ValueError('Invalid resampling strategy: %s!' % self.resampling_strategy)
-
-        if 'holdout' in self.resampling_strategy or 'partial' in self.resampling_strategy:
-
-            if np.isfinite(score) and downsample_ratio == 1:
-                model_path = CombinedTopKModelSaver.get_path_by_config(self.output_dir, config, self.datetime)
-                CombinedTopKModelSaver.save_config([op_list, estimator, score], model_path)
-
-                self.logger.info("Model saved to %s" % model_path)
 
         try:
             self.logger.info('Evaluation<%s> | Score: %.4f | Time cost: %.2f seconds | Shape: %s' %
@@ -348,7 +283,9 @@ class BaseEvaluator(_BaseEvaluator):
             pass
 
         # Turn it into a minimization problem.
-        return_dict['objectives'] = [-score]
+        return_dict['objectives'] = [score]
+        # return_dict['pred'] = pred
+        np.save(os.path.join(self.output_dir, './pred.npy'), pred)
 
         return return_dict
 
