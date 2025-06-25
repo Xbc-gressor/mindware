@@ -1,0 +1,21 @@
+{
+    "task_type": "CLS",
+    "dataset": "nursery",
+    "refit": "full",
+    "filter": "m6_p6",
+    "time_limit": 3600,
+    "best": 0.9992283950617284,
+    "fixed_ens": {
+        "OptDivBO": 0.9930555555555556,
+        "stacking-1_0.4_L1_linear": 1.0,
+        "stacking-1_0.4_L2_linear": 1.0,
+        "stacking1000_0.4_L1_linear": 0.9992283950617284,
+        "stacking1000_0.4_L2_linear": 0.9976851851851852,
+        "ensemble_selection25": 1.0,
+        "EnsOpt": 0.9992283950617284,
+        "stacking1000_0.4_L1_weighted": 1.0,
+        "stacking-1_0.4_L1_weighted": 1.0,
+        "stacking1000_0.4_L2_weighted": 1.0,
+        "stacking-1_0.4_L2_weighted": 1.0
+    }
+}

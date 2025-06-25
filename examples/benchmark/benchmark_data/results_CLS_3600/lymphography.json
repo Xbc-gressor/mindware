@@ -1,0 +1,21 @@
+{
+    "task_type": "CLS",
+    "dataset": "lymphography",
+    "refit": "full",
+    "filter": "m6_p6",
+    "time_limit": 3600,
+    "best": 0.8666666666666667,
+    "fixed_ens": {
+        "OptDivBO": 0.8,
+        "stacking-1_0.4_L1_linear": 0.8666666666666667,
+        "stacking-1_0.4_L2_linear": 0.8333333333333334,
+        "stacking1000_0.4_L1_linear": 0.5666666666666667,
+        "stacking1000_0.4_L2_linear": 0.5666666666666667,
+        "ensemble_selection25": 0.9,
+        "EnsOpt": 0.8333333333333334,
+        "stacking1000_0.4_L1_weighted": 0.8666666666666667,
+        "stacking-1_0.4_L1_weighted": 0.8333333333333334,
+        "stacking1000_0.4_L2_weighted": 0.8333333333333334,
+        "stacking-1_0.4_L2_weighted": 0.8666666666666667
+    }
+}

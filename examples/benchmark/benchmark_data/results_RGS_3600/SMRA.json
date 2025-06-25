@@ -1,0 +1,21 @@
+{
+    "task_type": "RGS",
+    "dataset": "SMRA",
+    "refit": "full",
+    "filter": "m6_p6",
+    "time_limit": 3600,
+    "best": -1.9778712108494448e-10,
+    "fixed_ens": {
+        "ensemble_selection10": -7.156823221559195e-09,
+        "cma_es": -1.9060404071449584e-10,
+        "stacking-1_0.4_L1_linear": -4.4325801267009596e-08,
+        "stacking-1_0.4_L2_linear": -2.1622376083565446e-07,
+        "ensemble_selection25": -5.675054949430912e-09,
+        "EnsOpt": -49.318728666019666,
+        "stacking1000_0.4_L1_weighted": -6.58666749987406e-09,
+        "stacking-1_0.4_L1_weighted": -8.074683664586366e-08,
+        "stacking1000_0.4_L2_weighted": -1.1655142370307405,
+        "stacking-1_0.4_L2_weighted": -4.542533719993208e-08
+    },
+    "size_exp": {}
+}

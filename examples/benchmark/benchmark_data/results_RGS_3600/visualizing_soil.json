@@ -1,0 +1,22 @@
+{
+    "task_type": "RGS",
+    "dataset": "visualizing_soil",
+    "refit": "full",
+    "filter": "m6_p6",
+    "time_limit": 3600,
+    "best": -0.001156737998843262,
+    "fixed_ens": {
+        "ensemble_selection10": -0.0009057064088726383,
+        "cma_es": -0.00108177261698086,
+        "OptDivBO": -0.0035316933282378447,
+        "stacking-1_0.4_L1_linear": -0.0012698476781654987,
+        "stacking-1_0.4_L2_linear": -0.0014024537383454895,
+        "ensemble_selection25": -0.0008431456003144428,
+        "EnsOpt": -0.05703440932991404,
+        "stacking1000_0.4_L1_weighted": -0.0014336139149993738,
+        "stacking-1_0.4_L1_weighted": -0.0012973471294540732,
+        "stacking1000_0.4_L2_weighted": -0.0012469174928812074,
+        "stacking-1_0.4_L2_weighted": -0.0013862326359777185
+    },
+    "size_exp": {}
+}

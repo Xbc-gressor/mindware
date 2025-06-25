@@ -1,0 +1,100 @@
+{
+    "task_type": "RGS",
+    "dataset": "visualizing_soil",
+    "refit": "full",
+    "filter": "m6_p6",
+    "time_limit": 3600,
+    "best": -0.001735106998264893,
+    "size_exp": {
+        "stacking5_-1_L1_linear": [
+            "linear-L1: train--5.35322441e-03, train_2--5.35322441e-03, test--5.81372521e-03, test_2--5.81372521e-03, val--7.14040734e-03, val_2--7.14040734e-03"
+        ],
+        "stacking5_0_L1_linear": [
+            "linear-L1: train--2.15935401e-03, train_2--2.15935401e-03, test--2.36001037e-03, test_2--2.36001037e-03, val--1.15746658e-03, val_2--1.15746658e-03"
+        ],
+        "stacking5_0.1_L1_linear": [
+            "linear-L1: train--2.15933003e-03, train_2--2.15933003e-03, test--2.33713258e-03, test_2--2.33713258e-03, val--1.15757480e-03, val_2--1.15757480e-03"
+        ],
+        "stacking5_0.2_L1_linear": [
+            "linear-L1: train--2.15933003e-03, train_2--2.15933003e-03, test--2.33713258e-03, test_2--2.33713258e-03, val--1.15757480e-03, val_2--1.15757480e-03"
+        ],
+        "stacking5_0.3_L1_linear": [
+            "linear-L1: train--2.11616024e-03, train_2--2.11616024e-03, test--2.48037878e-03, test_2--2.48037878e-03, val--1.14207900e-03, val_2--1.14207900e-03"
+        ],
+        "stacking5_0.4_L1_linear": [
+            "linear-L1: train--2.26406474e-03, train_2--2.26406474e-03, test--2.45967843e-03, test_2--2.45967843e-03, val--1.11685208e-03, val_2--1.11685208e-03"
+        ],
+        "stacking10_-1_L1_linear": [
+            "linear-L1: train--3.06989445e-03, train_2--3.06989445e-03, test--2.33076318e-03, test_2--2.33076318e-03, val--1.65668820e-03, val_2--1.65668820e-03"
+        ],
+        "stacking10_0_L1_linear": [
+            "linear-L1: train--2.05138829e-03, train_2--2.05138829e-03, test--2.44669967e-03, test_2--2.44669967e-03, val--1.17499564e-03, val_2--1.17499564e-03"
+        ],
+        "stacking10_0.1_L1_linear": [
+            "linear-L1: train--2.10469271e-03, train_2--2.10469271e-03, test--2.46812505e-03, test_2--2.46812505e-03, val--1.14394856e-03, val_2--1.14394856e-03"
+        ],
+        "stacking10_0.2_L1_linear": [
+            "linear-L1: train--2.05137989e-03, train_2--2.05137989e-03, test--2.40633277e-03, test_2--2.40633277e-03, val--1.17504926e-03, val_2--1.17504926e-03"
+        ],
+        "stacking10_0.3_L1_linear": [
+            "linear-L1: train--2.01170040e-03, train_2--2.01170040e-03, test--2.32590688e-03, test_2--2.32590688e-03, val--1.14200150e-03, val_2--1.14200150e-03"
+        ],
+        "stacking10_0.4_L1_linear": [
+            "linear-L1: train--1.97361070e-03, train_2--1.97361070e-03, test--2.20344593e-03, test_2--2.20344593e-03, val--1.13855922e-03, val_2--1.13855922e-03"
+        ],
+        "stacking20_-1_L1_linear": [
+            "linear-L1: train--1.97430719e-03, train_2--1.97430719e-03, test--2.11287376e-03, test_2--2.11287376e-03, val--1.15941581e-03, val_2--1.15941581e-03"
+        ],
+        "stacking20_0_L1_linear": [
+            "linear-L1: train--2.01332254e-03, train_2--2.01332254e-03, test--2.37345676e-03, test_2--2.37345676e-03, val--1.16460862e-03, val_2--1.16460862e-03"
+        ],
+        "stacking20_0.1_L1_linear": [
+            "linear-L1: train--2.01332254e-03, train_2--2.01332254e-03, test--2.37345542e-03, test_2--2.37345542e-03, val--1.16460883e-03, val_2--1.16460883e-03"
+        ],
+        "stacking20_0.2_L1_linear": [
+            "linear-L1: train--2.01332254e-03, train_2--2.01332254e-03, test--2.37345542e-03, test_2--2.37345542e-03, val--1.16460883e-03, val_2--1.16460883e-03"
+        ],
+        "stacking20_0.3_L1_linear": [
+            "linear-L1: train--2.01332254e-03, train_2--2.01332254e-03, test--2.37345542e-03, test_2--2.37345542e-03, val--1.16460883e-03, val_2--1.16460883e-03"
+        ],
+        "stacking20_0.4_L1_linear": [
+            "linear-L1: train--1.89723134e-03, train_2--1.89723134e-03, test--2.17057271e-03, test_2--2.17057271e-03, val--1.15392088e-03, val_2--1.15392088e-03"
+        ],
+        "stacking30_-1_L1_linear": [
+            "linear-L1: train--1.97494203e-03, train_2--1.97494203e-03, test--2.28396175e-03, test_2--2.28396175e-03, val--1.16968650e-03, val_2--1.16968650e-03"
+        ],
+        "stacking30_0_L1_linear": [
+            "linear-L1: train--1.98493093e-03, train_2--1.98493093e-03, test--2.64663747e-03, test_2--2.64663747e-03, val--1.18467039e-03, val_2--1.18467039e-03"
+        ],
+        "stacking30_0.1_L1_linear": [
+            "linear-L1: train--1.76697106e-03, train_2--1.76697106e-03, test--2.00274241e-03, test_2--2.00274241e-03, val--1.28852665e-03, val_2--1.28852665e-03"
+        ],
+        "stacking30_0.2_L1_linear": [
+            "linear-L1: train--1.76697106e-03, train_2--1.76697106e-03, test--2.00274241e-03, test_2--2.00274241e-03, val--1.28852665e-03, val_2--1.28852665e-03"
+        ],
+        "stacking30_0.3_L1_linear": [
+            "linear-L1: train--1.76697106e-03, train_2--1.76697106e-03, test--2.00274241e-03, test_2--2.00274241e-03, val--1.28852665e-03, val_2--1.28852665e-03"
+        ],
+        "stacking30_0.4_L1_linear": [
+            "linear-L1: train--1.76749750e-03, train_2--1.76749750e-03, test--1.99018953e-03, test_2--1.99018953e-03, val--1.28485846e-03, val_2--1.28485846e-03"
+        ],
+        "stacking40_-1_L1_linear": [
+            "linear-L1: train--1.99215714e-03, train_2--1.99215714e-03, test--2.32390163e-03, test_2--2.32390163e-03, val--1.20833112e-03, val_2--1.20833112e-03"
+        ],
+        "stacking40_0_L1_linear": [
+            "linear-L1: train--1.75865637e-03, train_2--1.75865637e-03, test--2.13787057e-03, test_2--2.13787057e-03, val--1.27901319e-03, val_2--1.27901319e-03"
+        ],
+        "stacking40_0.1_L1_linear": [
+            "linear-L1: train--1.75865637e-03, train_2--1.75865637e-03, test--2.13787057e-03, test_2--2.13787057e-03, val--1.27901319e-03, val_2--1.27901319e-03"
+        ],
+        "stacking40_0.2_L1_linear": [
+            "linear-L1: train--1.75865637e-03, train_2--1.75865637e-03, test--2.13787057e-03, test_2--2.13787057e-03, val--1.27901319e-03, val_2--1.27901319e-03"
+        ],
+        "stacking40_0.3_L1_linear": [
+            "linear-L1: train--1.76165431e-03, train_2--1.76165431e-03, test--2.10064160e-03, test_2--2.10064160e-03, val--1.27409013e-03, val_2--1.27409013e-03"
+        ],
+        "stacking40_0.4_L1_linear": [
+            "linear-L1: train--1.75865637e-03, train_2--1.75865637e-03, test--2.13787057e-03, test_2--2.13787057e-03, val--1.27901319e-03, val_2--1.27901319e-03"
+        ]
+    }
+}
