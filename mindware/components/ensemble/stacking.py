@@ -101,7 +101,7 @@ class Stacking(Blending):
         self.opt = opt
         if not self.opt:
             assert max_k == 1
-            assert meta_learner in ['weighted', 'linear']
+            assert meta_learner in ['weighted', 'linear', 'lightgbm']
             retain = False
 
         self.ensemble_method = "stacking"
@@ -295,11 +295,11 @@ class Stacking(Blending):
 
         # 计算val和test上的head输出
         head_outputs = {'train': head_output}
-        can_heads = ['weighted', 'linear']
+        can_heads = ['weighted', 'linear', 'lightgbm', ] # 
         if not self.opt:
             can_heads = [self.meta_learner] if layer == self.stack_layers + 1 else []
             
-        for config in can_heads:  # 'lightgbm', 
+        for config in can_heads:  # 
             head = f"{config}-L{layer}"
             meta_learner = Blending.build_meta_learner(config, self.task_type, last_features['train'], final_labels['train'],
                                 ensemble_size=n_base_model, if_imbal=self.if_imbal, metric=self.metric)
@@ -427,7 +427,7 @@ class Stacking(Blending):
                 self.layer_loss = [self.cal_scores(base_features, final_labels, self.ensemble_size)]
                 self.stack_models = dict()
 
-        stack_configs = [[], ['weighted', 'linear']]
+        stack_configs = [[], ['weighted', 'linear', 'lightgbm']]  # 'weighted',
         if not self.opt:
             stack_configs = [[], []]
         model_cnt = 0
@@ -562,7 +562,7 @@ class Stacking(Blending):
         ens_info['stask_layers'] = self.stack_layers
         ens_info['dropout'] = self.dropout
         sorted_head = sorted(list(self.leader_board[self.judge].keys()), key=lambda x: (-self.leader_board[self.judge][x], -self.leader_board[f'{self.judge}_2'][x], -self.leader_board['train'][x], -self.leader_board['train_2'][x]))
-        ens_info['leader_board'] = [f"{head}: {', '.join(['%s-%.5f' % (key, self.leader_board[key][head]) for key in self.leader_board.keys()])}" for head in sorted_head]
+        ens_info['leader_board'] = [f"{head}: {', '.join(['%s-%.8e' % (key, self.leader_board[key][head]) for key in self.leader_board.keys()])}" for head in sorted_head]
         if self.ensemble_method == 'weighted':
             ens_info['meta_weighted'] = ','.join(['%.3f' % tmp for tmp in self.meta_learner.weights_])
         ens_info['thread'] = self.thread

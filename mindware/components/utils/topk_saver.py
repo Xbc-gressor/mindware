@@ -56,6 +56,10 @@ class CombinedTopKModelSaver(BaseTopKModelSaver):
         if mode.startswith('cv'):
             folds = kwargs['folds']
             prefix = "%s%d_" % (mode, folds)
+            shuffle = kwargs.get('shuffle', False)
+            if shuffle:
+                seed = kwargs['seed']
+                prefix = "%s%d_s%d_" % (mode, folds, seed)
         elif mode == 'full':
             prefix = "%s_" % mode
         dir_path, filename = os.path.split(ori_path)

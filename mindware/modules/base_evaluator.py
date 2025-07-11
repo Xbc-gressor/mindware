@@ -135,14 +135,16 @@ class BaseEvaluator(_BaseEvaluator):
     def _get_cv_data(task_type, data_node, resampling_params=None, seed=1, only_index=False):
 
         folds = 5
+        shuffle = False
         if resampling_params is not None and 'folds' in resampling_params:
             folds = resampling_params['folds']
+            shuffle = resampling_params['shuffle']
 
         X, y = data_node.data
         if task_type in CLS_TASKS:
-            ss = BaseCLSEvaluator._get_spliter(resampling_strategy='cv', n_splits=folds, random_state=seed, shuffle=False)
+            ss = BaseCLSEvaluator._get_spliter(resampling_strategy='cv', n_splits=folds, random_state=seed, shuffle=shuffle)
         else:
-            ss = BaseRGSEvaluator._get_spliter(resampling_strategy='cv', n_splits=folds, random_state=seed, shuffle=False)
+            ss = BaseRGSEvaluator._get_spliter(resampling_strategy='cv', n_splits=folds, random_state=seed, shuffle=shuffle)
 
         all_classes = set(np.unique(y))
         for train_index, val_index in ss.split(X, y):

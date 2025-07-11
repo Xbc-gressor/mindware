@@ -47,7 +47,7 @@ def choose_base_models_regression(predictions, labels, num_model, ratio = 0.49):
     #             G[i, j] = 0.5 * (_G[i, j] / _G[i, i] + _G[i, j] / _G[j, j])
     
     I = np.eye(G.shape[0])
-    G = ratio * (G * (1 - I)) + (1 - ratio) * (G * I) + 1e-5 * I
+    G = ratio * (G * (1 - I)) + (1 - ratio) * (G * I) + 1e-5 * I  # / (2*(num_model-1)) 
 
     if not np.allclose(G, G.T, atol=1e-8):  # 设置容差
         print("G 不是对称的!")
@@ -66,6 +66,8 @@ def choose_base_models_regression(predictions, labels, num_model, ratio = 0.49):
     z_value = np.array(z.value)
     top_k_indices = np.argsort(z_value)[-num_model:]
 
+    # sel_G = _G[top_k_indices][:, top_k_indices]
+
     mask_idx = np.where(mask)[0]
     for i in top_k_indices:
         print((mask_idx[i],G[i][i] / (1 - ratio)))
@@ -74,7 +76,7 @@ def choose_base_models_regression(predictions, labels, num_model, ratio = 0.49):
     z = np.zeros(n, dtype=int)
     z[top_k_indices] = 1
 
-    return z
+    return z # , sel_G
 
 
 def choose_base_models_classification(predictions, labels, num_model, ratio = 0.49):
@@ -104,7 +106,7 @@ def choose_base_models_classification(predictions, labels, num_model, ratio = 0.
     G = _G
 
     I = np.eye(G.shape[0])
-    G = ratio * (G * (1 - I)) + (1 - ratio) * (G * I) + 1e-5 * I
+    G = ratio * (G * (1 - I)) + (1 - ratio) * (G * I) + 1e-5 * I  # / (2*(num_model-1)) 
 
     if not np.allclose(G, G.T, atol=1e-8):  # 设置容差
         print("G 不是对称的!")
@@ -123,6 +125,8 @@ def choose_base_models_classification(predictions, labels, num_model, ratio = 0.
     z_value = np.array(z.value)
     top_k_indices = np.argsort(z_value)[-num_model:]
 
+    # sel_G = _G[top_k_indices][:, top_k_indices]
+
     mask_idx = np.where(mask)[0]
     for i in top_k_indices:
         print((mask_idx[i], G[i][i]/ (1 - ratio)))
@@ -131,7 +135,7 @@ def choose_base_models_classification(predictions, labels, num_model, ratio = 0.
     z = np.zeros(n, dtype=int)
     z[top_k_indices] = 1
 
-    return z
+    return z # , sel_G
 
 # def choose_base_models_regression(predictions, labels, num_model):
 #     base_mask = [0] * len(predictions)

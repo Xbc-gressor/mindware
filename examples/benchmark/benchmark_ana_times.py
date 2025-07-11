@@ -74,6 +74,9 @@ avgs = {
     "ALL": {t:[] for t in headers[2:]}
 }
 
+import pickle as pkl
+with open('./images/rank/bingo.pkl', 'rb') as f:
+    valid_datasets = pkl.load(f)
 sel_ens = ["bo", '0-20']  #, '20', '0', '0-20'
 table.field_names = headers
 for task_type, datasets in times_dict.items():
@@ -82,6 +85,8 @@ for task_type, datasets in times_dict.items():
         algorithms = datasets[dataset]
         if algorithms == {}:
             continue
+        if dataset not in valid_datasets[task_type]:
+            continue
         row = [task_type, dataset] + ['%.5f' % algorithms[t] for t in sel_ens]
         table.add_row(row)
         for t in algorithms:
@@ -89,13 +94,15 @@ for task_type, datasets in times_dict.items():
             avgs["ALL"][t].append(algorithms[t])
     table.add_row(["-"*9, "-"*12] + ["-"*11] * len(sel_ens))
 
+num_dict = {}
 for task_type, algorithms in avgs.items():
     for algorithm in algorithms:
+        num_dict[task_type] = len(algorithms[algorithm])
         algorithms[algorithm] = np.mean(algorithms[algorithm])
-    
+
     table.add_row([task_type, "average"] + ["%.3f" % algorithms[t] for t in headers[2:]])
 table.add_row(headers)
-        
+
 
 print(table)
-
+print(num_dict)

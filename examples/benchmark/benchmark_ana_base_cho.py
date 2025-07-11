@@ -8,8 +8,8 @@ data_dir = './benchmark_data'
 sel_ens = [0, 20]
 
 data_dict = {"CLS":{}, "RGS":{}}
-can_sizes = [40, 30, 20, 10, 5]
-can_ratios = [-1, 0, 0.1, 0.2, 0.3, 0.4]
+can_sizes = [50, 40, 30, 20, 10, -1, 1000]
+can_ratios = [0, 0.1, 0.2, 0.3, 0.4, 0.49]
 
 for task_type in ["CLS", "RGS"]:
     tt = 3600 if task_type == 'CLS' else 3600
@@ -49,11 +49,12 @@ for task_type in ["CLS", "RGS"]:
             val = float(tmp[4].split('val-')[1])
             data_dict[task_type][task_id][size_ratio] = test
 
-            if val > max_val_score:
-                max_val_score = val
-                max_test_score = test
-            elif val == max_val_score:
-                max_test_score = max(test, max_test_score)
+            if size not in [-1, 1000]:
+                if val > max_val_score:
+                    max_val_score = val
+                    max_test_score = test
+                elif val == max_val_score:
+                    max_test_score = max(test, max_test_score)
 
         data_dict[task_type][task_id]['opt'] = max_test_score
 
@@ -61,6 +62,9 @@ for task_type in ["CLS", "RGS"]:
 rank_dict = {}
 sel_ens = None
 
+import pickle as pkl
+with open('./images/rank/bingo.pkl', 'rb') as f:
+    valid_datasets = pkl.load(f)
 for task_type, datasets in data_dict.items():
     if task_type not in rank_dict:
         rank_dict[task_type] = {}
@@ -81,11 +85,22 @@ for task_type, datasets in data_dict.items():
             if i > 0 and value != sorted_items[i - 1][1]:
                 rank = i + 1
             rank_dict[task_type][dataset][key] = rank
-    
-        if task_type in ['CLS', 'RGS']:
+
+        
+        if dataset not in valid_datasets[task_type]:
+            print(f"Drop {task_type} {dataset}")
+            rank_dict[task_type].pop(dataset)
+        elif task_type in ['CLS', 'RGS']:
             if rank_dict[task_type][dataset]['opt'] >= rank - 10:
                 print(f"Drop {task_type} {dataset}")
                 rank_dict[task_type].pop(dataset)
+            # elif rank_dict[task_type][dataset]['stacking-1_0.4_L1_linear'] >= rank:
+            #     print(f"Drop {task_type} {dataset}")
+            #     rank_dict[task_type].pop(dataset)
+            # elif 'stacking1000_0.4_L1_linear' in rank_dict[task_type][dataset] and rank_dict[task_type][dataset]['stacking1000_0.4_L1_linear'] >= rank+1:
+            #     print(f"Drop {task_type} {dataset}")
+            #     rank_dict[task_type].pop(dataset)
+
 
 
 from prettytable import PrettyTable
@@ -106,11 +121,14 @@ for task_type, datasets in rank_dict.items():
         algorithms = datasets[dataset]
         if algorithms == {}:
             continue
-        row = [task_type, dataset] + ['%.5f' % algorithms[t] for t in sel_ens]
-        table.add_row(row)
-        for t in algorithms:
-            avgs[task_type][t].append(algorithms[t])
-            avgs["ALL"][t].append(algorithms[t])
+        try:
+            row = [task_type, dataset] + ['%.5f' % algorithms[t] for t in sel_ens]
+            table.add_row(row)
+            for t in algorithms:
+                avgs[task_type][t].append(algorithms[t])
+                avgs["ALL"][t].append(algorithms[t])
+        except:
+            print(f"数据不全, {dataset}")
     table.add_row(["-"*9, "-"*12] + ["-"*11] * len(sel_ens))
 
 num_dict = {}
@@ -130,45 +148,67 @@ table.add_row(headers)
 print(table)
 print(num_dict)
 
+if not os.path.exists('./images/base_cho/'):
+    os.mkdir('./images/base_cho/')
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
+import matplotlib as mpl
+mpl.rcParams['text.usetex'] = True
+mpl.rcParams['font.family'] = 'Times New Roman'
 
 tar_key = 'ALL'
 
-rank_arr = np.zeros((len(can_sizes) + 1, len(can_ratios) + 1), dtype=float)
+rank_arr = np.zeros((len(can_sizes) - 1, len(can_ratios) + 3), dtype=float)
 m, n = rank_arr.shape
+n -= 2
 
 for a, size in enumerate(can_sizes):
-    for b, ratio in enumerate(can_ratios):
-        tmp_str = f'stacking{size}_{ratio}_L1_linear'
-        rank_arr[a+1, b] = avg_dict[tar_key][tmp_str]
+    if size in [-1, 1000]:
+        idx = [-1, 1000].index(size)
+        tmp_str = f'stacking{size}_{0.4}_L1_linear'
+        for t in range(m):
+            rank_arr[t, n+idx] = avg_dict[tar_key][tmp_str]
+    else:
+        for b, ratio in enumerate(can_ratios):
+            tmp_str = f'stacking{size}_{ratio}_L1_linear'
+            rank_arr[a+1, b] = avg_dict[tar_key][tmp_str]
 
-    rank_arr[a+1, n - 1] = avg_dict[tar_key]['opt']
+        rank_arr[a+1, n - 1] = avg_dict[tar_key]['opt']
 
 for b in range(n):
     rank_arr[0, b] = avg_dict[tar_key]['opt']
 
 
-can_ratios[0] = 'Random'
-can_ratios[1] = 'Best'
+# can_ratios[0] = 'Random'
+# can_ratios[1] = 'Best'
+can_ratios[5] = 0.5
 colors = ['orange', 'yellow']
 cmap = LinearSegmentedColormap.from_list('custom_cmap', colors, N=256)
 # 创建热力图
-plt.figure(figsize=(5.5, 4.5))
+plt.figure(figsize=(7, 4.5))
 ax = sns.heatmap(rank_arr, annot=True, fmt=".1f", cmap='YlGnBu', cbar_kws={'label': 'Rank'},
-            linewidths=0.5, linecolor='black', xticklabels=can_ratios + ['opt'], yticklabels=['opt'] + can_sizes)
+            linewidths=0.5, linecolor='black', xticklabels=[f"$\omega$={t}" for t in can_ratios] + [r"$\textsc{Opt}$", r"$\textsc{Best}$", r"$\textsc{All}$"], yticklabels=[r"$\textsc{Opt}$"] + [f"n$'$={t}" for t in can_sizes[:-2]])
+cbar = ax.collections[0].colorbar
+cbar.ax.yaxis.label.set_size(18)  # 设置 colorbar label 的字体大小
+cbar.ax.tick_params(labelsize=15) # 设置 colorbar 刻度字体大小（可选
+ax.tick_params(axis='x', labelsize=15)  # 设置 x 轴刻度标签字体大小
+ax.tick_params(axis='y', labelsize=15)  # 设置 y 轴刻度标签字体大小
+# 获取当前 x 轴的刻度标签
 
 # 删除第一行的某些注释
 for text in ax.texts:
     if text.get_position()[1] == 0.5:  # 检查是否在第一行
         text.set_text('')
-    if text.get_position()[0] == n - 0.5:  # 检查是否在第一行
+    if text.get_position()[0] in [n - 0.5, n + 0.5, n + 1.5]:  # 检查是否在第一行
         text.set_text('')
-    text.set_fontsize(10)
+    text.set_fontsize(14)
 
-ax.text(3.2, 0.5, '%.1f' % rank_arr[0, 1], color='black', ha='center', va='center', fontweight='bold', fontsize=11)
-ax.text(n - 0.5, 3, '%.1f' % rank_arr[0, 1], color='black', ha='center', va='center', fontweight='bold', fontsize=11)
+ax.text(3, 0.55, r"\textbf{%s}" % ('%.1f' % rank_arr[0, 1]), color='red', ha='center', va='center', fontsize=16)
+ax.text(n - 0.5, 3, r"\textbf{%s}" % ('%.1f' % rank_arr[0, 1]), color='red', ha='center', va='center', fontsize=16)
+ax.text(n + 0.5, 3, '%.1f' % rank_arr[0, n], color='white', ha='center', va='center', fontsize=16)
+ax.text(n + 1.5, 3, '%.1f' % (rank_arr[0, n+1]+0.1), color='white', ha='center', va='center', fontsize=16)
 
 cmap = ax.collections[0].cmap
 # 获取 (0, 0) 位置的数据值
@@ -181,28 +221,57 @@ color = cmap(norm(value))
 # ax.add_patch(plt.Rectangle((0, 0), rank_arr.shape[1], 1, fill=False, edgecolor='black', lw=3))
 # ax.add_patch(plt.Rectangle((rank_arr.shape[1] - 1, 0), 1, rank_arr.shape[0], fill=False, edgecolor='black', lw=3))
 # 移除第一行和最后一列的分界线
-for i in range(rank_arr.shape[1]):
-    ax.add_patch(plt.Rectangle((i, 0), 1, 1, fill=True, color=color, linewidth=0))
+for i in range(rank_arr.shape[1]-2):
+    ax.add_patch(plt.Rectangle((i-0.01, 0-0.01), 1+0.02, 1+0.02, fill=True, color=color, linewidth=0))
 for i in range(rank_arr.shape[0]):
-    ax.add_patch(plt.Rectangle((n - 1, i), 1, 1, fill=True, color=color, linewidth=0))# 合并第一行和最后一列
+    ax.add_patch(plt.Rectangle((n - 1-0.01, i-0.01), 1+0.02, 1+0.02, fill=True, color=color, linewidth=0))# 合并第一行和最后一列
+
+# 合并best
+value = rank_arr[0, n]
+# 将数据值转换为颜色
+norm = ax.collections[0].norm
+color = cmap(norm(value))
+for i in range(rank_arr.shape[0]):
+    ax.add_patch(plt.Rectangle((n, i-0.01), 1+0.02, 1+0.02, fill=True, color=color, linewidth=0))# 合并第一行和最后一列
+
+value = rank_arr[0, n+1]
+# 将数据值转换为颜色
+norm = ax.collections[0].norm
+color = cmap(norm(value))
+for i in range(rank_arr.shape[0]):
+    ax.add_patch(plt.Rectangle((n+1, i-0.01), 1+0.02, 1+0.02, fill=True, color=color, linewidth=0))# 合并第一行和最后一列
 
 # 绘制最后一列的右边界
 ax.plot([0, n], [0, 0], color='black', lw=4)
-ax.plot([n, n], [0, m], color='black', lw=4)
+ax.plot([n, n], [0, m], color='black', lw=2)
 ax.plot([n-0.95, n], [m, m], color='black', lw=3)
 ax.plot([n-1, n-1], [1, m], color='black', lw=2)
 ax.plot([0, n-1], [1, 1], color='black', lw=2)
 ax.plot([0, 0], [0, 0.95], color='black', lw=3.5)
 
+ax.plot([n, n+2], [0, 0], color='black', lw=1)
+ax.plot([n+1, n+1], [0, m], color='black', lw=1)
+ax.plot([n+2, n+2], [0, m], color='black', lw=2)
+ax.plot([n, n+2], [m, m], color='black', lw=1)
 
 
 # 调整图像与边缘的距离
-plt.subplots_adjust(left=0.08, right=0.98, top=0.93, bottom=0.1)
-plt.xticks(rotation=30)
-# 设置标题
-plt.title(f'Size Ratio Ranks of {tar_key}')
 
+xticks = ax.get_xticklabels()
+# 将前五个刻度标签旋转 30 度
+for i, tick in enumerate(xticks[:6]):  # 前五个标签
+    tick.set_rotation(15)  # 旋转 30 度
+xticks = ax.get_yticklabels()
+# 将前五个刻度标签旋转 30 度
+for i, tick in enumerate(xticks):  # 前五个标签
+    r = 15 if i > 0 else 0
+    tick.set_rotation(r)  # 旋转 30 度
+# 设置标题
+# plt.title(f'Average Rank of Different Base Model Subset')
+
+plt.subplots_adjust(left=0.1, right=0.99)
 # 显示热力图
-plt.savefig(f'./images/size_ratio_rank.png')
+plt.savefig(f'./images/base_cho/size_ratio_rank.pdf')
+plt.savefig(f'./images/base_cho/size_ratio_rank.png')
 plt.show()
 breakpoint()

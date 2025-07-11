@@ -12,6 +12,8 @@ from mindware import CASH, CASHFE, FE, HPO, ENS
 import multiprocessing as mp
 from mindware.components.metrics.metric import get_metric
 from benchmark_utils import get_dataset_info
+from mindware.components.ensemble.unnamed_ensemble import choose_base_models_classification, \
+    choose_base_models_regression
 
 NUM_THREADS = "1"
 os.environ["OMP_NUM_THREADS"] = NUM_THREADS         # export OMP_NUM_THREADS=1
@@ -193,6 +195,227 @@ if __name__ == '__main__':
                 perf = scorer._score_func(test_data_node.data[1], pred) * scorer._sign
                 res_dict['best'] = perf
 
+            # if 'dropoutreg_exp' not in res_dict:
+            #     res_dict['dropoutreg_exp'] = {}
+            # import datetime
+            # from mindware.modules.base_evaluator import BaseEvaluator
+            # from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
+            # from mindware.utils.functions import is_imbalanced_dataset
+            # from copy import deepcopy
+            # import time
+            # import shutil
+            # from mindware.utils.logging_utils import setup_logger
+
+            # _path = 'dropout-(%s)-%s_%s' % (
+            #     task_str, dataset, datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
+            # )
+            # output_dir = os.path.join(args.output_dir, _path)
+            # if not os.path.exists(output_dir):
+            #     os.makedirs(output_dir)
+            # logger_name = 'MindWare-dropout-(%d)' % (1)
+            # setup_logger(os.path.join(output_dir, '%s.log' % str(logger_name)))
+
+            # if_imbal = False
+            # if task_type in CLS_TASKS:
+            #     if_imbal = is_imbalanced_dataset(train_data_node)
+            # train_node, valid_node = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=train_data_node, seed=1)
+            # val_nodes = {'test': test_data_node, 'val': valid_node}
+
+            # n_dim = 1
+            # if task_type in CLS_TASKS:
+            #     unique_num = len(np.unique(train_data_node.data[1]))
+            #     if unique_num > 2:
+            #         n_dim = unique_num
+
+            # es = EnsembleBuilder(stats=stats, valid_node=valid_node,
+            #         task_type=task_type, if_imbal=if_imbal,
+            #         metric=scorer,
+            #         output_dir=output_dir, seed=1, thread=args.thread)
+            # for ens_size in [30]:
+            #     for ratio in [0.3]:
+
+            #         base_features_backup, ori_xs = None, None
+            #         for dropout in [0, 0.1, 0.2, 0.3, 0.4, 0.5]:
+            #             ratio_str = f'_{ratio}'
+            #             layer = f'_L1'
+            #             meta = f'_{args.meta_learner}'
+            #             ens_str = f'stacking{ens_size}{ratio_str}_L1{meta}dropout{dropout}'
+
+            #             if ens_str not in res_dict['dropoutreg_exp']:
+            #                 es.build_ensemble(
+            #                     ensemble_method='stacking', ensemble_size=ens_size, ratio=ratio, judge='val', opt=True,
+            #                     stack_layers=0, meta_learner=args.meta_learner, val_nodes=val_nodes
+            #                 )
+            #                 model = es.model
+            #                 if len(train_node.data[1].shape) == 1 and model.task_type in CLS_TASKS:
+            #                     reshape_y = np.reshape(train_node.data[1], (len(train_node.data[1]), 1))
+            #                     model.encoder.fit(reshape_y)
+            #                 # Train basic models using a part of training data
+            #                 if base_features_backup is None:
+            #                     _mode = 'partial' if model.judge == 'val' else 'full'
+            #                     base_features_backup, ori_xs = model.get_base_features(train_node, val_nodes, mode=_mode)
+            #                 base_features = deepcopy(base_features_backup)
+
+            #                 if dropout > 0:
+            #                     dropout_num = int(ens_size * dropout)
+            #                     if dropout_num > 0:
+            #                         rng = np.random.default_rng(seed=1)
+
+            #                         train_num, all_dim = base_features['train'].shape
+            #                         predict_dim = base_features['train'].shape[1]
+            #                         ori_dim = all_dim - predict_dim
+            #                         n_dim = predict_dim // ens_size
+            #                         dropout_mask = np.zeros((train_num, ens_size), dtype=int)
+            #                         for i in range(train_num):
+            #                             dropout_mask[i, rng.choice(ens_size, dropout_num, replace=False)] = 1
+
+            #                         for dim in range(n_dim):
+            #                             col =[ori_dim + dim + idx * n_dim for idx in range(ens_size)]
+            #                             data_pure = base_features['train'][:, col] * (1 - dropout_mask)
+            #                             base_features['train'][:, col] = data_pure + dropout_mask * np.sum(data_pure, axis=1, keepdims=True) / (ens_size - dropout_num)
+
+            #                 final_labels = {'train': train_node.data[1]}
+            #                 if val_nodes is not None:
+            #                     for key in val_nodes.keys():
+            #                         final_labels[key] = val_nodes[key].data[1]
+
+            #                 model.forward(base_features, final_labels, train=True, ori_xs=ori_xs)
+            #                 model_info = es.get_ens_model_info()
+            #                 res_dict['dropoutreg_exp'][ens_str] = deepcopy((model.best_stack.meta_learners[0].coef_.tolist(), model_info['leader_board']))
+
+            # shutil.rmtree(output_dir)
+
+
+            # if 'diversityavg_exp' not in res_dict:
+            #     res_dict['diversityavg_exp'] = {}
+            # import datetime
+            # from mindware.modules.base_evaluator import BaseEvaluator
+            # from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
+            # from mindware.utils.functions import is_imbalanced_dataset
+            # from copy import deepcopy
+            # import time
+            # import shutil
+            # from mindware.utils.logging_utils import setup_logger
+
+            # _path = 'diverty-(%s)-%s_%s' % (
+            #     task_str, dataset, datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
+            # )
+            # output_dir = os.path.join(args.output_dir, _path)
+            # if not os.path.exists(output_dir):
+            #     os.makedirs(output_dir)
+            # logger_name = 'MindWare-dropout-(%d)' % (1)
+            # setup_logger(os.path.join(output_dir, '%s.log' % str(logger_name)))
+
+            # if_imbal = False
+            # if task_type in CLS_TASKS:
+            #     if_imbal = is_imbalanced_dataset(train_data_node)
+            # train_node, valid_node = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=train_data_node, seed=1)
+            # val_nodes = {'test': test_data_node, 'val': valid_node}
+
+            # n_dim = 1
+            # if task_type in CLS_TASKS:
+            #     unique_num = len(np.unique(train_data_node.data[1]))
+            #     if unique_num > 2:
+            #         n_dim = unique_num
+
+            # es = EnsembleBuilder(stats=stats, valid_node=valid_node,
+            #         task_type=task_type, if_imbal=if_imbal,
+            #         metric=scorer,
+            #         output_dir=output_dir, seed=1, thread=args.thread)
+
+            # model_cnt = 0
+            # perfs = []
+            # for algo_id in es.stats.keys():
+            #     model_to_eval = es.stats[algo_id]
+            #     for idx, (config, perf, path) in enumerate(model_to_eval):
+            #         perfs.append(perf)
+            #         model_cnt += 1
+            # perfs = np.array(perfs)
+            # for ens_size in [30]:
+            #     if len(es.predictions) < ens_size:
+            #         exit(1)
+            #     for ratio in [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.49]:
+            #         ratio_str = f'_{ratio}'
+            #         ens_str = f'stacking{ens_size}{ratio_str}'
+
+            #         if ens_str not in res_dict['diversityavg_exp']:
+
+            #             y_valid = es.valid_node.data[1]
+            #             if task_type in CLS_TASKS:
+            #                 base_model_mask, sel_G = choose_base_models_classification(
+            #                     np.array(es.predictions), np.array(y_valid), ens_size, ratio=ratio
+            #                 )
+            #             else:
+            #                 base_model_mask, sel_G = choose_base_models_regression(
+            #                     np.array(es.predictions), np.array(y_valid), ens_size, ratio=ratio
+            #                 )
+            #             res_dict['diversityavg_exp'][ens_str] = [perfs[np.where(base_model_mask)[0]].sum(), np.diag(sel_G).sum(), sel_G.sum() - np.diag(sel_G).sum()]
+
+            # shutil.rmtree(output_dir)
+
+
+            # if 'struc_exp' not in res_dict:
+            #     res_dict['struc_exp'] = {}
+            # import datetime
+            # from mindware.modules.base_evaluator import BaseEvaluator
+            # from mindware.components.ensemble.ensemble_bulider import EnsembleBuilder
+            # from mindware.utils.functions import is_imbalanced_dataset
+            # from copy import deepcopy
+            # import time
+            # import shutil
+            # from mindware.utils.logging_utils import setup_logger
+
+            # _path = 'Struc-(%s)-%s_%s' % (
+            #     task_str, dataset, datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S-%f')
+            # )
+            # output_dir = os.path.join(args.output_dir, _path)
+            # if not os.path.exists(output_dir):
+            #     os.makedirs(output_dir)
+            # logger_name = 'MindWare-struc-(%d)' % (1)
+            # setup_logger(os.path.join(output_dir, '%s.log' % str(logger_name)))
+
+            # if_imbal = False
+            # if task_type in CLS_TASKS:
+            #     if_imbal = is_imbalanced_dataset(train_data_node)
+            # train_node, valid_node = BaseEvaluator._get_train_valid_data(task_type=task_type, data_node=train_data_node, seed=1)
+            # val_nodes = {'test': test_data_node, 'val': valid_node}
+
+            # es = EnsembleBuilder(stats=stats, valid_node=valid_node,
+            #         task_type=task_type, if_imbal=if_imbal,
+            #         metric=scorer,
+            #         output_dir=output_dir, seed=1, thread=args.thread)
+
+            # model_cnt = 0
+            # perfs = []
+            # for algo_id in es.stats.keys():
+            #     model_to_eval = es.stats[algo_id]
+            #     for idx, (config, perf, path) in enumerate(model_to_eval):
+            #         perfs.append(perf)
+            #         model_cnt += 1
+            # perfs = np.array(perfs)
+            # for ens_size in [30]:
+            #     for ratio in [0.3]:
+            #         for dropout in [0, 0.1, 0.2, 0.3, 0.4]:
+            #             for retain in [False, True]:
+            #                 if retain != True and dropout != 0.2:
+            #                     continue
+            #                 if retain == True and dropout == 0.2:
+            #                     layer = 4
+            #                 else:
+            #                     layer = 2
+            #                 ratio_str = f'_{ratio}'
+            #                 ens_str = f'stacking{ens_size}{ratio_str}_dropout{dropout}_retain{retain}'
+
+            #                 # if dropout != 0 or ens_str not in res_dict['struc_exp']:
+            #                 es.build_ensemble(
+            #                     ensemble_method='stacking', ensemble_size=ens_size, ratio=ratio, judge='val', opt=True,
+            #                     stack_layers=layer, meta_learner='auto', val_nodes=val_nodes, retain=retain, dropout=dropout
+            #                 )
+            #                 es.fit(datanode=train_node, val_nodes=val_nodes)
+            #                 model_info = es.get_ens_model_info()
+            #                 res_dict['struc_exp'][ens_str] = deepcopy(model_info['leader_board'])
+
+            # shutil.rmtree(output_dir)
 
             # if 'retain_exp' not in res_dict:
             #     res_dict['retain_exp'] = {}
@@ -274,8 +497,11 @@ if __name__ == '__main__':
             #             task_type=task_type, if_imbal=if_imbal,
             #             metric=scorer,
             #             output_dir=output_dir, seed=1, thread=args.thread)
-            #     for ens_size in [5, 10, 20, 30, 40]:
-            #         for ratio in [-1, 0, 0.1, 0.2, 0.3, 0.4]:
+            #     for ens_size in [5, 10, 20, 30, 40, 50]:
+            #         can_ratios = [-1, 0, 0.1, 0.2, 0.3, 0.4, 0.49]
+            #         if ens_size in [-1, 1000]:
+            #             can_ratios = [0.4]
+            #         for ratio in can_ratios:
             #             ratio_str = f'_{ratio}'
             #             layer = f'_L{args.layer+1}'
             #             meta = f'_{args.meta_learner}'
@@ -286,31 +512,33 @@ if __name__ == '__main__':
             #                 es.fit(datanode=train_node, val_nodes=val_nodes)
 
             #                 res_dict['size_exp'][ens_str] = deepcopy(es.get_ens_model_info()['leader_board'])
+            #                 with open(tar_file, 'w') as f:
+            #                     json.dump(res_dict, f, indent=4)
 
             #     shutil.rmtree(output_dir)
 
-            if 'fixed_ens' not in res_dict:
-                res_dict['fixed_ens'] = {}
-            if args.ensemble_method:
-                # ensemble_size = args.ensemble_size
-                # layer = args.layer
-                for layer in [0, 1]:
-                    for ensemble_size in [1000, -1]:
-                        ratio = f'_{args.ratio}' if args.ensemble_method in ['blending', 'stacking'] else ''
-                        layer_str = f'_L{layer+1}' if args.ensemble_method in ['blending', 'stacking'] else ''
-                        meta = f'_{args.meta_learner}' if args.ensemble_method in ['blending', 'stacking'] else ''
-                        ens_str = f'{args.ensemble_method}{ensemble_size}{ratio}{layer_str}{meta}' if args.ensemble_method is not None else 'none'
+            # if 'fixed_ens' not in res_dict:
+            #     res_dict['fixed_ens'] = {}
+            # if args.ensemble_method:
+            #     # ensemble_size = args.ensemble_size
+            #     # layer = args.layer
+            #     for layer in [0, 1]:
+            #         for ensemble_size in [1000, -1]:
+            #             ratio = f'_{args.ratio}' if args.ensemble_method in ['blending', 'stacking'] else ''
+            #             layer_str = f'_L{layer+1}' if args.ensemble_method in ['blending', 'stacking'] else ''
+            #             meta = f'_{args.meta_learner}' if args.ensemble_method in ['blending', 'stacking'] else ''
+            #             ens_str = f'{args.ensemble_method}{ensemble_size}{ratio}{layer_str}{meta}' if args.ensemble_method is not None else 'none'
 
-                        if ensemble_size == 1000 or ens_str not in res_dict['fixed_ens']:
-                            ens_pred = OPT._predict_stats(task_type, metric, data_node=train_data_node, test_data=test_data_node, stats=stats,
-                                                        resampling_params={'folds': 5},
-                                                        ensemble_method=args.ensemble_method, ensemble_size=ensemble_size,
-                                                        refit=args.refit, output_dir=args.output_dir, task_id=dataset, thread=args.thread, ratio=args.ratio, stack_layers=layer, meta_learner=args.meta_learner, retain=False)
-                            ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
-                            res_dict['fixed_ens'][ens_str] = ens_perf
+            #             if ensemble_size == 1000 or ens_str not in res_dict['fixed_ens']:
+            #                 ens_pred = OPT._predict_stats(task_type, metric, data_node=train_data_node, test_data=test_data_node, stats=stats,
+            #                                             resampling_params={'folds': 5},
+            #                                             ensemble_method=args.ensemble_method, ensemble_size=ensemble_size,
+            #                                             refit=args.refit, output_dir=args.output_dir, task_id=dataset, thread=args.thread, ratio=args.ratio, stack_layers=layer, meta_learner=args.meta_learner, retain=False)
+            #                 ens_perf = scorer._score_func(test_data_node.data[1], ens_pred) * scorer._sign
+            #                 res_dict['fixed_ens'][ens_str] = ens_perf
 
-                            with open(tar_file, 'w') as f:
-                                json.dump(res_dict, f, indent=4)
+            #                 with open(tar_file, 'w') as f:
+            #                     json.dump(res_dict, f, indent=4)
 
             # for baseline in ['EnsOpt']:  # , 'qdo_es', f'neural_es-{args.mode}', 'cma_es'
             #     if baseline not in ['EnsOpt'] and baseline in res_dict['fixed_ens']: continue

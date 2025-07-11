@@ -6,11 +6,11 @@ import json
 meta_res = './benchmark_data'
 
 for file in os.listdir(meta_res):
-    if not file.startswith('EnsOpt-'):
+    if not file.startswith('STA-'):
         continue
 
-    task_id = file[file.index('holdout')+8:file.index('2025')-1]
-    print(task_id)
+    # task_id = file[file.index('holdout')+8:file.index('2025')-1]
+    # print(task_id)
     sub_dir = os.path.join(meta_res, file)
 
     if not os.path.exists(os.path.join(sub_dir, 'config.json')):
@@ -21,7 +21,7 @@ for file in os.listdir(meta_res):
     task_type = 'data_CLS_3600'
     if config['task_type'] == 4:
         task_type = 'data_RGS_3600'
-    # task_id = config['task_id']
+    task_id = config['task_id']
 
     target_dir = os.path.join(meta_res, task_type, task_id)
 

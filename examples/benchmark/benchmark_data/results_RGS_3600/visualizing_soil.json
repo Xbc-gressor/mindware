@@ -16,7 +16,17 @@
         "stacking1000_0.4_L1_weighted": -0.0014336139149993738,
         "stacking-1_0.4_L1_weighted": -0.0012973471294540732,
         "stacking1000_0.4_L2_weighted": -0.0012469174928812074,
-        "stacking-1_0.4_L2_weighted": -0.0013862326359777185
+        "stacking-1_0.4_L2_weighted": -0.0013862326359777185,
+        "stacking1000_0.4_L1_linear": -0.0014366716908303194,
+        "stacking1000_0.4_L2_linear": -0.0012518841156964442,
+        "autogluon-": -0.0014280420575230475
     },
-    "size_exp": {}
+    "size_exp": {
+        "stacking5_-1_L1_linear": [
+            "linear-L1: train--0.19556, train_2--0.19556, test--0.14723, test_2--0.14723, val--0.14363, val_2--0.14363"
+        ],
+        "stacking5_0_L1_linear": [
+            "linear-L1: train--0.00212, train_2--0.00212, test--0.00289, test_2--0.00289, val--0.00124, val_2--0.00124"
+        ]
+    }
 }

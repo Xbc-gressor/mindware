@@ -29,7 +29,7 @@ def get_estimator_name(layer, model_idx, fold):
 def parallel_fit(config, task_type, if_imbal, seed,
                  layer, model_idx, fold, folds,
                  train_index, valid_index,
-                 node_path, ori_x_path, output_dir, ori_config_path, cpu_ids, **kwargs):
+                 node_path, ori_x_path, output_dir, ori_config_path, cpu_ids, shuffle, **kwargs):
 
     p = psutil.Process()
     p.cpu_affinity(cpu_ids)
@@ -72,12 +72,12 @@ def parallel_fit(config, task_type, if_imbal, seed,
             _mode = 'cv'
             if kwargs['mode'] == 'partial':
                 _mode += kwargs['mode']
-            cv_path = CombinedTopKModelSaver.get_parse_path(ori_config_path, _mode, folds=folds)
+            cv_path = CombinedTopKModelSaver.get_parse_path(ori_config_path, _mode, folds=folds, shuffle=shuffle, seed=seed)
             need_retrain = True
             if os.path.exists(cv_path):
                 try:
                     op_list_dict, estimator_dict, _ = CombinedTopKModelSaver._load(cv_path)
-                    key = get_kfold_name(folds=folds, fold=fold, seed=seed, shuffle=False)
+                    key = get_kfold_name(folds=folds, fold=fold, seed=seed, shuffle=shuffle)
                     op_list, estimator = op_list_dict[key], estimator_dict[key]
                     need_retrain = False
                 except:
@@ -186,7 +186,7 @@ def parallel_predict(model_idx, config_path, task_type, node_path):
 
 def layer_fit(stack_configs, n_base_model, new_node, ori_xs, 
               task_type, if_imbal, seed, layer, output_dir, 
-              thread=1, folds = 5, ori_config_paths=None, logger=None, metric=None, skip_mask=None, mode='partial', val_nodes: dict=None, dropout=0):
+              thread=1, folds = 5, shuffle=False, ori_config_paths=None, logger=None, metric=None, skip_mask=None, mode='partial', val_nodes: dict=None, dropout=0):
     # 如果是第0层，要把训练好的模型保存到原始的文件夹中，用ori_config_paths控制
     # 如果是第0层，需要FE，用need_fe控制
     # stack_configs: [[base model configs], [head configs]]
@@ -237,7 +237,7 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
                 _mode = 'cv'
                 if mode == 'partial':
                     _mode += mode
-                cv_path = CombinedTopKModelSaver.get_parse_path(ori_config_paths[suc_cnt], _mode, folds=folds)
+                cv_path = CombinedTopKModelSaver.get_parse_path(ori_config_paths[suc_cnt], _mode, folds=folds, shuffle=shuffle, seed=seed)
                 need_train = True
                 if os.path.exists(cv_path):
                     need_train = False
@@ -247,7 +247,7 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
                     logger.info("Start to train cv model [%s], path: %s" % (config['algorithm'], cv_path))
 
             fold = 1
-            for train_node, valid_node, train_index, valid_index in BaseEvaluator._get_cv_data(task_type, new_node, {"folds": folds}, seed):
+            for train_node, valid_node, train_index, valid_index in BaseEvaluator._get_cv_data(task_type, new_node, {"folds": folds, 'shuffle':shuffle}, seed):
                 if ori_xs is not None and suc_cnt < _n_base:
                     train_node.data = (np.hstack([ori_xs[suc_cnt][train_index], train_node.data[0]]), train_node.data[1])
                     valid_node.data = (np.hstack([ori_xs[suc_cnt][valid_index], valid_node.data[0]]), valid_node.data[1])
@@ -267,7 +267,7 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
                                                                 weight_balance=train_node.enable_balance,
                                                                 data_balance=train_node.data_balance)
                         else:
-                            key = get_kfold_name(folds=folds, fold=fold, seed=seed, shuffle=False)
+                            key = get_kfold_name(folds=folds, fold=fold, seed=seed, shuffle=shuffle)
                             op_list, estimator = op_list_dict[key], estimator_dict[key]
                     else:
                         _, estimator = get_estimator(config, config['algorithm'])
@@ -327,7 +327,7 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
 
         train_indexes = []
         valid_indexes = []
-        for train_index, valid_index in BaseEvaluator._get_cv_data(task_type, new_node, {"folds": folds}, seed, only_index=True):
+        for train_index, valid_index in BaseEvaluator._get_cv_data(task_type, new_node, {"folds": folds, 'shuffle':shuffle}, seed, only_index=True):
             train_indexes.append(train_index)
             valid_indexes.append(valid_index)
 
@@ -346,7 +346,7 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
                         'layer': layer, 'model_idx': suc_cnt, 'fold': fold, 'folds': folds,
                         'train_index': train_indexes[fold-1], 'valid_index': valid_indexes[fold-1],
                         'node_path': node_path, 'ori_x_path': None if ori_xs is None else os.path.join(output_dir, get_ori_x_name(suc_cnt)),
-                        'output_dir': output_dir, 'ori_config_path': ori_config_path, 'n_base_model': n_base_model,
+                        'output_dir': output_dir, 'ori_config_path': ori_config_path, 'n_base_model': n_base_model, 'shuffle': shuffle
                     }
                     if suc_cnt >= _n_base:
                         kwargs.update({'metric': metric})
@@ -438,14 +438,14 @@ def layer_fit(stack_configs, n_base_model, new_node, ori_xs,
             _mode = 'cv'
             if mode == 'partial':
                 _mode += mode
-            cv_path = CombinedTopKModelSaver.get_parse_path(ori_config_path, _mode, folds=folds)
+            cv_path = CombinedTopKModelSaver.get_parse_path(ori_config_path, _mode, folds=folds, shuffle=shuffle, seed=seed)
             if not os.path.exists(cv_path):
                 logger.info("Save cv model [%s], path: %s" % (stack_configs[0][i]['algorithm'], cv_path))
                 op_list_dict = dict()
                 estimator_dict = dict()
                 for fold in range(1, folds+1):
                     assert sms[i][fold-1] is not None and ops[i][fold-1] is not None
-                    key = get_kfold_name(folds=folds, fold=fold, seed=seed, shuffle=False)
+                    key = get_kfold_name(folds=folds, fold=fold, seed=seed, shuffle=shuffle)
                     op_list_dict[key] = ops[i][fold-1]
                     estimator_dict[key] = sms[i][fold-1]
                 CombinedTopKModelSaver._save([op_list_dict, estimator_dict, None], cv_path)

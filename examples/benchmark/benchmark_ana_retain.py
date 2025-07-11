@@ -3,6 +3,7 @@ import json
 import shutil
 import numpy as np
 from scipy.stats import spearmanr, kendalltau
+import math
 
 data_dir = './benchmark_data'
 
@@ -113,6 +114,10 @@ imp_dict = {
     'True': [],
     'False': []
 }
+std_dict = {
+    'True': [],
+    'False': []
+}
 for retain in ['False', 'True']:
     print(retain)
     table = PrettyTable()
@@ -144,10 +149,12 @@ for retain in ['False', 'True']:
     for task_type, algorithms in avgs.items():
         for algorithm in sorted(algorithms.keys()):
             num_dict[task_type] = len(algorithms[algorithm])
+            std = np.nanstd(algorithms[algorithm]) / math.sqrt(num_dict[task_type])
             algorithms[algorithm] = np.nanmean(algorithms[algorithm])
 
             if task_type == tar_key:
                 imp_dict[retain].append(algorithms[algorithm])
+                std_dict[retain].append(std)
 
         avg_dict[task_type] = algorithms
 
@@ -160,29 +167,41 @@ for retain in ['False', 'True']:
     print(num_dict)
 
 
+if not os.path.exists('./images/retain/'):
+    os.mkdir('./images/retain/')
+
 tar_key = 'ALL'
 import matplotlib.pyplot as plt
 # Plot
 imp_dict['False'][3], imp_dict['False'][4] = imp_dict['False'][4], imp_dict['False'][3]
-plt.figure(figsize=(8, 6))
-plt.plot(range(1, len(imp_dict['False'])+1), imp_dict['False'], label='no retain', marker='o')
-plt.plot(range(1, len(imp_dict['True'])+1), imp_dict['True'], label='retain', marker='s')
-plt.axhline(y=0, color='red', linestyle='--')
+std_dict['True'][3], std_dict['True'][4] = std_dict['True'][4], std_dict['True'][3]
+plt.figure(figsize=(6, 4))
+line, = plt.plot(range(1, len(imp_dict['False'])+1), imp_dict['False'], label='no retain', marker='o', linewidth=2.5)
+plt.fill_between(range(1, len(imp_dict['False'])+1), np.array(imp_dict['False']) - np.array(std_dict['False']), np.array(imp_dict['False']) + np.array(std_dict['False']), color=line.get_color(), alpha=0.1)
+line, = plt.plot(range(1, len(imp_dict['True'])+1), imp_dict['True'], label='retain', marker='s', linewidth=2.5)
+plt.fill_between(range(1, len(imp_dict['True'])+1), np.array(imp_dict['True']) - np.array(std_dict['True']), np.array(imp_dict['True']) + np.array(std_dict['True']), color=line.get_color(), alpha=0.1)
+plt.axhline(y=0, color='red', linestyle='--', linewidth=2.5)
 # Customize plot
-plt.xlabel('Stack Layers')
-plt.ylabel('Normalized Score of Base Models')
-plt.title('Normalized Score of Base Models')
-plt.legend()
-plt.xticks(range(1, 6))
+plt.xlabel('Number of Layers', fontsize=22)
+plt.ylabel('Improvement(%)', fontsize=22)
+# plt.title('Normalized Score of Base Models')
+plt.legend(fontsize=18)
+plt.xticks(range(1, 6), fontsize=20)
+plt.yticks([-4, 0, 4, 8], fontsize=20)
 plt.tight_layout()
 
 # Show plot
-plt.savefig('./images/nor_score_with_layers.png')
+plt.savefig('./images/retain/nor_score_with_layers.png')
+plt.savefig('./images/retain/nor_score_with_layers.pdf')
 plt.show()
 
 
 sel_ens = ['False', 'True']
 imp_dict = {
+    'True': [],
+    'False': []
+}
+std_dict = {
     'True': [],
     'False': []
 }
@@ -217,10 +236,11 @@ for layer in range(5):
     for task_type, algorithms in avgs.items():
         for algorithm in sorted(algorithms.keys()):
             num_dict[task_type] = len(algorithms[algorithm])
+            std = 1.96 * np.nanstd(algorithms[algorithm]) / math.sqrt(num_dict[task_type])
             algorithms[algorithm] = np.nanmean(algorithms[algorithm])
-
             if task_type == tar_key:
                 imp_dict[algorithm].append(algorithms[algorithm])
+                std_dict[algorithm].append(std)
 
         avg_dict[task_type] = algorithms
 
@@ -236,17 +256,22 @@ for layer in range(5):
 import matplotlib.pyplot as plt
 # Plot
 imp_dict['True'][3], imp_dict['True'][4] = imp_dict['True'][4], imp_dict['True'][3]
-plt.figure(figsize=(8, 6))
-plt.plot(range(1, len(imp_dict['False'])+1), imp_dict['False'], label='no retain', marker='o')
-plt.plot(range(1, len(imp_dict['True'])+1), imp_dict['True'], label='retain', marker='s')
+std_dict['True'][3], std_dict['True'][4] = std_dict['True'][4], std_dict['True'][3]
+plt.figure(figsize=(6, 4))
+line, = plt.plot(range(1, len(imp_dict['False'])+1), imp_dict['False'], label='no retain', marker='o', linewidth=2.5)
+# plt.fill_between(range(1, len(imp_dict['False'])+1), np.array(imp_dict['False']) - np.array(std_dict['False']), np.array(imp_dict['False']) + np.array(std_dict['False']), color=line.get_color(), alpha=0.1)
+line, = plt.plot(range(1, len(imp_dict['True'])+1), imp_dict['True'], label='retain', marker='s', linewidth=2.5)
+# plt.fill_between(range(1, len(imp_dict['True'])+1), np.array(imp_dict['True']) - np.array(std_dict['True']), np.array(imp_dict['True']) + np.array(std_dict['True']), color=line.get_color(), alpha=0.1)
 # Customize plot
-plt.xlabel('Stack Layers')
-plt.ylabel('Average Rank')
-plt.title('Average Rank of Retain or Not')
-plt.legend()
-plt.xticks(range(1, 6))
+plt.xlabel('Number of Layers', fontsize=22)
+plt.ylabel('Average Rank', fontsize=22)
+# plt.title('Average Rank of Retain or Not')
+plt.legend(fontsize=18)
+plt.xticks(range(1, 6), fontsize=20)
+plt.yticks([1, 1.2, 1.4, 1.6, 1.8], fontsize=20)
 plt.tight_layout()
 
 # Show plot
-plt.savefig('./images/rank_with_layers.png')
+plt.savefig('./images/retain/rank_with_layers.png')
+plt.savefig('./images/retain/rank_with_layers.pdf')
 plt.show()
