@@ -132,7 +132,7 @@ def get_ens_cs(**cs_args):
 
     size_def = cs_args.get('size_default', 10)
     ratio_def = cs_args.get('ratio_default', 40)
-    dropout_def = cs_args.get('dropout_default', 20)
+    dropout_def = cs_args.get('dropout_default', 0)
 
     cs = ConfigurationSpace()
     # cs.add_hyperparameter(UnParametrizedHyperparameter('algorithm', 'ens'))

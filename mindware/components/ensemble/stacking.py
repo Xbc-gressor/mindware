@@ -249,6 +249,7 @@ class Stacking(Blending):
             for i in range(n_base_model):
                 if np.isnan(last_features[key][:, i*n_dim:(i+1)*n_dim]).any():
                     loss.append(-np.inf)
+                    second_loss.append(-np.inf)
                 else:
                     if self.task_type in CLS_TASKS:
                         if n_dim == 1:
@@ -295,7 +296,7 @@ class Stacking(Blending):
 
         # 计算val和test上的head输出
         head_outputs = {'train': head_output}
-        can_heads = ['weighted', 'linear', 'lightgbm', ] # 
+        can_heads = ['weighted', 'linear'] # , 'lightgbm', 
         if not self.opt:
             can_heads = [self.meta_learner] if layer == self.stack_layers + 1 else []
             
@@ -427,7 +428,7 @@ class Stacking(Blending):
                 self.layer_loss = [self.cal_scores(base_features, final_labels, self.ensemble_size)]
                 self.stack_models = dict()
 
-        stack_configs = [[], ['weighted', 'linear', 'lightgbm']]  # 'weighted',
+        stack_configs = [[], ['weighted', 'linear']]  # , 'lightgbm'
         if not self.opt:
             stack_configs = [[], []]
         model_cnt = 0
@@ -449,7 +450,7 @@ class Stacking(Blending):
             if self.thread > 1: save_ori_x(ori_xs, _output_dir)
 
             for layer in range(self.stack_layers):
-                
+
                 fail_mask = np.full(n_base_model, False)
                 if self.lock:
                     self.check_stack(layer+1, last_features, final_labels, train)
