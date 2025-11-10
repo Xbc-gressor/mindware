@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pickle as pk
+import pandas as pd
 
 from torch import nn, optim, from_numpy
 import torch
@@ -12,21 +13,22 @@ from mindware.components.meta_learning.algorithm_recomendation.arutils import Ea
 
 
 class CategoricalHingeLoss(nn.Module):
-    def forward(self, input, target):
+    def forward(self, input, target, weight):
         pos = (1. - target) * (1. - input) + target * input
         neg = target * (1. - input) + (1. - target) * input
-        return torch.sum(torch.max(torch.zeros_like(neg - pos + 1.), neg - pos + 1.)) / len(input)
+        return torch.sum(weight * torch.max(torch.zeros_like(neg - pos + 1.), neg - pos + 1.)) / len(input)
 
 
 class PairwiseDataset(Dataset):
-    def __init__(self, X1, X2, y):
-        self.X1_array, self.X2_array, self.y_array = X1, X2, y.reshape(y.shape[0], 1)
+    def __init__(self, X1, X2, y, weight):
+        self.X1_array, self.X2_array, self.y_array, self.weight_array = X1, X2, y.reshape(y.shape[0], 1), weight.reshape(weight.shape[0], 1)
 
     def __getitem__(self, index):
         data1 = from_numpy(self.X1_array[index]).float()
         data2 = from_numpy(self.X2_array[index]).float()
         y_true = from_numpy(self.y_array[index]).float()
-        return data1, data2, y_true
+        weight = from_numpy(self.weight_array[index]).float()
+        return data1, data2, y_true, weight
 
     def __len__(self):
         return self.X1_array.shape[0]
@@ -69,7 +71,7 @@ class RankNetAdvisor(BaseAdvisor):
                  use_gpu=True):
         self.logger = get_logger(self.__module__ + "." + self.__class__.__name__)
         super().__init__(task_type, metric, rep, total_resource,
-                         'ranknet', exclude_datasets, meta_dir)
+                         'ranknetw', exclude_datasets, meta_dir)
         self.model = None
         self.device = torch.device('cpu')
         if use_gpu and torch.cuda.is_available():
@@ -78,17 +80,21 @@ class RankNetAdvisor(BaseAdvisor):
 
     @staticmethod
     def create_pairwise_data(X, y):
-        X1, X2, labels = list(), list(), list()
+        X1, X2, labels, weights = list(), list(), list(), list()
         n_algo = y.shape[1]
-
         for _X, _y in zip(X, y):
             if np.isnan(_X).any():
                 continue
             meta_vec = _X
+            ranks = pd.Series(_y).rank(method='min', ascending=False)
             for i in range(n_algo):
                 for j in range(i + 1, n_algo):
-                    if (_y[i] == -1) or (_y[j] == -1):
+                    if not np.isfinite(_y[i]) or not np.isfinite(_y[j]):
                         continue
+                    if _y[i] == _y[j]:
+                        continue
+
+                    w = 0.5 + abs(ranks[i] - ranks[j]) / (n_algo-1)
 
                     vector_i, vector_j = np.zeros(n_algo), np.zeros(n_algo)
                     vector_i[i] = 1
@@ -107,7 +113,8 @@ class RankNetAdvisor(BaseAdvisor):
                     _label = 1 if _y[i] > _y[j] else 0
                     labels.append(_label)
                     labels.append(1 - _label)
-        return np.asarray(X1), np.asarray(X2), np.asarray(labels)
+                    weights.extend([w, w])
+        return np.asarray(X1), np.asarray(X2), np.asarray(labels), np.asarray(weights)
 
     @staticmethod
     def create_model(input_shape, hidden_layer_sizes, activation):
@@ -125,13 +132,14 @@ class RankNetAdvisor(BaseAdvisor):
         train_loss = 0
         train_samples = 0
         train_acc = 0
-        for i, (data1, data2, y_true) in enumerate(data_loader):
+        for i, (data1, data2, y_true, weight) in enumerate(data_loader):
             data1 = data1.to(self.device)
             data2 = data2.to(self.device)
             y_true = y_true.to(self.device)
+            weight = weight.to(self.device)
 
             y_pred = model(data1, data2)
-            loss = loss_fun(y_pred, y_true)
+            loss = loss_fun(y_pred, y_true, weight)
             train_loss += loss.item() * len(data1)
             train_samples += len(data1)
             train_acc += np.sum(y_pred.detach().cpu().numpy().round() == y_true.detach().cpu().numpy())
@@ -150,8 +158,8 @@ class RankNetAdvisor(BaseAdvisor):
         epochs = 200
 
         _X, _y = self.metadata_manager.load_meta_data()
-        X1_all, X2_all, y_all = self.create_pairwise_data(_X, _y)
-
+        X1_all, X2_all, y_all, weight_all = self.create_pairwise_data(_X, _y)
+        
         from sklearn.model_selection import KFold
         ss = KFold(n_splits=5, random_state=1, shuffle=True)
         self.model = [None] * 5
@@ -174,18 +182,18 @@ class RankNetAdvisor(BaseAdvisor):
                 test_mask[2*test_index] = True
                 test_mask[2*test_index+1] = True
 
-                X1_train, X2_train, y_train = X1_all[train_mask], X2_all[train_mask], y_all[train_mask]
-                X1_val, X2_val, y_val = X1_all[test_mask], X2_all[test_mask], y_all[test_mask]
+                X1_train, X2_train, y_train, weight_train = X1_all[train_mask], X2_all[train_mask], y_all[train_mask], weight_all[train_mask]
+                X1_val, X2_val, y_val, weight_val = X1_all[test_mask], X2_all[test_mask], y_all[test_mask], weight_all[test_mask]
 
                 print("train: X.shape:", X1_train.shape, X2_train.shape, "y.shape", y_train.shape)
                 print("val: X.shape:", X1_val.shape, X2_val.shape, "y.shape", y_val.shape)
 
-                train_data = PairwiseDataset(X1_train, X2_train, y_train)
+                train_data = PairwiseDataset(X1_train, X2_train, y_train, weight_train)
                 train_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True, num_workers=2)
-                val_data = PairwiseDataset(X1_val, X2_val, y_val)
+                val_data = PairwiseDataset(X1_val, X2_val, y_val, weight_val)
                 val_loader = DataLoader(dataset=val_data, batch_size=batch_size, shuffle=False, num_workers=2)
                 self.input_shape = X1_all.shape[1]
-
+                
                 es = EarlyStopping()
                 # print("fit model...")
                 self.model[fold] = RankNet(X1_all.shape[1], (l1_size, l2_size,), (act_func, act_func,)).to(self.device)
@@ -204,14 +212,15 @@ class RankNetAdvisor(BaseAdvisor):
                     train_loss = 0
                     train_samples = 0
                     train_acc = 0
-                    for i, (data1, data2, y_true) in enumerate(train_loader):
+                    for i, (data1, data2, y_true, weight) in enumerate(train_loader):
                         data1 = data1.to(self.device)
                         data2 = data2.to(self.device)
                         y_true = y_true.to(self.device)
+                        weight = weight.to(self.device)
                         
                         optimizer.zero_grad()
                         y_pred = self.model[fold](data1, data2)
-                        loss = loss_fun(y_pred, y_true)
+                        loss = loss_fun(y_pred, y_true, weight)
                         loss.backward()
                         optimizer.step()
                         train_loss += loss.item() * len(data1)
