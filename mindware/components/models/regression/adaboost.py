@@ -1,4 +1,5 @@
 import numpy as np
+import sklearn
 from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
     UniformIntegerHyperparameter
@@ -11,6 +12,7 @@ class AdaboostRegressor(BaseRegressionModel):
 
     def __init__(self, n_estimators, learning_rate, max_depth,
                  random_state=None):
+        BaseRegressionModel.__init__(self)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.random_state = random_state
@@ -26,12 +28,20 @@ class AdaboostRegressor(BaseRegressionModel):
         self.max_depth = int(self.max_depth)
         base_estimator = DecisionTreeRegressor(max_depth=self.max_depth)
 
-        estimator = ABR(
-            base_estimator=base_estimator,
-            n_estimators=self.n_estimators,
-            learning_rate=self.learning_rate,
-            random_state=self.random_state
-        )
+        if sklearn.__version__ < '1.2':
+            estimator = ABR(
+                base_estimator=base_estimator,
+                n_estimators=self.n_estimators,
+                learning_rate=self.learning_rate,
+                random_state=self.random_state
+            )
+        else:
+            estimator = ABR(
+                estimator=base_estimator,
+                n_estimators=self.n_estimators,
+                learning_rate=self.learning_rate,
+                random_state=self.random_state
+            )
 
         estimator.fit(X, Y, sample_weight=sample_weight)
 
@@ -56,7 +66,7 @@ class AdaboostRegressor(BaseRegressionModel):
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         if optimizer == 'smac':
             cs = ConfigurationSpace()
 

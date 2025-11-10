@@ -1,7 +1,10 @@
 import numpy as np
+import sklearn
 from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
     UniformIntegerHyperparameter, CategoricalHyperparameter
+
+from sklearn.tree import DecisionTreeClassifier
 
 from mindware.components.models.base_model import BaseClassificationModel
 from mindware.components.utils.constants import DENSE, SPARSE, UNSIGNED_DATA, PREDICTIONS
@@ -11,6 +14,7 @@ class AdaboostClassifier(BaseClassificationModel):
 
     def __init__(self, n_estimators, learning_rate, algorithm, max_depth,
                  random_state=None):
+        BaseClassificationModel.__init__(self)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.algorithm = algorithm
@@ -20,19 +24,30 @@ class AdaboostClassifier(BaseClassificationModel):
 
     def fit(self, X, Y, sample_weight=None):
         import sklearn.tree
+        from sklearn.utils.multiclass import unique_labels
+        self.classes_ = unique_labels(Y)
 
         self.n_estimators = int(self.n_estimators)
         self.learning_rate = float(self.learning_rate)
         self.max_depth = int(self.max_depth)
-        base_estimator = sklearn.tree.DecisionTreeClassifier(max_depth=self.max_depth)
+        base_estimator = DecisionTreeClassifier(max_depth=self.max_depth)
 
-        estimator = sklearn.ensemble.AdaBoostClassifier(
-            base_estimator=base_estimator,
-            n_estimators=self.n_estimators,
-            learning_rate=self.learning_rate,
-            algorithm=self.algorithm,
-            random_state=self.random_state
-        )
+        if sklearn.__version__ < '1.2':
+            estimator = sklearn.ensemble.AdaBoostClassifier(
+                base_estimator=base_estimator,
+                n_estimators=self.n_estimators,
+                learning_rate=self.learning_rate,
+                algorithm=self.algorithm,
+                random_state=self.random_state
+            )
+        else:
+            estimator = sklearn.ensemble.AdaBoostClassifier(
+                estimator=base_estimator,
+                n_estimators=self.n_estimators,
+                learning_rate=self.learning_rate,
+                algorithm=self.algorithm,
+                random_state=self.random_state
+            )
 
         estimator.fit(X, Y, sample_weight=sample_weight)
 
@@ -63,7 +78,7 @@ class AdaboostClassifier(BaseClassificationModel):
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         cs = ConfigurationSpace()
 
         n_estimators = UniformIntegerHyperparameter(

@@ -1,3 +1,5 @@
+import sklearn
+
 from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
     UniformIntegerHyperparameter, CategoricalHyperparameter, UnParametrizedHyperparameter
@@ -15,11 +17,12 @@ class ExtraTreesClassifier(IterativeComponentWithSampleWeight, BaseClassificatio
                  max_depth, min_weight_fraction_leaf, min_impurity_decrease,
                  oob_score=False, n_jobs=1, random_state=None, verbose=0,
                  class_weight=None):
+        BaseClassificationModel.__init__(self)
 
         self.n_estimators = self.get_max_iter()
-        if criterion not in ("gini", "entropy"):
-            raise ValueError("'criterion' is not in ('gini', 'entropy'): "
-                             "%s" % criterion)
+        # if criterion not in ("gini", "entropy"):
+        #     raise ValueError("'criterion' is not in ('gini', 'entropy'): "
+        #                      "%s" % criterion)
         self.criterion = criterion
 
         if check_none(max_depth):
@@ -33,7 +36,10 @@ class ExtraTreesClassifier(IterativeComponentWithSampleWeight, BaseClassificatio
 
         self.min_samples_leaf = int(min_samples_leaf)
         self.min_samples_split = int(min_samples_split)
-        self.max_features = float(max_features)
+        try:
+            self.max_features = float(max_features)
+        except:
+            self.max_features = max_features
         self.bootstrap = check_for_bool(bootstrap)
         self.min_weight_fraction_leaf = float(min_weight_fraction_leaf)
         self.min_impurity_decrease = float(min_impurity_decrease)
@@ -51,21 +57,21 @@ class ExtraTreesClassifier(IterativeComponentWithSampleWeight, BaseClassificatio
     def get_current_iter(self):
         return self.estimator.n_estimators
 
-    def iterative_fit(self, X, y, sample_weight=None, n_iter=1, refit=False):
+    def iterative_fit(self, X, Y, sample_weight=None, n_iter=1, refit=False):
         from sklearn.ensemble import ExtraTreesClassifier as ETC
 
         if refit:
             self.estimator = None
 
         if self.estimator is None:
-            max_features = int(X.shape[1] ** float(self.max_features))
+            
             self.estimator = ETC(n_estimators=n_iter,
                                  criterion=self.criterion,
                                  max_depth=self.max_depth,
                                  min_samples_split=self.min_samples_split,
                                  min_samples_leaf=self.min_samples_leaf,
                                  bootstrap=self.bootstrap,
-                                 max_features=max_features,
+                                 max_features=self.max_features,
                                  max_leaf_nodes=self.max_leaf_nodes,
                                  min_weight_fraction_leaf=self.min_weight_fraction_leaf,
                                  min_impurity_decrease=self.min_impurity_decrease,
@@ -81,7 +87,7 @@ class ExtraTreesClassifier(IterativeComponentWithSampleWeight, BaseClassificatio
             self.estimator.n_estimators = min(self.estimator.n_estimators,
                                               self.n_estimators)
 
-        self.estimator.fit(X, y, sample_weight=sample_weight)
+        self.estimator.fit(X, Y, sample_weight=sample_weight)
         return self
 
     def configuration_fully_fitted(self):
@@ -115,11 +121,17 @@ class ExtraTreesClassifier(IterativeComponentWithSampleWeight, BaseClassificatio
                 'output': (PREDICTIONS,)}
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac'):
+    def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         cs = ConfigurationSpace()
 
-        criterion = CategoricalHyperparameter(
-            "criterion", ["gini", "entropy"], default_value="gini")
+        if sklearn.__version__ < "1.1.3":
+            criterion = CategoricalHyperparameter(
+                "criterion", ["gini", "entropy"], default_value="gini")
+        elif '1.1.3' <= sklearn.__version__ <= '1.3.2':
+            criterion = CategoricalHyperparameter(
+                "criterion", ["gini", "entropy", "log_loss"], default_value="gini")
+        else:
+            raise ValueError("sklearn version %s is not supported." % sklearn.__version__)
 
         # The maximum number of features used in the forest is calculated as m^max_features, where
         # m is the total number of features, and max_features is the hyperparameter specified below.
