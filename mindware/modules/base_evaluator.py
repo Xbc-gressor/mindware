@@ -14,7 +14,6 @@ from mindware.components.utils.topk_saver import CombinedTopKModelSaver
 from mindware.components.utils.constants import *
 from mindware.components.feature_engineering.parse import construct_node
 
-from mindware.components.models.cv_model import CV_model
 import pandas as pd
 
 def get_kfold_name(folds, fold, seed, shuffle=False):
