@@ -32,7 +32,7 @@ class OneHotTransformation(Transformer):
         categories = self.model.categories_
         input_feature_map = input_datanode.feature_map.copy()
         new_feature_map = [map_ for i,map_ in enumerate(input_feature_map) if i not in target_fields]
-        n_max = max(new_feature_map) if len(new_feature_map)!=0 else 0
+        n_max = max(new_feature_map)+1 if len(new_feature_map)!=0 else 0
         
         new_feature_map += [i+n_max  for i in range(len(categories)) for j in range(len(categories[i]))]
     
