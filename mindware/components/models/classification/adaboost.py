@@ -1,8 +1,10 @@
 import numpy as np
 import sklearn
+from packaging.version import parse as V
 from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
-    UniformIntegerHyperparameter, CategoricalHyperparameter
+    UniformIntegerHyperparameter, CategoricalHyperparameter, \
+    UnParametrizedHyperparameter
 
 from sklearn.tree import DecisionTreeClassifier
 
@@ -12,7 +14,7 @@ from mindware.components.utils.constants import DENSE, SPARSE, UNSIGNED_DATA, PR
 
 class AdaboostClassifier(BaseClassificationModel):
 
-    def __init__(self, n_estimators, learning_rate, algorithm, max_depth,
+    def __init__(self, n_estimators, learning_rate, max_depth, algorithm=None,
                  random_state=None):
         BaseClassificationModel.__init__(self)
         self.n_estimators = n_estimators
@@ -32,7 +34,9 @@ class AdaboostClassifier(BaseClassificationModel):
         self.max_depth = int(self.max_depth)
         base_estimator = DecisionTreeClassifier(max_depth=self.max_depth)
 
-        if sklearn.__version__ < '1.2':
+        SKLEARN_VERSION = V(sklearn.__version__)
+
+        if SKLEARN_VERSION < V('1.2'):
             estimator = sklearn.ensemble.AdaBoostClassifier(
                 base_estimator=base_estimator,
                 n_estimators=self.n_estimators,
@@ -40,7 +44,7 @@ class AdaboostClassifier(BaseClassificationModel):
                 algorithm=self.algorithm,
                 random_state=self.random_state
             )
-        else:
+        elif SKLEARN_VERSION < V('1.8'):
             estimator = sklearn.ensemble.AdaBoostClassifier(
                 estimator=base_estimator,
                 n_estimators=self.n_estimators,
@@ -48,6 +52,15 @@ class AdaboostClassifier(BaseClassificationModel):
                 algorithm=self.algorithm,
                 random_state=self.random_state
             )
+        elif SKLEARN_VERSION == V('1.8'):
+            estimator = sklearn.ensemble.AdaBoostClassifier(
+                estimator=base_estimator,
+                n_estimators=self.n_estimators,
+                learning_rate=self.learning_rate,
+                random_state=self.random_state
+            )
+        else:
+            raise RuntimeError("Unsupported sklearn version: {}".format(sklearn.__version__))
 
         estimator.fit(X, Y, sample_weight=sample_weight)
 
@@ -81,14 +94,29 @@ class AdaboostClassifier(BaseClassificationModel):
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         cs = ConfigurationSpace()
 
+        SKLEARN_VERSION = V(sklearn.__version__)
+
         n_estimators = UniformIntegerHyperparameter(
             name="n_estimators", lower=50, upper=500, default_value=50, log=False)
         learning_rate = UniformFloatHyperparameter(
             name="learning_rate", lower=0.01, upper=2, default_value=0.1, log=True)
-        algorithm = CategoricalHyperparameter(
-            name="algorithm", choices=["SAMME.R", "SAMME"], default_value="SAMME.R")
+        
+        if SKLEARN_VERSION < V('1.6'):
+            algorithm = CategoricalHyperparameter(
+                name="algorithm", choices=["SAMME.R", "SAMME"], default_value="SAMME.R")
+            cs.add_hyperparameter(algorithm)
+        elif SKLEARN_VERSION < V('1.8'):
+            algorithm = UnParametrizedHyperparameter("algorithm", "SAMME")
+            cs.add_hyperparameter(algorithm)
+        elif SKLEARN_VERSION == V('1.8'):
+            pass  # algorithm parameter removed in 1.8
+        else:
+            raise RuntimeError("Unsupported sklearn version: {}".format(sklearn.__version__))
+
         max_depth = UniformIntegerHyperparameter(
             name="max_depth", lower=2, upper=8, default_value=3, log=False)
 
-        cs.add_hyperparameters([n_estimators, learning_rate, algorithm, max_depth])
+
+
+        cs.add_hyperparameters([n_estimators, learning_rate,max_depth])
         return cs

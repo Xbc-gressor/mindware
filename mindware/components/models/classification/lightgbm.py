@@ -118,9 +118,9 @@ class LightGBM(BaseClassificationModel):
             y_preds = self.sigmoid(y_preds)
             y_preds = rankdata(y_preds) / len(y_preds)
             y_preds = np.vstack([1 - y_preds, y_preds]).T
-        
+
         return y_preds
-            
+
         #     y_pred = self.estimator.predict_proba(tmp)
         #     y_preds.append(y_pred)
 

@@ -1,5 +1,5 @@
 import time
-
+from packaging.version import parse as V
 import numpy as np
 import sklearn.ensemble
 from ConfigSpace.configuration_space import ConfigurationSpace
@@ -39,12 +39,8 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
 
     def iterative_fit(self, X, Y, sample_weight=None, n_iter=1, refit=False):
 
-        try:
-            from sklearn.ensemble import GradientBoostingClassifier as GBC
-        except:
-            from sklearn.ensemble.gradient_boosting import GradientBoostingClassifier as GBC
-
-        # Special fix for gradient boosting!
+        from sklearn.ensemble import GradientBoostingClassifier as GBC
+        
         if isinstance(X, np.ndarray):
             X = np.ascontiguousarray(X, dtype=X.dtype)
         if refit:
@@ -129,13 +125,15 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, **kwargs):
         cs = ConfigurationSpace()
-        if sklearn.__version__ < "1.1.3":
+        
+        SKLEARN_VERSION = V(sklearn.__version__)
+        if SKLEARN_VERSION < V("1.1.3"):
             loss = Constant("loss", "deviance")
-        elif '1.1.3' <= sklearn.__version__ <= '1.3.2':
+        elif SKLEARN_VERSION <= V("1.8"):
             loss = Constant("loss", "log_loss")
         else:
-            raise ValueError("sklearn version %s is not supported." % sklearn.__version__)
-
+            raise RuntimeError("Unsupported sklearn version: {}".format(sklearn.__version__))
+        
         learning_rate = UniformFloatHyperparameter(
             name="learning_rate", lower=0.01, upper=1, default_value=0.1, log=True)
         # n_estimators = UniformIntegerHyperparameter(
@@ -144,14 +142,14 @@ class GradientBoostingClassifier(IterativeComponentWithSampleWeight,
         max_depth = UniformIntegerHyperparameter(
             name="max_depth", lower=1, upper=8, default_value=3)
 
-        if sklearn.__version__ < "1.0.2":
+        if SKLEARN_VERSION < V("1.0.2"):
             criterion = CategoricalHyperparameter(
                 'criterion', ['friedman_mse', 'mse'], default_value='friedman_mse')
-        elif '1.0.2' <= sklearn.__version__ <= '1.3.2':
+        elif SKLEARN_VERSION <= V("1.8"):
             criterion = CategoricalHyperparameter(
                 'criterion', ['friedman_mse', 'squared_error'], default_value='friedman_mse')
         else:
-            raise ValueError("sklearn version %s is not supported." % sklearn.__version__)
+            raise RuntimeError("Unsupported sklearn version: {}".format(sklearn.__version__))
 
         min_samples_split = UniformIntegerHyperparameter(
             name="min_samples_split", lower=2, upper=20, default_value=2)

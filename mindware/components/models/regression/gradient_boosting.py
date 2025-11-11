@@ -1,6 +1,7 @@
 import time
 import sklearn
 import numpy as np
+from packaging.version import parse as V
 from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
     UniformIntegerHyperparameter, UnParametrizedHyperparameter, \
@@ -122,18 +123,21 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
 
     @staticmethod
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
+
+        SKLEARN_VERSION = V(sklearn.__version__)
+
         if optimizer == 'smac':
             cs = ConfigurationSpace()
 
-            if sklearn.__version__ < "1.0.2":
+            if SKLEARN_VERSION < V("1.0.2"):
                 loss = CategoricalHyperparameter("loss", ['ls', 'lad', 'huber', 'quantile'], default_value='ls')
-            elif '1.0.2' <= sklearn.__version__ <= '1.3.2':
+            elif SKLEARN_VERSION <= V("1.8"):
                 loss = CategoricalHyperparameter(
                     "loss", ['squared_error', 'absolute_error', 'huber', 'quantile'],
                     default_value='squared_error'
                 )
             else:
-                raise ValueError("scikit-learn version %s is not supported." % sklearn.__version__)
+                raise RuntimeError("Unsupported sklearn version: {}".format(sklearn.__version__))
 
             learning_rate = UniformFloatHyperparameter(
                 name="learning_rate", lower=0.01, upper=1, default_value=0.1, log=True)
@@ -142,14 +146,14 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
             max_depth = UniformIntegerHyperparameter(
                 name="max_depth", lower=1, upper=10, default_value=3)
 
-            if sklearn.__version__ < "1.0.2":
+            if SKLEARN_VERSION < V("1.0.2"):
                 criterion = CategoricalHyperparameter(
                     'criterion', ['friedman_mse', 'mse'], default_value='friedman_mse')
-            elif '1.0.2' <= sklearn.__version__ <= '1.3.2':
+            elif SKLEARN_VERSION <= V("1.8"):
                 criterion = CategoricalHyperparameter(
                     'criterion', ["friedman_mse", "squared_error"], default_value='friedman_mse')
             else:
-                raise ValueError("scikit-learn version %s is not supported." % sklearn.__version__)
+                raise RuntimeError("Unsupported sklearn version: {}".format(sklearn.__version__))
 
             min_samples_split = UniformIntegerHyperparameter(
                 name="min_samples_split", lower=2, upper=20, default_value=2)
@@ -173,12 +177,12 @@ class GradientBoostingRegressor(IterativeComponentWithSampleWeight, BaseRegressi
             return cs
         elif optimizer == 'tpe':
             from hyperopt import hp
-            if sklearn.__version__ < "1.0.2":
+            if SKLEARN_VERSION < V("1.0.2"):
                 criterions = ['friedman_mse', 'mse', 'mae']
             else:
                 criterions = ["friedman_mse", "squared_error"]
 
-            if sklearn.__version__ < "1.0.2":
+            if SKLEARN_VERSION < V("1.0.2"):
                 losses = ['ls', 'lad', 'huber', 'quantile']
             else:
                 losses = ['squared_error', 'absolute_error', 'huber', 'quantile']

@@ -2,6 +2,7 @@ from ConfigSpace.configuration_space import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, \
     UniformIntegerHyperparameter, CategoricalHyperparameter, \
     UnParametrizedHyperparameter, Constant
+from packaging.version import parse as V
 import numpy as np
 import sklearn
 
@@ -126,20 +127,22 @@ class RandomForest(
     def get_hyperparameter_search_space(dataset_properties=None, optimizer='smac', **kwargs):
         meta_mask = kwargs.get('meta', False)
         y_neg_mask = kwargs.get('y_neg_mask', True) | meta_mask
+
+        SKLEARN_VERSION = V(sklearn.__version__)
         sub = ['poisson'] if y_neg_mask else []
         if optimizer == 'smac':
             cs = ConfigurationSpace()
-            if sklearn.__version__ < "1.0.2":
+            if SKLEARN_VERSION < V("1.0.2"):
                 criterion = CategoricalHyperparameter(
                     "criterion", ["mse", "mae"], default_value="mse")
-            elif "1.0.2" <= sklearn.__version__ < "1.2.2":
+            elif SKLEARN_VERSION < V("1.2.2"):
                 criterion = CategoricalHyperparameter(
                     "criterion", ["squared_error", "absolute_error"] + sub, default_value="squared_error")
-            elif "1.2.2" <= sklearn.__version__ <= "1.3.2":
+            elif SKLEARN_VERSION <= V("1.8"):
                 criterion = CategoricalHyperparameter(
                     "criterion", ["squared_error", "absolute_error", "friedman_mse"] + sub, default_value="squared_error")
             else:
-                raise ValueError("scikit-learn version %s is not supported." % sklearn.__version)
+                raise RuntimeError("Unsupported sklearn version: {}".format(sklearn.__version__))
 
             # The maximum number of features used in the forest is calculated as m^max_features, where
             # m is the total number of features, and max_features is the hyperparameter specified below.
